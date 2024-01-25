@@ -35,6 +35,7 @@ deice_regs_len := *-deice_regs
 deice_run_flag: 	.res 1
 COMBUF:			.res $80
 COMBUF_SIZE := *-COMBUF
+TMP:			.res 1
 DEICSTACK:		
 DEICESTACKTOP := __RAM_DEICE_BSS_START__ + __RAM_DEICE_BSS_SIZE__
 
@@ -310,8 +311,8 @@ MA80:		jsr	GETCHAR			; GET THE CHECKSUM
 		lda	z:<COMBUF+0		; GET THE FUNCTION CODE
 		cmp	#FN_GET_STAT
 		beq	TARGET_STAT
-;;		cmp	#FN_READ_MEM
-;;		beq	READ_MEM
+		cmp	#FN_READ_MEM
+		beq	READ_MEM
 ;;		cmp	#FN_WRITE_M
 ;;		beq	WRITE_MEM
 		cmp	#FN_READ_RG
@@ -365,6 +366,41 @@ TSTG:
 deice_BPINST:	.byte	$42			; WDM
 		.asciiz	"65816 monitor v1.1-model-c-mos"
 TSTG_SIZE	:=	* - TSTG			; SIZE OF STRING
+
+
+;===========================================================================
+;
+;  Read Memory:	 FN, len, Add32(BE), Nbytes
+;
+;  Entry with A=function code, B=data size, X=COMBUF+2
+;
+; NOTE: depart from NoIce - 32 bit addresses
+READ_MEM:
+
+		lda	z:4,X			; get length
+		sta	z:<COMBUF+1		; store
+		beq	GLP90
+		sta	z:<TMP
+		phb				; save our bank
+		lda	z:1,X			; src bank
+		pha
+		plb
+		lda	z:2,X
+		xba
+		lda	z:3,X
+		tay				; src pointer
+@lp:		lda	a:0,Y
+		iny
+		sta	z:0,X
+		inx
+		dec	z:<TMP
+		bne	@lp
+
+		plb				; restore bank register
+
+;  Compute checksum on buffer, and send to master, then return
+GLP90:		bra	SEND
+
 
 ;===========================================================================
 ;
