@@ -74,9 +74,10 @@ deice_init:
 ; Uses 5 bytes of stack including return address
 ;
 ; mode = a8 i?
-
+		.a8
 GETCHAR:	php
 		rep	#$10		; big X
+		.i16
 		phx
 		ldx	#0
 		lda	#RXRDY
@@ -175,13 +176,13 @@ deice_enter_emu:
 		pld
 		; direct page now points at our area
 		plx	
-		stx	<deice_reg_DP
+		stx	z:<deice_reg_DP
 		xba
-		sta	<deice_reg_A+1
-		sty	<deice_reg_Y
+		sta	z:<deice_reg_A+1
+		sty	z:<deice_reg_Y
 		; stack pointer is now back to how it was before the interrupt
 		tsx
-		stx	<deice_reg_SP
+		stx	z:<deice_reg_SP
 		bra	deice_enter
 
 ;
@@ -210,15 +211,15 @@ deice_enter_nat:
 		pea	0
 		plb
 		pla				; actually pulls E=0, DBR
-		sta	<deice_reg_E		; set E = 0, DBR = original
+		sta	z:<deice_reg_E		; set E = 0, DBR = original
 		pla				; pull P, PCL
-		sta	<deice_reg_P
+		sta	z:<deice_reg_P
 		pla				; pull PCH, K
-		sta	<deice_reg_PC+1
-		stx	<deice_reg_X
-		sty	<deice_reg_Y
+		sta	z:<deice_reg_PC+1
+		stx	z:<deice_reg_X
+		sty	z:<deice_reg_Y
 		tsx
-		stx	<deice_reg_SP
+		stx	z:<deice_reg_SP
 		sep	#$20
 		.a8
 		; fall through to deice_enter
@@ -233,16 +234,122 @@ deice_enter_nat:
 		.i16
 		.a8
 deice_enter:	lda	#$01			; TODO try and do this earlier
-		tsb	<deice_run_flag
+		tsb	z:<deice_run_flag
 		ldx	#DEICESTACKTOP-1
 		txs
 
 		lda	#FN_RUN_TARG
-		bra	RETURN_REGS
+		jmp	RETURN_REGS
 
+;
+;===========================================================================
+;
+;	MAIN LOOP 
+;
+; mode = i16 a8
+MAIN:		; TODO: get rid of this bit - should be unnecessary - just belt and braces
+		ldx	#DEICESTACKTOP-1
+		txs
+		sep	#$20
+		rep	#$10
+		pea	0
+		plb
+		plb
+		pea	deice_base
+		pld
+		ldx	#<COMBUF
+		jsr	GETCHAR
+		bcs	MAIN
+		cmp	#FN_MIN
+		bcc	MAIN
+		sta	z:0,X			; store FN code
+		inx
+;
+;  Second byte is data byte count (may be zero)
+		jsr	GETCHAR			; GET A LENGTH BYTE
+		bcs	MAIN			; JIF TIMEOUT: RESYNC
+		cmp	#COMBUF_SIZE
+		bcs	MAIN			; JIF TOO LONG: ILLEGAL LENGTH
+		sta	z:0,X			; SAVE LENGTH
+		cmp	#0
+		beq	MA80			; SKIP DATA LOOP IF LENGTH = 0
+		inx
+;
+;  Loop for data
+		xba
+		lda	#0
+		xba
+		tay				; Y contains 16 bit length
+MA10:		jsr	GETCHAR			; GET A DATA BYTE
+		bcs	MAIN			; JIF TIMEOUT: RESYNC
+		sta	z:0,X			; SAVE DATA BYTE
+		inx
+		dey	
+		bne	MA10
+;
+;  Get the checksum
+MA80:		jsr	GETCHAR			; GET THE CHECKSUM
+		bcs	MAIN			; JIF TIMEOUT: RESYNC
+		pha				; SAVE CHECKSUM
+;
+;  Compare received checksum to that calculated on received buffer
+;  (Sum should be 0)
+		jsr	CHECKSUM
+		clc
+		adc	1,S			; ADD SAVED CHECKSUM TO COMPUTED
+		bne	MAIN			; JIF BAD CHECKSUM
 
-MAIN:		jmp	MAIN
+		pla
+;
+;  Process the message.
+		ldx	#<COMBUF+2
+		lda	#0
+		xba
+		lda	z:<COMBUF+1		; GET THE LENGTH
+		tay				; Y holds 16 bit length
+		lda	z:<COMBUF+0		; GET THE FUNCTION CODE
+		cmp	#FN_GET_STAT
+		beq	TARGET_STAT
+;;		cmp	#FN_READ_MEM
+;;		beq	READ_MEM
+;;		cmp	#FN_WRITE_M
+;;		beq	WRITE_MEM
+		cmp	#FN_READ_RG
+		beq	READ_REGS
+;;		cmp	#FN_WRITE_RG
+;;		beq	WRITE_REGS
+;;		cmp	#FN_RUN_TARG
+;;		beq	RUN_TARGET
+;;		cmp	#FN_SET_BYTES
+;;		beq	SET_BYTES
+;;		cmp	#FN_IN
+;;		beq	IN_PORT
+;;		cmp	#FN_OUT
+;;		beq	OUT_PORT
+;
+;  Error: unknown function.  Complain
+		lda	#FN_ERROR
+		sta	z:<COMBUF		; SET FUNCTION AS "ERROR"
+		lda	#1
+		jmp	SEND_STATUS		; VALUE IS "ERROR"
 
+;===========================================================================
+;
+;  Target Status:  FN, len
+;
+;  Entry with A=function code, Y=data in size, X=COMBUF+2
+;
+TARGET_STAT:	
+		lda	#0
+		xba
+		lda	#TSTG_SIZE
+		sta	z:<COMBUF+1
+		ldy	#COMBUF+2
+		ldx	#TSTG
+		mvn	#^*,^COMBUF
+;
+;  Compute checksum on buffer, and send to master, then return
+		bra	SEND
 
 ;
 ;*======================================================================
@@ -280,6 +387,16 @@ RETURN_REGS:	ldx	#deice_regs
 		mvn	#^deice_regs, #^COMBUF
 		bra	SEND
 
+;===========================================================================
+;  Build status return with value from D0
+;
+SEND_STATUS:
+		sta	z:<COMBUF+2		; SET STATUS
+		lda	#1
+		sta	z:<COMBUF+1		; SET LENGTH
+		
+		; fall through to SEND
+
 
 ;===========================================================================
 ;  Append checksum to COMBUF and send to master
@@ -289,15 +406,15 @@ RETURN_REGS:	ldx	#deice_regs
 SEND:		jsr	CHECKSUM		; GET A=CHECKSUM, X->checksum location
 		eor	#$FF
 		inc	A			; negate checksom
-		sta	a:0,X			; STORE NEGATIVE OF CHECKSUM
+		sta	0,X			; STORE NEGATIVE OF CHECKSUM
 ;
 ;  Send buffer to master
-		ldx	#COMBUF			; POINTER TO DATA
-		lda	a:1,X			; LENGTH OF DATA
+		ldx	#<COMBUF		; POINTER TO DATA
+		lda	z:1,X			; LENGTH OF DATA
 		clc
 		adc	#3			; PLUS FUNCTION, LENGTH, CHECKSUM
 		tay
-@lp:		lda	a:0,X
+@lp:		lda	z:0,X
 		inx
 		jsr	PUTCHAR			; SEND A BYTE
 		dey
@@ -315,16 +432,16 @@ SEND:		jsr	CHECKSUM		; GET A=CHECKSUM, X->checksum location
 ;
 ; mode a8 i16
 CHECKSUM:
-		ldx	#COMBUF			; POINTER TO DATA
+		ldx	#<COMBUF		; POINTER TO DATA
 		lda	#0
 		xba				; clear top half of acc
-		lda	a:1,X			; LENGTH OF DATA
+		lda	z:1,X			; LENGTH OF DATA
 		clc
 		adc	#2			; PLUS FUNCTION, LENGTH, CHECKSUM
 		tay
 		lda	#0			; init checksum to 0
 @lp:		clc
-		adc	a:0,X
+		adc	z:0,X
 		inx
 		dey
 		bne	@lp
