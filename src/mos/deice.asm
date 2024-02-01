@@ -162,7 +162,7 @@ deice_enter_emu:
 
 		rep	#$10
 		.i16
-		pea	$0100
+		pea	$FF00
 		plb				; bank is now deice bank (0)
 		pla
 		sta	deice_reg_E		; set emulation mode in regs		
@@ -482,8 +482,8 @@ RETURN_REGS:	lda	#0
 ;
 WRITE_REGS:
 ;
-		lda	deice_regs_len
-		cmp	#<COMBUF+1
+		lda	#deice_regs_len
+		cmp	<COMBUF+1
 		bne	@exbad			; wrong size registers		
 		xba				; get 0 into top of AH
 		lda	#0
@@ -498,8 +498,62 @@ WRITE_REGS:
 @exbad:		lda	#1
 		bra	@ex
 
+;===========================================================================
+;
+;  Run Target:	FN, len=0
+;
 
-RUN_TARGET:	jmp	RETURN_ERROR
+RUN_TARGET:	
+		; restore state from register save area and continue
+
+		; restore data bank - use DP from now on
+		lda	z:<deice_reg_DBR
+		pha
+		plb
+
+		; restore user stack
+		ldx	z:<deice_reg_SP
+		txs
+
+		ldy	z:<deice_reg_Y
+
+		; B
+		lda	z:<deice_reg_A+1
+		xba
+
+
+		bit	z:<deice_reg_E
+		bmi	emu_exit		
+
+		; we need to push K,PCH,PCL,P - this assumes that DeIce is in bank 0, need to think about how to restore K to 0/saved bank
+		ldx	z:<deice_reg_P+2
+		phx
+		ldx	z:<deice_reg_P
+		phx
+		lda	z:<deice_reg_A
+		ldx	z:<deice_reg_DP
+		phx
+		ldx	z:<deice_reg_X
+		pld
+		rti
+		
+
+emu_exit:	; we need to push PCH,PCL,P - this assumes that DeIce is in bank 0, need to think about how to restore K to 0/saved bank
+		ldx	z:<deice_reg_PC
+		phx
+		lda	z:<deice_reg_P
+		pha
+		lda	z:<deice_reg_A
+		ldx	z:<deice_reg_DP
+		phx
+		ldx	z:<deice_reg_X
+		pld
+		rti
+
+
+
+
+
 SET_BYTES:	jmp	RETURN_ERROR
 IN_PORT:	jmp	RETURN_ERROR
 OUT_PORT:	jmp	RETURN_ERROR
