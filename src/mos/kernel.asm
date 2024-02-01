@@ -83,10 +83,8 @@ emu_handle_res:
 ;		ldx	#test_str
 ;		jsr	deice_printStrzX
 
-
-		cop	1
-
-here:		jmp	here
+here:		cop	1
+		jmp	here
 
 
 test_str:	.byte "This is a test string...",13,10,"So there!",13,10,0
