@@ -240,6 +240,7 @@ deice_enter:	lda	#$01			; TODO try and do this earlier
 		txs
 
 		lda	#FN_RUN_TARG
+		sta	z:<COMBUF
 		jmp	RETURN_REGS
 
 ;
@@ -308,40 +309,42 @@ MA80:		jsr	GETCHAR			; GET THE CHECKSUM
 		xba
 		lda	z:<COMBUF+1		; GET THE LENGTH
 		tay				; Y holds 16 bit length
-		lda	z:<COMBUF+0		; GET THE FUNCTION CODE
-		cmp	#FN_GET_STAT
-		beq	TARGET_STAT
-		cmp	#FN_READ_MEM
-		beq	READ_MEM
-		cmp	#FN_WRITE_M
-		bne	@sww
-		jmp	WRITE_MEM
-@sww:		cmp	#FN_READ_RG
-		bne	@srr
-		jmp	READ_REGS
-@srr:
-;;		cmp	#FN_WRITE_RG
-;;		beq	WRITE_REGS
-;;		cmp	#FN_RUN_TARG
-;;		beq	RUN_TARGET
-;;		cmp	#FN_SET_BYTES
-;;		beq	SET_BYTES
-;;		cmp	#FN_IN
-;;		beq	IN_PORT
-;;		cmp	#FN_OUT
-;;		beq	OUT_PORT
+		lda	#0
+		clc
+		sbc	z:<COMBUF+0		; $100 - THE FUNCTION CODE - 1
+		cmp	#$100-FN_MIN
+		bcs	RETURN_ERROR
+		asl	A
+		xba
+		lda	#0
+		xba
+		tax
+
+		jmp	(FNTBL,X)
 ;
 ;  Error: unknown function.  Complain
+RETURN_ERROR:
 		lda	#FN_ERROR
 		sta	z:<COMBUF		; SET FUNCTION AS "ERROR"
 		lda	#1
 		jmp	SEND_STATUS		; VALUE IS "ERROR"
 
+
+FNTBL:
+		.addr	TARGET_STAT
+		.addr	READ_MEM
+		.addr	WRITE_MEM
+		.addr	READ_REGS
+		.addr	WRITE_REGS
+		.addr	RUN_TARGET
+		.addr	SET_BYTES
+		.addr	IN_PORT
+		.addr	OUT_PORT
+
+
 ;===========================================================================
 ;
 ;  Target Status:  FN, len
-;
-;  Entry with A=function code, Y=data in size, X=COMBUF+2
 ;
 TARGET_STAT:	
 		lda	#0
@@ -375,23 +378,22 @@ TSTG_SIZE	:=	* - TSTG			; SIZE OF STRING
 ;
 ;  Read Memory:	 FN, len, Add32(BE), Nbytes
 ;
-;  Entry with A=function code
-;
 ; NOTE: depart from NoIce - 32 bit addresses
 READ_MEM:
 
-		lda	z:4,X			; get length
-		sta	z:<COMBUF+1		; store
+		lda	z:<COMBUF+6		; get length
 		beq	GLP90
 		sta	z:<TMP
+		sta	z:<COMBUF+1
 		phb				; save our bank
-		lda	z:1,X			; src bank
+		lda	z:<COMBUF+3		; src bank
 		pha
 		plb
-		lda	z:2,X
-		xba
-		lda	z:3,X
+		lda	z:<COMBUF+4		; get source ptr high
+		xba				; swap BE->LE
+		lda	z:<COMBUF+5		; get source ptr low
 		tay				; src pointer
+		ldx	#<COMBUF+2
 @lp:		lda	a:0,Y
 		iny
 		sta	z:0,X
@@ -402,14 +404,12 @@ READ_MEM:
 		plb				; restore bank register
 
 ;  Compute checksum on buffer, and send to master, then return
-GLP90:		bra	SEND
+GLP90:		jmp	SEND
 
 
 ;===========================================================================
 ;
 ;  Write Memory:  FN, len, Add32BE, (len-4 bytes of Data)
-;
-;  Entry with A=function code
 ;
 WRITE_MEM:
 
@@ -422,12 +422,12 @@ WRITE_MEM:
 		lda	z:<COMBUF+3		; src bank
 		pha
 		plb
-		lda	z:<COMBUF+4
-		xba
-		lda	z:<COMBUF+5
+		lda	z:<COMBUF+4		; get dest pointer high
+		xba				; swap BE->LE
+		lda	z:<COMBUF+5		; get dest pointer low
 		tay				; dest pointer
 		phy
-		ldx	#<COMBUF+6
+		ldx	#<COMBUF+6		; source pointer (DP relative)
 
 @lp:		lda	z:0,X
 		inx
@@ -463,22 +463,46 @@ WLP90:		bra	WLP51
 ;
 ;  Read registers:  FN, len=0
 ;
-;  Entry with A=function code
-;
 ; mode a8 i16
+;NOTE: the FN may be FA (run target) or FC (read regs) caller sets in COMBUF+0
 READ_REGS:
-		; enter with A is function code to return either FN_RUN_TARG or FN_READ_REGS
-RETURN_REGS:	ldx	#deice_regs
-		ldy	#COMBUF
-		sta	a:0,Y		
-		lda	#0
+RETURN_REGS:	lda	#0
 		xba
 		lda	#deice_regs_len
-		sta	a:1,Y
-		iny
-		iny
+		sta	z:<COMBUF+1
+		ldx	#deice_regs
+		ldy	#COMBUF+2
 		mvn	#^deice_regs, #^COMBUF
 		bra	SEND
+
+
+;===========================================================================
+;
+;  Write registers:  FN, len, (register image)
+;
+WRITE_REGS:
+;
+		lda	deice_regs_len
+		cmp	#<COMBUF+1
+		bne	@exbad			; wrong size registers		
+		xba				; get 0 into top of AH
+		lda	#0
+		xba
+		ldx	#COMBUF+2
+		ldy	#deice_regs
+		mvn	#^COMBUF, #^deice_regs
+;
+;  Return OK status
+		lda	#0
+@ex:		bra	SEND_STATUS
+@exbad:		lda	#1
+		bra	@ex
+
+
+RUN_TARGET:	jmp	RETURN_ERROR
+SET_BYTES:	jmp	RETURN_ERROR
+IN_PORT:	jmp	RETURN_ERROR
+OUT_PORT:	jmp	RETURN_ERROR
 
 ;===========================================================================
 ;  Build status return with value from D0
