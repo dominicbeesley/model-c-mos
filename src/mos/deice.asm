@@ -313,10 +313,13 @@ MA80:		jsr	GETCHAR			; GET THE CHECKSUM
 		beq	TARGET_STAT
 		cmp	#FN_READ_MEM
 		beq	READ_MEM
-;;		cmp	#FN_WRITE_M
-;;		beq	WRITE_MEM
-		cmp	#FN_READ_RG
-		beq	READ_REGS
+		cmp	#FN_WRITE_M
+		bne	@sww
+		jmp	WRITE_MEM
+@sww:		cmp	#FN_READ_RG
+		bne	@srr
+		jmp	READ_REGS
+@srr:
 ;;		cmp	#FN_WRITE_RG
 ;;		beq	WRITE_REGS
 ;;		cmp	#FN_RUN_TARG
@@ -350,7 +353,7 @@ TARGET_STAT:
 		mvn	#^*,^COMBUF
 ;
 ;  Compute checksum on buffer, and send to master, then return
-		bra	SEND
+		jmp	SEND
 
 ;
 ;*======================================================================
@@ -372,7 +375,7 @@ TSTG_SIZE	:=	* - TSTG			; SIZE OF STRING
 ;
 ;  Read Memory:	 FN, len, Add32(BE), Nbytes
 ;
-;  Entry with A=function code, B=data size, X=COMBUF+2
+;  Entry with A=function code
 ;
 ; NOTE: depart from NoIce - 32 bit addresses
 READ_MEM:
@@ -400,6 +403,60 @@ READ_MEM:
 
 ;  Compute checksum on buffer, and send to master, then return
 GLP90:		bra	SEND
+
+
+;===========================================================================
+;
+;  Write Memory:  FN, len, Add32BE, (len-4 bytes of Data)
+;
+;  Entry with A=function code
+;
+WRITE_MEM:
+
+		lda	z:<COMBUF+1
+		sec
+		sbc	#4
+		beq	WLP50			; nothing to do
+		sta	z:<TMP
+		phb				; save our bank
+		lda	z:<COMBUF+3		; src bank
+		pha
+		plb
+		lda	z:<COMBUF+4
+		xba
+		lda	z:<COMBUF+5
+		tay				; dest pointer
+		phy
+		ldx	#<COMBUF+6
+
+@lp:		lda	z:0,X
+		inx
+		sta	a:0,Y
+		iny
+		dec	z:<TMP
+		bne	@lp
+
+		lda	z:<COMBUF+1
+		sec
+		sbc	#4
+		sta	z:<TMP			; get back count
+		ply
+		ldx	#<COMBUF+6
+@lp2:		lda	z:0,X
+		inx
+		cmp	a:0,Y
+		bne	WLP80
+		iny
+		dec	z:<TMP
+		bne	@lp2
+
+WLP50:		lda	#0			; RETURN STATUS = 0
+WLP51:		plb				; restore bank register
+		bra	SEND_STATUS
+;
+;  Write failed:  return status = 1
+WLP80:		lda	#1
+WLP90:		bra	WLP51
 
 
 ;===========================================================================
