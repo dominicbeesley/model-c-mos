@@ -29,7 +29,15 @@ nat_handle_cop:
 
 nat_handle_brk:		rti
 nat_handle_abort:	rti
-nat_handle_nmi:		rti
+nat_handle_nmi:		
+		.a16
+		.i16
+		rep	#$30
+		pha
+		lda	#DEICE_STATE_NMI
+		jml	deice_enter_nat
+
+		rti
 nat_handle_irq:		rti
 
 emu_handle_abort:	rti
@@ -80,11 +88,19 @@ emu_handle_res:
 		rep	#$10
 		phk
 		plb
-;		ldx	#test_str
-;		jsr	deice_printStrzX
 
-here:		cop	1
+here:		;cop	1
+		;jmp	here
+
+		ldx	#0
+		ldy	#10
+@wlp:		dex
+		bne	@wlp
+		dey
+		bne	@wlp
+
+		ldx	#test_str
+		jsr	deice_printStrzX
 		jmp	here
-
 
 test_str:	.byte "This is a test string...",13,10,"So there!",13,10,0

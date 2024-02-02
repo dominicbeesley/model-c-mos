@@ -155,6 +155,14 @@ deice_enter_emu:
 		phb	
 		pla
 		sta	f:deice_reg_DBR		; bank
+		pea	$FF00
+		plb				; bank is now deice bank (0)
+		pla
+		sta	deice_reg_E		; set emulation mode in regs		
+		
+		lda	#$80
+		tsb	deice_run_flag
+		bne	deice_emu_already_running
 
 		; enter native mode for rest of handler
 		clc
@@ -162,10 +170,8 @@ deice_enter_emu:
 
 		rep	#$10
 		.i16
-		pea	$FF00
-		plb				; bank is now deice bank (0)
-		pla
-		sta	deice_reg_E		; set emulation mode in regs		
+		xba
+		sta	deice_reg_A+1		; store high byte of AH
 		stx	deice_reg_X
 		; we can now use X as 16 bit reg
 		pla
@@ -186,6 +192,22 @@ deice_enter_emu:
 		stx	z:<deice_reg_SP
 		bra	deice_enter
 
+deice_emu_already_running:
+		; DeIce monitor already running exit with RTI
+		lda	f:deice_reg_DBR
+		pha
+		plb
+		lda	f:deice_reg_A
+		rti		
+
+		.a16
+		.i16
+deice_nat_already_running:
+		lda	z:<deice_reg_DP
+		tcd
+		lda	f:deice_reg_A
+		rti		
+
 ;
 ;===========================================================================
 ; Interrupt entry point from natural mode
@@ -204,9 +226,14 @@ deice_enter_nat:
 		pla
 		sta	f:deice_reg_A
 		tdc
-		sta	deice_reg_DP
+		sta	f:deice_reg_DP
 		lda	#deice_base
-		tcd				
+		tcd
+
+		lda	#$80
+		tsb	z:<deice_run_flag
+		bne	deice_nat_already_running
+
 		; now can use direct page addressing
 		phb
 		pea	0
@@ -534,6 +561,7 @@ RUN_TARGET:
 		ldx	z:<deice_reg_DP
 		phx
 		ldx	z:<deice_reg_X
+		stz	z:<deice_run_flag
 		pld
 		rti
 		
@@ -547,6 +575,7 @@ emu_exit:	; we need to push PCH,PCL,P - this assumes that DeIce is in bank 0, ne
 		ldx	z:<deice_reg_DP
 		phx
 		ldx	z:<deice_reg_X
+		stz	z:<deice_run_flag
 		pld
 		rti
 
