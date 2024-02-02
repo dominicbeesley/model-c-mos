@@ -36,6 +36,7 @@ deice_run_flag: 	.res 1
 COMBUF:			.res $80
 COMBUF_SIZE := *-COMBUF
 TMP:			.res 1
+TMP2:			.res 1
 DEICSTACK:		
 DEICESTACKTOP := __RAM_DEICE_BSS_START__ + __RAM_DEICE_BSS_SIZE__
 
@@ -261,12 +262,18 @@ deice_enter_nat:
 ;		
 		.i16
 		.a8
-deice_enter:	lda	#$01			; TODO try and do this earlier
-		tsb	z:<deice_run_flag
-		ldx	#DEICESTACKTOP-1
+deice_enter:	ldx	#DEICESTACKTOP-1
 		txs
 
-		lda	#FN_RUN_TARG
+		lda	z:<deice_reg_status
+		cmp	#DEICE_STATE_BP
+		bne	@notcop
+		; adjust COP's PC back by 2
+		ldx	z:<deice_reg_PC
+		dex
+		dex
+		stx	z:<deice_reg_PC
+@notcop:	lda	#FN_RUN_TARG
 		sta	z:<COMBUF
 		jmp	RETURN_REGS
 
@@ -396,7 +403,8 @@ TSTG:
 		.byte	0,0
 		.byte	$FF,$FF			; 5-8: LOW AND HIGH LIMIT OF MAPPED MEM (ALL!)		-- note 68008 has 24 bit address space "paging" register is just the high MSB!
 		.byte	1			; 9:  BREAKPOINT INSTR LENGTH
-deice_BPINST:	.byte	$42			; WDM
+;deice_BPINST:	.byte	$42			; WDM
+deice_BPINST:	.byte	$02			; COP
 		.asciiz	"65816 monitor v1.1-model-c-mos"
 TSTG_SIZE	:=	* - TSTG			; SIZE OF STRING
 
@@ -479,7 +487,7 @@ WRITE_MEM:
 
 WLP50:		lda	#0			; RETURN STATUS = 0
 WLP51:		plb				; restore bank register
-		bra	SEND_STATUS
+		jmp	SEND_STATUS
 ;
 ;  Write failed:  return status = 1
 WLP80:		lda	#1
@@ -500,7 +508,7 @@ RETURN_REGS:	lda	#0
 		ldx	#deice_regs
 		ldy	#COMBUF+2
 		mvn	#^deice_regs, #^COMBUF
-		bra	SEND
+		jmp	SEND
 
 
 ;===========================================================================
@@ -521,7 +529,7 @@ WRITE_REGS:
 ;
 ;  Return OK status
 		lda	#0
-@ex:		bra	SEND_STATUS
+@ex:		jmp	SEND_STATUS
 @exbad:		lda	#1
 		bra	@ex
 
@@ -583,7 +591,86 @@ emu_exit:	; we need to push PCH,PCL,P - this assumes that DeIce is in bank 0, ne
 
 
 
-SET_BYTES:	jmp	RETURN_ERROR
+;===========================================================================
+;
+;  Set target byte(s):	FN, len { (Add32(BE), data), (...)... }  - note address sense reversed from noice
+;
+;  Return has FN, len, (data from memory locations)
+;
+;  If error in insert (memory not writable), abort to return short data
+;
+;  This function is used primarily to set and clear breakpoints
+;
+;  NOTE: this is different to the standard NoICE protocol as it works with 32 bit addresses and 8 bit data
+;  
+SET_BYTES:
+
+		ldy	#COMBUF+2		; POINTER TO RETURN BUFFER
+		ldx	#<COMBUF+2		; POINTER TO PARAM BUFFER
+		lda	z:<COMBUF+1
+		sta	z:<TMP
+		sta	z:<TMP2
+		stz	z:<COMBUF+1		; SET RETURN COUNT AS ZERO
+		phy
+					
+;
+;  Loop on inserting bytes
+SB10:
+		sec
+		lda	z:<TMP
+		sbc	#5		
+		bcc	SB99			; JIF NO BYTES (COMBUF+1 = 0)
+		sta	z:<TMP
+
+		lda	z:1,X
+		pha
+		plb
+		lda	z:2,X
+		xba
+		lda	z:3,X
+		tay				; DBR,Y points at memory location
+
+;
+;  Read current data at word location
+		lda	a:0,Y
+		pha
+;
+;  Insert new data at byte location
+		lda	z:4,X			; GET BYTE TO BE STORED	
+		sta	a:0,Y			; WRITE TARGET MEMORY
+;
+;  Verify write
+		cmp	a:0,Y			; READ TARGET MEMORY
+		bne	SB90			; BR IF INSERT FAILED: ABORT
+		pla
+;	
+;  Save target byte in return buffer
+		pea	0
+		plb
+		plb
+		ply
+		sta	a:0,Y
+		iny
+		phy
+		inc	z:<COMBUF+1		; COUNT ONE RETURN BYTE
+;
+;  Loop for next byte
+		bra	SB10			; *LOOP FOR ALL BYTES
+
+; Early exit due to read back mismatch, clean up stack reset DBR
+SB90:		pla
+		ply
+		pea	0
+		plb
+		plb
+;
+;  Return buffer with data from byte locations
+;
+;  Compute checksum on buffer, and send to master, then return
+SB99:		bra	SEND
+
+
+
 IN_PORT:	jmp	RETURN_ERROR
 OUT_PORT:	jmp	RETURN_ERROR
 
