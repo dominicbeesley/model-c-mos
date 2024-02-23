@@ -655,6 +655,11 @@ SB10:
 		inc	z:<COMBUF+1		; COUNT ONE RETURN BYTE
 ;
 ;  Loop for next byte
+		inx
+		inx
+		inx
+		inx
+		inx
 		bra	SB10			; *LOOP FOR ALL BYTES
 
 ; Early exit due to read back mismatch, clean up stack reset DBR
