@@ -100,7 +100,34 @@ here:		;cop	1
 		bne	@wlp
 
 		ldx	#test_str
-		jsr	deice_printStrzX
+		jsr	printStrzX
 		jmp	here
 
+SERIAL_STATUS	:= sheila_ACIA_CTL
+RXRDY		:= ACIA_RDRF
+SERIAL_RXDATA	:= sheila_ACIA_DATA
+TXRDY		:= ACIA_TDRE
+SERIAL_TXDATA	:= sheila_ACIA_DATA
+
+
+PrintA:		pha        	
+   		lda     #TXRDY
+@lp:		bit	SERIAL_STATUS  		;CHECK TX STATUS        		
+        	beq     @lp			;READY ?
+        	pla
+        	sta     SERIAL_TXDATA   	;TRANSMIT CHAR.
+        	rts
+
+printStrzX:
+@lp:		lda	a:0,X
+		beq	@out
+		and	#$7F	;make safe for Deice protocol
+		jsr	PrintA
+		inx
+		bra	@lp
+@out:		inx
+		rts
+
+
 test_str:	.byte "This is a test string...",13,10,"So there!",13,10,0
+
