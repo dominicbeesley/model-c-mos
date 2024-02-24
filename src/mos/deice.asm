@@ -227,6 +227,8 @@ deice_enter_nat:
 		pla
 		sta	f:deice_reg_A
 		tdc
+
+		; now can use direct page addressing
 		sta	f:deice_reg_DP
 		lda	#deice_base
 		tcd
@@ -235,7 +237,7 @@ deice_enter_nat:
 		tsb	z:<deice_run_flag
 		bne	deice_nat_already_running
 
-		; now can use direct page addressing
+		; now can use bank rel addressing
 		phb
 		pea	0
 		plb
