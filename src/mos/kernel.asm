@@ -1,27 +1,15 @@
 
-		.autoimport +
 
 		.include "dp_sys.inc"
 		.include "boot_vecs.inc"
 		.include "hardware.inc"
 		.include "deice.inc"
 
-		.export nat_handle_cop
-		.export nat_handle_brk
-		.export nat_handle_abort
-		.export nat_handle_irq
-		.export nat_handle_nmi
 
-		.export emu_handle_abort
-		.export emu_handle_cop
-		.export emu_handle_irq
-		.export emu_handle_nmi
-		.export emu_handle_res
-
-		.code
+		.section code
 nat_handle_cop:		
-		.a16
-		.i16
+		.al
+		.xl
 		rep	#$30
 		pha
 		lda	#DEICE_STATE_BP
@@ -30,8 +18,8 @@ nat_handle_cop:
 nat_handle_brk:		rti
 nat_handle_abort:	rti
 nat_handle_nmi:		
-		.a16
-		.i16
+		.al
+		.xl
 		rep	#$30
 		pha
 		lda	#DEICE_STATE_NMI
@@ -42,15 +30,15 @@ nat_handle_irq:		rti
 
 emu_handle_abort:	rti
 emu_handle_cop:		
-		.a8
+		.as
 		pha
 		lda	#DEICE_STATE_BP
 		jml	deice_enter_emu
 emu_handle_irq:		rti
 emu_handle_nmi:		rti
 emu_handle_res:	
-		.a8
-		.i8
+		.as
+		.xs
 		; we're in E=1 mode and can assume that all regs are 8 bit
 		; and that DP, B and K are all zero
 		; interrupts are inhibited and decimal mode is off
@@ -84,7 +72,7 @@ emu_handle_res:
 
 		jsr	deice_init
 
-		.i16
+		.xl
 		rep	#$10
 		phk
 		plb

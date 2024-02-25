@@ -1,6 +1,5 @@
 
-		.export font_base
-		.segment "FONT"
+		.section FONT
 
 font_base:
 		.byte	$00				; 00000000   ........	&20  32 - ' '

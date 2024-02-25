@@ -1,5 +1,3 @@
-	.IFNDEF __DP_SYS_INC__
-__DP_SYS_INC__:
 
 	; the SYS direct page - this is retained for compatibility with 6502 programs
 	; and will always reside at 00 0000
@@ -45,4 +43,3 @@ __DP_SYS_INC__:
 	.exportzp 	dp_mos_ESC_flag				:= $FF	; Escape flag (bit 7)
 
 
-	.ENDIF

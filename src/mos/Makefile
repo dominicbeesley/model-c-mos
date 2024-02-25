@@ -1,7 +1,6 @@
 		include ../Makefile.defs
 
-AS=ca65 -I $(TOP)/includes -I $(BUILD) --cpu 65816
-LD=ld65
+AS=64tass -a -I $(TOP)/includes -I $(BUILD) --m65816
 INCS=$(wildcard $(TOP)/includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) 
 TARGETS=boot.mos
@@ -28,26 +27,26 @@ deploy: ssd
 UC=$(shell echo '$1'|tr '[:lower:]' '[:upper:]')
 
 
-$(BUILD)/boot.mos:$(addprefix $(BUILD)/, $(addsuffix .o, $(OBJS_boot.mos)))
+$(BUILD)/boot.mos:$(addsuffix .asm, $(OBJS_boot.mos))
+	$(AS) --map $(basename $@).map kernel.asm -o $@ 
 
+#$(BUILD)/%.mos: %.cfg
+#	$(LD) -vm -Ln $(basename $@).sy2 -m $(basename $@).map --dbgfile $(basename $@).dbg -o $@ -C $(filter %.cfg, $^) $(filter %.o, $^) $(LIBS)
+#	echo "M.$(call UC,$(notdir $(basename $@))) FFFFC000 FFFFC000" >$@.inf
+#	$(SCRIPTS)/ca65lstupdate.pl $(basename $@).dbg $(BUILD)
+#	$(SCRIPTS)/getsymbols.pl <$(basename $@).sy2 >$(basename $@).1.noi
+#	$(SCRIPTS)/ld65debugsymbols.pl $(basename $@).dbg $(basename $@).2.noi
 
-$(BUILD)/%.mos: %.cfg
-	$(LD) -vm -Ln $(basename $@).sy2 -m $(basename $@).map --dbgfile $(basename $@).dbg -o $@ -C $(filter %.cfg, $^) $(filter %.o, $^) $(LIBS)
-	echo "M.$(call UC,$(notdir $(basename $@))) FFFFC000 FFFFC000" >$@.inf
-	$(SCRIPTS)/ca65lstupdate.pl $(basename $@).dbg $(BUILD)
-	$(SCRIPTS)/getsymbols.pl <$(basename $@).sy2 >$(basename $@).1.noi
-	$(SCRIPTS)/ld65debugsymbols.pl $(basename $@).dbg $(basename $@).2.noi
-
-$(BUILD)/%.rom: %.cfg
-	$(LD) -vm -Ln $(basename $@).sy2 -m $(basename $@).map --dbgfile $(basename $@).dbg -o $@ -C $(filter %.cfg, $^) $(filter %.o, $^) $(LIBS)
-	echo "R.$(call UC,$(notdir $(basename $@))) FFFF8000 FFFF8000" >$@.inf
-	$(SCRIPTS)/ca65lstupdate.pl $(basename $@).dbg $(BUILD)
-	$(SCRIPTS)/getsymbols.pl $(ROMNO) <$(basename $@).sy2 >$(basename $@).noi
-	$(SCRIPTS)/ld65debugsymbols.pl --romno $(ROMNO) $(basename $@).dbg $(basename $@).2.noi
-
-
-$(BUILD)/%.o: 	%.asm $(DEPS) 
-	$(AS) -o $@ -g -l $(basename $@).lst $<
+##$(BUILD)/%.rom: %.cfg
+##	$(LD) -vm -Ln $(basename $@).sy2 -m $(basename $@).map --dbgfile $(basename $@).dbg -o $@ -C $(filter %.cfg, $^) $(filter %.o, $^) $(LIBS)
+##	echo "R.$(call UC,$(notdir $(basename $@))) FFFF8000 FFFF8000" >$@.inf
+##	$(SCRIPTS)/ca65lstupdate.pl $(basename $@).dbg $(BUILD)
+##	$(SCRIPTS)/getsymbols.pl $(ROMNO) <$(basename $@).sy2 >$(basename $@).noi
+##	$(SCRIPTS)/ld65debugsymbols.pl --romno $(ROMNO) $(basename $@).dbg $(basename $@).2.noi
+##
+##
+##$(BUILD)/%.o: 	%.asm $(DEPS) 
+##	$(AS) -o $@ -g -l $(basename $@).lst $<
 
 $(SSD):	$(TARGETS_B) $(SSD_EXTRAS)
 	dfs form -80 $(SSD)

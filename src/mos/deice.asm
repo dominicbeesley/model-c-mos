@@ -17,7 +17,7 @@ SERIAL_RXDATA	:= sheila_ACIA_DATA
 TXRDY		:= ACIA_TDRE
 SERIAL_TXDATA	:= sheila_ACIA_DATA
 
-		.segment "DEICE_BSS"
+		.sction DEICE_BSS
 deice_base:
 deice_regs:
 deice_reg_status:	.res 1
