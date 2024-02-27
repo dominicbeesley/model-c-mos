@@ -34,6 +34,9 @@ __DP_SYS_INC__:
 	.exportzp 	dp_mos_OSBW_A				:= $EF	; OSBYTE/OSWORD A reg value
 	.exportzp 	dp_mos_OSBW_X				:= $F0	; OSBYTE/OSWORD X reg value
 	.exportzp 	dp_mos_OSBW_Y				:= $F1	; OSBYTE/OSWORD Y reg value
+
+	.exportzp	dp_mos_lptr				:= $EF	; overlays OSBYTE, TODO: move, or rethink
+
 	.exportzp 	dp_mos_txtptr				:= $F2	; OS Text pointer (eg star commands and filenames)
 	.exportzp 	dp_mos_curROM				:= $F4	; Currently selected ROM
 	.exportzp 	dp_mos_curPHROM				:= $F5	; Current PHROM or RFS ROM number or OSRDSC/OSWRSC number
