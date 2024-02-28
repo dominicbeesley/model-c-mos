@@ -28,7 +28,7 @@ deice_reg_DP:		.res 2
 deice_reg_SP:		.res 2
 deice_reg_E:		.res 1		; 1 bit in bottom order of E and DBR important in nat entry shim		
 deice_reg_DBR:		.res 1		; order of DBR and P important in nat entry shim
-deice_reg_P:		.res 1
+deice_reg_P:		.res 1		; order of P, PC important in nat exit shim
 deice_reg_PC:		.res 3		; 24 bit
 deice_regs_len := *-deice_regs
 
@@ -191,6 +191,7 @@ deice_enter_emu:
 		; stack pointer is now back to how it was before the interrupt
 		tsx
 		stx	z:<deice_reg_SP
+		stz	deice_reg_PC+2		; TODO: check always bank 0 for emu
 		bra	deice_enter
 
 deice_emu_already_running:
@@ -267,15 +268,24 @@ deice_enter_nat:
 deice_enter:	ldx	#DEICESTACKTOP-1
 		txs
 
-		lda	z:<deice_reg_status
-		cmp	#DEICE_STATE_BP
-		bne	@notcop
-		; adjust COP's PC back by 2
-		ldx	z:<deice_reg_PC
-		dex
-		dex
-		stx	z:<deice_reg_PC
-@notcop:	lda	#FN_RUN_TARG
+;;		lda	z:<deice_reg_status
+;;		cmp	#DEICE_STATE_BP
+;;		bne	@notbp
+;;		; adjust COP's PC back by 2
+;;		ldx	z:<deice_reg_PC
+;;		dex
+;;		dex
+;;		stx	z:<deice_reg_PC
+
+		; TODO: if emu/nat address mappings are different this will need changed
+		; inspect what's at PC, if WDM then change status to DEICE_BP
+		lda	[<deice_reg_PC]
+		cmp	#$42			; WDM instruction
+		bne	@notbp
+		lda	#DEICE_STATE_BP
+		sta	z:<deice_reg_status
+
+@notbp:		lda	#FN_RUN_TARG
 		sta	z:<COMBUF
 		jmp	RETURN_REGS
 
@@ -405,8 +415,7 @@ TSTG:
 		.byte	0,0
 		.byte	$FF,$FF			; 5-8: LOW AND HIGH LIMIT OF MAPPED MEM (ALL!)		-- note 68008 has 24 bit address space "paging" register is just the high MSB!
 		.byte	1			; 9:  BREAKPOINT INSTR LENGTH
-;deice_BPINST:	.byte	$42			; WDM
-deice_BPINST:	.byte	$02			; COP
+deice_BPINST:	.byte	$42			; WDM
 		.asciiz	"65816 monitor v1.1-model-c-mos"
 TSTG_SIZE	:=	* - TSTG			; SIZE OF STRING
 
@@ -587,6 +596,8 @@ emu_exit:	; we need to push PCH,PCL,P - this assumes that DeIce is in bank 0, ne
 		ldx	z:<deice_reg_X
 		stz	z:<deice_run_flag
 		pld
+		sec
+		xce				; back to native mode
 		rti
 
 

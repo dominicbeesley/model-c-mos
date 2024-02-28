@@ -19,35 +19,34 @@
 		.export emu_handle_res
 
 		.code
-nat_handle_cop:		
-		.a16
-		.i16
-		rep	#$30
-		pha
-		lda	#DEICE_STATE_BP
-		jml	deice_enter_nat
 
-nat_handle_brk:		rti
-nat_handle_abort:	rti
-nat_handle_nmi:		
+; deice - all 65816 entries are initially ABORT
+; entry point inspects instruction and changes to BP if WDM instruction
+nat_handle_abort:	
 		.a16
 		.i16
 		rep	#$30
 		pha
-		lda	#DEICE_STATE_NMI
+		lda	#DEICE_STATE_ABORT
 		jml	deice_enter_nat
+		rti
+emu_handle_abort:
+		pha
+		lda	#DEICE_STATE_ABORT
+		jml	deice_enter_emu
+		rti
+
+
+
+nat_handle_cop:		
+nat_handle_brk:	rti
+nat_handle_nmi:		
 nat_handle_irq:	rti
 
-emu_handle_abort:	rti
-emu_handle_cop:		
 		.a8
-		pha
-		lda	#DEICE_STATE_BP
-		jml	deice_enter_emu
-emu_handle_irq:	rti
-emu_handle_nmi:	pha
-		lda	#DEICE_STATE_NMI
-		jml	deice_enter_emu
+emu_handle_cop:	rti
+emu_handle_irq:	
+emu_handle_nmi:	rti
 emu_handle_res:	
 		.a8
 		.i8
@@ -93,16 +92,14 @@ emu_handle_res:
 		plb			; databank is code
 		
 
-here:		;cop	1
-		;jmp	here
-
+here:		
 		ldy	#10		
 		ldx	#0
-;;		stx	$0
+		stx	$0
 @wlp:		dex
 		bne	@wlp
-;;		dec	$0
-;;		bne	@wlp
+		dec	$0
+		bne	@wlp
 		dey
 		bne	@wlp
 
@@ -112,6 +109,7 @@ here:		;cop	1
 		xba
 		lda	#<test_str
 		jsr	printStrBHA
+	
 		jmp	here
 
 SERIAL_STATUS	:= sheila_ACIA_CTL
