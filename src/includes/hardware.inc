@@ -2,28 +2,28 @@
 __HARDWARE_INC__:
 
 
-sheila_MEM_CTL			:= $FE31
+sheila_MEM_CTL			:= $FFFE31
 BITS_MEM_CTL_SWMOS		:= $01
 BITS_MEM_CTL_SWMOS_DEBUG	:= $04
 BITS_MEM_CTL_SWMOS_DEBUG_EN	:= $08
 BITS_MEM_CTL_FLEX		:= $10
 BITS_MEM_CTL_SWMOS_DEBUG_5C	:= $40
 BITS_MEM_CTL_SWMOS_DEBUG_ACT	:= $80
-sheila_MEM_DEBUG_SAVE		:= $FE32
+sheila_MEM_DEBUG_SAVE		:= $FFFE32
 
-sheila_MEM_TURBO2		:= $FE36
+sheila_MEM_TURBO2		:= $FFFE36
 BITS_MEM_TURBO2_THROTTLE	:= $80
 
-sheila_MEM_LOMEMTURBO		:= $FE37
-sheila_ROM_THROTTLE_0		:= $FE33
-sheila_ROM_THROTTLE_1		:= $FE35
+sheila_MEM_LOMEMTURBO		:= $FFFE37
+sheila_ROM_THROTTLE_0		:= $FFFE33
+sheila_ROM_THROTTLE_1		:= $FFFE35
 
-sheila_ACIA_CTL		:=	$FE08
-ACIA_RDRF		:=	$01
-ACIA_TDRE		:=	$02
+sheila_ACIA_CTL			:= $FFFE08
+ACIA_RDRF			:= $01
+ACIA_TDRE			:= $02
 
-sheila_ACIA_DATA	:=	$FE09
-sheila_SERIAL_ULA	:=	$FE10
+sheila_ACIA_DATA		:= $FFFE09
+sheila_SERIAL_ULA		:= $FFFE10
 
 
 ; BLTCON is written in two passes with top bit clear i.e. not BLTCON_ACT_ACT
@@ -135,7 +135,7 @@ DMAC_AERIS_CTL_offs		:=	$50
 DMAC_AERIS_PROGBASE_offs	:=	$51
 
 
-DMAC_I2C_offs		:=	$70
+DMAC_I2C_offs			:=	$70
 
 jim_page_DMAC			:=	$FEFC
 
@@ -229,54 +229,46 @@ I2C_STOP	:= $04
 I2C_START	:= $02
 I2C_RNW		:= $01
 
-sheila_sim_control		:=	$FEFF
-sheila_reg_debug		:=	$FEFF
 
-fred_JIM_PAGE_HI2		:=	$FCFC		; note ignored Blitter/Paula
-fred_JIM_PAGE_HI		:=	$FCFD
-fred_JIM_PAGE_LO		:=	$FCFE
-fred_JIM_DEVNO			:=	$FCFF
+fred_JIM_PAGE_HI2		:=	$FFFCFC		; note ignored Blitter/Paula
+fred_JIM_PAGE_HI		:=	$FFFCFD
+fred_JIM_PAGE_LO		:=	$FFFCFE
+fred_JIM_DEVNO			:=	$FFFCFF
 
-jim_base			:=	$FD00
+jim_base			:=	$FFFD00
 JIM				:=	jim_base
 
-SHEILA_ROMCTL_SWR	:=	$FE30
-SHEILA_ROMCTL_MOS	:=	$FE31
-
-SHEILA_ROMCTL_SWR_ELK	:=	$FE05
-
+sheila_ROMCTL_SWR	:=	$FFFE30
+sheila_ROMCTL_MOS	:=	$FFFE31
 
 ROMCTL_BITS_FLEX	:=	$10
-
 ROMCTL_MOS_JIMEN	:=	$02
 ROMCTL_MOS_SWMOS	:=	$01
 
 	
-SHEILA_NULA_CTLAUX	:=	$FE22
-SHEILA_NULA_PALAUX	:=	$FE23
-
-SHEILA_DEBUG		:=	$FEFF
+sheila_NULA_CTLAUX	:=	$FFFE22
+sheila_NULA_PALAUX	:=	$FFFE23
 
 
 ;***********************************************************************
 ;* System VIA                                                          *
 ;***********************************************************************
-sheila_SYSVIA_orb			:= $FE40
-sheila_SYSVIA_ora			:= $FE41
-sheila_SYSVIA_ddrb			:= $FE42
-sheila_SYSVIA_ddra			:= $FE43
-sheila_SYSVIA_t1cl			:= $FE44
-sheila_SYSVIA_t1ch			:= $FE45
-sheila_SYSVIA_t1ll			:= $FE46
-sheila_SYSVIA_t1lh			:= $FE47
-sheila_SYSVIA_t2cl			:= $FE48
-sheila_SYSVIA_t2ch			:= $FE49
-sheila_SYSVIA_sr			:= $FE4A
-sheila_SYSVIA_acr			:= $FE4B
-sheila_SYSVIA_pcr			:= $FE4C
-sheila_SYSVIA_ifr			:= $FE4D
-sheila_SYSVIA_ier			:= $FE4E
-sheila_SYSVIA_ora_nh			:= $FE4F
+sheila_SYSVIA_orb			:= $FFFE40
+sheila_SYSVIA_ora			:= $FFFE41
+sheila_SYSVIA_ddrb			:= $FFFE42
+sheila_SYSVIA_ddra			:= $FFFE43
+sheila_SYSVIA_t1cl			:= $FFFE44
+sheila_SYSVIA_t1ch			:= $FFFE45
+sheila_SYSVIA_t1ll			:= $FFFE46
+sheila_SYSVIA_t1lh			:= $FFFE47
+sheila_SYSVIA_t2cl			:= $FFFE48
+sheila_SYSVIA_t2ch			:= $FFFE49
+sheila_SYSVIA_sr			:= $FFFE4A
+sheila_SYSVIA_acr			:= $FFFE4B
+sheila_SYSVIA_pcr			:= $FFFE4C
+sheila_SYSVIA_ifr			:= $FFFE4D
+sheila_SYSVIA_ier			:= $FFFE4E
+sheila_SYSVIA_ora_nh			:= $FFFE4F
 
 ;***********************************************************************
 ;* SYS VIA - slow data bus RTC                                         *
@@ -303,22 +295,22 @@ RTC_REG_YEAR	:=		$9
 ;***********************************************************************
 ;* User VIA                                                            *
 ;***********************************************************************
-sheila_USRVIA_orb			:= $FE60
-sheila_USRVIA_ora			:= $FE61
-sheila_USRVIA_ddrb			:= $FE62
-sheila_USRVIA_ddra			:= $FE63
-sheila_USRVIA_t1cl			:= $FE64
-sheila_USRVIA_t1ch			:= $FE65
-sheila_USRVIA_t1ll			:= $FE66
-sheila_USRVIA_t1lh			:= $FE67
-sheila_USRVIA_t2cl			:= $FE68
-sheila_USRVIA_t2ch			:= $FE69
-sheila_USRVIA_sr			:= $FE6A
-sheila_USRVIA_acr			:= $FE6B
-sheila_USRVIA_pcr			:= $FE6C
-sheila_USRVIA_ifr			:= $FE6D
-sheila_USRVIA_ier			:= $FE6E
-sheila_USRVIA_ora_nh			:= $FE6F
+sheila_USRVIA_orb			:= $FFFE60
+sheila_USRVIA_ora			:= $FFFE61
+sheila_USRVIA_ddrb			:= $FFFE62
+sheila_USRVIA_ddra			:= $FFFE63
+sheila_USRVIA_t1cl			:= $FFFE64
+sheila_USRVIA_t1ch			:= $FFFE65
+sheila_USRVIA_t1ll			:= $FFFE66
+sheila_USRVIA_t1lh			:= $FFFE67
+sheila_USRVIA_t2cl			:= $FFFE68
+sheila_USRVIA_t2ch			:= $FFFE69
+sheila_USRVIA_sr			:= $FFFE6A
+sheila_USRVIA_acr			:= $FFFE6B
+sheila_USRVIA_pcr			:= $FFFE6C
+sheila_USRVIA_ifr			:= $FFFE6D
+sheila_USRVIA_ier			:= $FFFE6E
+sheila_USRVIA_ora_nh			:= $FFFE6F
 
 ;***********************************************************************
 ;*  VIA constants                                                      *
@@ -350,11 +342,11 @@ VIA_ACR_T1_CONT				:= $40
 ;* BBC B/B+ WD177x                                                     *
 ;***********************************************************************
 
-sheila_1770_dcontrol			:=	$FE80
-sheila_1770_wdc_cmd			:=	$FE84
-sheila_1770_wdc_trk			:=	$FE85
-sheila_1770_wdc_sec			:=	$FE86
-sheila_1770_wdc_dat			:=	$FE87
+sheila_1770_dcontrol			:=	$FFFE80
+sheila_1770_wdc_cmd			:=	$FFFE84
+sheila_1770_wdc_trk			:=	$FFFE85
+sheila_1770_wdc_sec			:=	$FFFE86
+sheila_1770_wdc_dat			:=	$FFFE87
 
 W1770_DRVSEL_BIT_SEL0			:= $01
 W1770_DRVSEL_BIT_SEL1			:= $02

@@ -1,6 +1,6 @@
-        .IFNDEF __BOOT_VECS__INC__
-__BOOT_VECS__INC__:
+.IFNDEF __BOOT_VECS_INC__
+__BOOT_VECS_INC__:
 
-        .export boot_vecs_shadow : far := $008FE0
+boot_vecs_shadow := $008FE0
 
-        .ENDIF
+.ENDIF

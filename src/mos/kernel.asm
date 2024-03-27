@@ -82,15 +82,17 @@ emu_handle_res:
 		xce
 
 		sep	#$30		; 8 bits registers
-
-		jsr	deice_init
-		
 		.i8
 		.a8
+
+		jsr	deice_init
+
+		jsr	roms_scanroms	; only on ctrl-break, but always for now...
+
+		
 		sep	#$30
 		phk
-		plb			; databank is code
-		
+		plb			; databank is code		
 
 here:		
 		ldy	#10		
@@ -112,6 +114,9 @@ here:
 	
 		jmp	here
 
+
+
+
 SERIAL_STATUS	:= sheila_ACIA_CTL
 RXRDY		:= ACIA_RDRF
 SERIAL_RXDATA	:= sheila_ACIA_DATA
@@ -123,12 +128,12 @@ SERIAL_TXDATA	:= sheila_ACIA_DATA
 		.a8
 PrintA:		php				; register size agnostic!
 		sep	#$20
-		pha        	
-   		lda     #TXRDY
-@lp:		bit	SERIAL_STATUS  		;CHECK TX STATUS        		
+		pha        	   		
+@lp:		lda	f:SERIAL_STATUS		;CHECK TX STATUS        		
+		and     #TXRDY
         	beq     @lp			;READY ?
         	pla
-        	sta     SERIAL_TXDATA   	;TRANSMIT CHAR.
+        	sta     f:SERIAL_TXDATA   	;TRANSMIT CHAR.
         	plp
         	rts
 

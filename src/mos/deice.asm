@@ -6,6 +6,7 @@
 
 		.export deice_init
 		.export deice_printStrzX
+		.export deice_printA
 
 		.export deice_enter_emu
 		.export deice_enter_nat
@@ -50,12 +51,12 @@ deice_init:
 		.a8
 		.i8
 		lda 	#$40
-		sta	sheila_SERIAL_ULA	; set for 19200/19200
+		sta	f:sheila_SERIAL_ULA	; set for 19200/19200
 
 		lda	#%01010111
-		sta	sheila_ACIA_CTL		; master reset
+		sta	f:sheila_ACIA_CTL	; master reset
 		lda	#%01010110
-		sta	sheila_ACIA_CTL		; RTS high, no interrupts, 8N1, div64
+		sta	f:sheila_ACIA_CTL	; RTS high, no interrupts, 8N1, div64
 		
 		stz	deice_run_flag
 		
@@ -81,11 +82,11 @@ GETCHAR:	php
 		rep	#$10		; big X
 		.i16
 		phx
-		ldx	#0
-		lda	#RXRDY
-@l1:		bit	SERIAL_STATUS
+		ldx	#0		
+@l1:		lda	f:SERIAL_STATUS
+		and	#RXRDY
 		beq	@sk1
-		lda	SERIAL_RXDATA
+		lda	f:SERIAL_RXDATA
 		plx
 		plp
 		clc
@@ -105,12 +106,12 @@ GETCHAR:	php
 ; Uses 3 bytes of stack including return address
 ;
 ; mode = a8 i?
-PUTCHAR:	pha        	
-   		lda     #TXRDY
-PC10:		bit	SERIAL_STATUS  		;CHECK TX STATUS        		
+PUTCHAR:	pha        	   		
+PC10:		lda	f:SERIAL_STATUS		;CHECK TX STATUS        		
+		and     #TXRDY
         	beq     PC10			;READY ?
         	pla
-        	sta     SERIAL_TXDATA   	;TRANSMIT CHAR.
+        	sta     f:SERIAL_TXDATA   	;TRANSMIT CHAR.
         	rts
 
 
@@ -753,3 +754,11 @@ CHECKSUM:
 		rts				; return with checksum in A
 
 
+deice_printA:
+		php
+		sep	#$20
+		.a8
+		and	#$7F		; make 7 bit ASCII for deice
+		jsr	PUTCHAR
+		plp
+		rts		

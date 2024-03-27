@@ -1,11 +1,12 @@
 		include ../Makefile.defs
 
-AS=ca65 -I $(TOP)/includes -I $(BUILD) --cpu 65816
+AS=ca65 
+ASFLAGS=--auto-import -I $(TOP)/includes -I $(BUILD) --cpu 65816 -D__DEBUG=1
 LD=ld65
 INCS=$(wildcard $(TOP)/includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) 
 TARGETS=boot.mos
-OBJS_boot.mos=kernel deice boot-vecs font
+OBJS_boot.mos=kernel deice boot-vecs font roms debug
 SSD_EXTRAS=_21BOOT.txt.inf
 SSD=$(SSDS)/model-c-mos.ssd
 DEPLOY=$(DEPLOY_TOP)/model-c-mos
@@ -27,9 +28,7 @@ deploy: ssd
 
 UC=$(shell echo '$1'|tr '[:lower:]' '[:upper:]')
 
-
 $(BUILD)/boot.mos:$(addprefix $(BUILD)/, $(addsuffix .o, $(OBJS_boot.mos)))
-
 
 $(BUILD)/%.mos: %.cfg
 	$(LD) -vm -Ln $(basename $@).sy2 -m $(basename $@).map --dbgfile $(basename $@).dbg -o $@ -C $(filter %.cfg, $^) $(filter %.o, $^) $(LIBS)
@@ -45,9 +44,8 @@ $(BUILD)/%.rom: %.cfg
 	$(SCRIPTS)/getsymbols.pl $(ROMNO) <$(basename $@).sy2 >$(basename $@).noi
 	$(SCRIPTS)/ld65debugsymbols.pl --romno $(ROMNO) $(basename $@).dbg $(basename $@).2.noi
 
-
 $(BUILD)/%.o: 	%.asm $(DEPS) 
-	$(AS) -o $@ -g -l $(basename $@).lst $<
+	$(AS) $(ASFLAGS) -o $@ -g -l $(basename $@).lst $<
 
 $(SSD):	$(TARGETS_B) $(SSD_EXTRAS)
 	dfs form -80 $(SSD)
