@@ -18,6 +18,9 @@
 		.export emu_handle_nmi
 		.export emu_handle_res
 
+		.export bank0
+		.export bankFF
+
 		.code
 
 ; deice - all 65816 entries are initially ABORT
@@ -177,3 +180,14 @@ printStrBHA:	phx
 
 test_str:	.byte "This is a test string...",13,10,"So there!",13,10,0
 
+
+
+bank0:		pea	$0000
+		plb
+		plb
+		rts
+
+bankFF:		pea	$FFFF
+		plb
+		plb
+		rts		

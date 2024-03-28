@@ -1,7 +1,7 @@
 		include ../Makefile.defs
 
 AS=ca65 
-ASFLAGS=--auto-import -I $(TOP)/includes -I $(BUILD) --cpu 65816 -D__DEBUG=1
+ASFLAGS=--auto-import -I $(TOP)/includes -I $(BUILD) --cpu 65816 -D__DEBUG=1 --feature string_escapes
 LD=ld65
 INCS=$(wildcard $(TOP)/includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) 
