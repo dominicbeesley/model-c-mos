@@ -58,7 +58,8 @@ deice_init:
 		lda	#%01010110
 		sta	f:sheila_ACIA_CTL	; RTS high, no interrupts, 8N1, div64
 		
-		stz	deice_run_flag
+		lda	#0
+		sta	f:deice_run_flag
 		
 		plp
 		rts
@@ -367,7 +368,7 @@ MA80:		jsr	GETCHAR			; GET THE CHECKSUM
 		xba
 		tax
 
-		jmp	(FNTBL,X)
+		jmp	(.loword(FNTBL),X)
 ;
 ;  Error: unknown function.  Complain
 RETURN_ERROR:
@@ -399,7 +400,7 @@ TARGET_STAT:
 		lda	#TSTG_SIZE
 		sta	z:<COMBUF+1
 		ldy	#COMBUF+2
-		ldx	#TSTG
+		ldx	#.loword(TSTG)
 		mvn	#^*,^COMBUF
 ;
 ;  Compute checksum on buffer, and send to master, then return
