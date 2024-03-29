@@ -2,11 +2,13 @@
 __HARDWARE_INC__:
 
 
+
 sheila_MEM_CTL			:= $FFFE31
 BITS_MEM_CTL_SWMOS		:= $01
 BITS_MEM_CTL_SWMOS_DEBUG	:= $04
 BITS_MEM_CTL_SWMOS_DEBUG_EN	:= $08
 BITS_MEM_CTL_FLEX		:= $10
+BITS_MEM_CTL_BOOT_MODE		:= $20
 BITS_MEM_CTL_SWMOS_DEBUG_5C	:= $40
 BITS_MEM_CTL_SWMOS_DEBUG_ACT	:= $80
 sheila_MEM_DEBUG_SAVE		:= $FFFE32
@@ -25,6 +27,81 @@ ACIA_TDRE			:= $02
 sheila_ACIA_DATA		:= $FFFE09
 sheila_SERIAL_ULA		:= $FFFE10
 
+
+		.macro JIMDEF pagenam, regnam, offs
+.ident(.concat("JIM", pagenam, "_", regnam)) := JIM + offs
+.ident(.concat(pagenam, "_", regnam)) := (.ident(.concat("jim_page_", pagenam)) * 256) + offs
+		.endmacro
+
+
+;================ VERSION page =====================
+
+; VERSION registers
+jim_page_VERSION		:=	$FC00
+
+JIMDEF "VERSION", "Strings"		, $00
+JIMDEF "VERSION", "API_level"		, $80
+JIMDEF "VERSION", "Board_level"		, $81
+JIMDEF "VERSION", "API_sublevel"	, $82
+JIMDEF "VERSION", "cfg_bits"		, $84
+JIMDEF "VERSION", "cap_bits"		, $88
+
+; Mk.2/1 option switches - note in API level >1 the sense of these is reversed!
+BLT_MK2_CFG0_T65		:=	$01
+BLT_MK2_CFG0_CPU_6502A_2M	:=	$00
+BLT_MK2_CFG0_CPU_65C02_4M	:=	$02
+BLT_MK2_CFG0_CPU_65C02_8M	:=	$04
+BLT_MK2_CFG0_CPU_6x09_2M	:=	$08
+BLT_MK2_CFG0_CPU_6309_4M	:=	$0A
+BLT_MK2_CFG0_CPU_Z80_8M		:=	$0C
+BLT_MK2_CFG0_CPU_68008		:=	$0E
+BLT_MK2_CFG0_SWROMX		:=	$10
+BLT_MK2_CFG0_MOSRAM		:=	$20
+BLT_MK2_CFG0_BUGBTN		:=	$80
+
+BLT_MK2_CFG1_MEMI		:=	$01
+BLT_MK2_CFG1_BUGOUT		:=	$02
+
+; Mk.3 switches from PORTF/G
+BLT_MK3_CFG0_T65		:=	$08
+BLT_MK3_CFG0_SWROMX		:=	$10
+BLT_MK3_CFG0_MOSRAM		:=	$20
+BLT_MK3_CFG0_MEMI		:=	$40
+
+; NOTE: sheila BLT_MK2_CFG0/1 registers are deprecated - now in JIM page FC 008x
+sheila_BLT_API0_CFG0			:= $FFFE3E
+sheila_BLT_API0_CFG1			:= $FFFE3F
+
+
+;================ CHIPSET page =====================
+
+jim_page_DMAC			:=	$FEFC
+
+;----------------- chipset Blitter -----------------
+
+JIMDEF "DMAC", "BLIT_BLITCON"		, $00
+JIMDEF "DMAC", "BLIT_FUNCGEN"		, $01
+JIMDEF "DMAC", "BLIT_WIDTH"		, $02
+JIMDEF "DMAC", "BLIT_HEIGHT"		, $03
+JIMDEF "DMAC", "BLIT_SHIFT"		, $04
+JIMDEF "DMAC", "BLIT_MASK_FIRST"	, $05
+JIMDEF "DMAC", "BLIT_MASK_LAST"		, $06
+JIMDEF "DMAC", "BLIT_DATA_A"		, $07
+JIMDEF "DMAC", "BLIT_ADDR_A"		, $08
+JIMDEF "DMAC", "BLIT_DATA_B"		, $0B
+JIMDEF "DMAC", "BLIT_ADDR_B"		, $0C
+JIMDEF "DMAC", "BLIT_ADDR_C"		, $0F
+JIMDEF "DMAC", "BLIT_ADDR_D"		, $12
+JIMDEF "DMAC", "BLIT_ADDR_E"		, $15
+JIMDEF "DMAC", "BLIT_STRIDE_A"		, $18
+JIMDEF "DMAC", "BLIT_STRIDE_B"		, $1A
+JIMDEF "DMAC", "BLIT_STRIDE_C"		, $1C
+JIMDEF "DMAC", "BLIT_STRIDE_D"		, $1E
+
+; Blitter "chip" extended registers
+BLIT_EXT_offs	:= $40
+JIMDEF "DMAC", "BLIT_ADDR_D_MIN"	, BLIT_EXT_offs
+JIMDEF "DMAC", "BLIT_ADDR_D_MAX"	, BLIT_EXT_offs+3
 
 ; BLTCON is written in two passes with top bit clear i.e. not BLTCON_ACT_ACT
 ; the exec flags are first set
@@ -54,7 +131,34 @@ BLITCON_EXEC_C			:=	$04
 BLITCON_EXEC_D			:=	$08
 BLITCON_EXEC_E			:=	$10
 
-AERIS_CTL_ACT			:=	$80
+
+;----------------- chipset Paula --------------------
+
+JIMDEF "DMAC", "SND_DATA"		, $20
+JIMDEF "DMAC", "SND_ADDR"		, $21
+JIMDEF "DMAC", "SND_PERIOD"		, $24
+JIMDEF "DMAC", "SND_LEN"		, $26
+JIMDEF "DMAC", "SND_STATUS"		, $28
+JIMDEF "DMAC", "SND_VOL"		, $29
+JIMDEF "DMAC", "SND_REPOFF"		, $2A
+JIMDEF "DMAC", "SND_PEAK"		, $2C
+JIMDEF "DMAC", "SND_MA_VOL"		, $2E
+JIMDEF "DMAC", "SND_SEL"		, $2F
+
+; Sound Status / control bits
+SND_CTL_ACT			:=	$80
+SND_CTL_REPEAT			:=	$01
+
+;----------------- chipset DMA ---------------------
+
+JIMDEF "DMAC", "DMA_CTL"		, $30
+JIMDEF "DMAC", "DMA_SRC_ADDR"		, $31
+JIMDEF "DMAC", "DMA_DEST_ADDR"		, $34
+JIMDEF "DMAC", "DMA_COUNT"		, $37
+JIMDEF "DMAC", "DMA_DATA"		, $39
+JIMDEF "DMAC", "DMA_CTL2"		, $3A
+JIMDEF "DMAC", "DMA_PAUSE_VAL"		, $3B
+JIMDEF "DMAC", "DMA_SEL"		, $3F
 
 ; DMA controller control flags
 DMACTL_ACT			:=	$80		; always set to initiate a transfer
@@ -78,156 +182,27 @@ DMACTL2_SZ_WORDSWAPDEST		:=	$08
 DMACTL2_SZ_WORDSWAPSRC		:=	$0C
 DMACTL2_PAUSE			:=	$01
 
-; Sound Status / control bits
-SND_CTL_ACT			:=	$80
-SND_CTL_REPEAT			:=	$01
 
 
-DMAC_BLITCON_offs		:=	0
-DMAC_FUNCGEN_offs		:=	$1
-DMAC_WIDTH_offs			:=	$2
-DMAC_HEIGHT_offs		:=	$3
-DMAC_SHIFT_offs			:=	$4
-DMAC_MASK_FIRST_offs		:=	$5
-DMAC_MASK_LAST_offs		:=	$6
-DMAC_DATA_A_offs		:=	$7
-DMAC_ADDR_A_offs		:=	$8
-DMAC_DATA_B_offs		:=	$B
-DMAC_ADDR_B_offs		:=	$C
-DMAC_ADDR_C_offs		:=	$F
-DMAC_ADDR_D_offs		:=	$12
-DMAC_ADDR_E_offs		:=	$15
-DMAC_STRIDE_A_offs		:=	$18
-DMAC_STRIDE_B_offs		:=	$1A
-DMAC_STRIDE_C_offs		:=	$1C
-DMAC_STRIDE_D_offs		:=	$1E
+;----------------- chipset Aeris ---------------------
 
-DMAC_BLIT_EXT_offs		:=	$40
-DMAC_ADDR_D_MIN_offs		:=	DMAC_BLIT_EXT_offs
-DMAC_ADDR_D_MAX_offs		:=	DMAC_BLIT_EXT_offs+3
+JIMDEF "DMAC", "AERIS_CTL"		, $50
+JIMDEF "DMAC", "AERIS_PROGBASE"		, $51
 
+AERIS_CTL_ACT	:= $80
 
+;----------------- chipset i2c ---------------------
 
-DMAC_SND_DATA_offs		:=	$20
-DMAC_SND_ADDR_offs		:=	$21
-DMAC_SND_PERIOD_offs		:=	$24
-DMAC_SND_LEN_offs		:=	$26
-DMAC_SND_STATUS_offs		:=	$28
-DMAC_SND_VOL_offs		:=	$29
-DMAC_SND_REPOFF_offs		:=	$2A
-DMAC_SND_PEAK_offs		:=	$2C
-
-DMAC_SND_MA_VOL_offs		:=	$2E
-DMAC_SND_SEL_offs		:=	$2F
-
-DMAC_DMA_CTL_offs		:=	$30
-DMAC_DMA_SRC_ADDR_offs		:=	$31
-DMAC_DMA_DEST_ADDR_offs		:=	$34
-DMAC_DMA_COUNT_offs		:=	$37
-DMAC_DMA_DATA_offs		:=	$39
-DMAC_DMA_CTL2_offs		:=	$3A
-DMAC_DMA_PAUSE_VAL_offs		:=	$3B
-DMAC_DMA_SEL_offs		:=	$3F
-
-
-
-DMAC_AERIS_CTL_offs		:=	$50
-DMAC_AERIS_PROGBASE_offs	:=	$51
-
-
-DMAC_I2C_offs			:=	$70
-
-jim_page_DMAC			:=	$FEFC
-
-jim_page_VERSION		:=	$FC00
-
-jim_offs_VERSION_API_level	:=	$80
-jim_offs_VERSION_Board_level	:=	$81
-jim_offs_VERSION_API_sublevel	:=	$82
-jim_offs_VERSION_cfg_bits	:=	$84
-jim_offs_VERSION_cap_bits	:=	$88
-
-; Mk.2/1 option switches - note in API level >1 the sense of these is reversed!
-BLT_MK2_CFG0_T65		:=	$01
-BLT_MK2_CFG0_CPU_6502A_2M	:=	$00
-BLT_MK2_CFG0_CPU_65C02_4M	:=	$02
-BLT_MK2_CFG0_CPU_65C02_8M	:=	$04
-BLT_MK2_CFG0_CPU_6x09_2M	:=	$08
-BLT_MK2_CFG0_CPU_6309_4M	:=	$0A
-BLT_MK2_CFG0_CPU_Z80_8M		:=	$0C
-BLT_MK2_CFG0_CPU_68008		:=	$0E
-BLT_MK2_CFG0_SWROMX		:=	$10
-BLT_MK2_CFG0_BUGBTN		:=	$80
-
-BLT_MK2_CFG1_MEMI		:=	$01
-BLT_MK2_CFG1_BUGOUT		:=	$02
-
-; Mk.3 switches from PORTF/G
-BLT_MK3_CFG0_T65		:=	$08
-BLT_MK3_CFG0_SWROMX		:=	$10
-BLT_MK3_CFG0_MEMI		:=	$40
-
-
-
-jim_DMAC			:=	$FD60
-jim_DMAC_BLITCON		:=	jim_DMAC + DMAC_BLITCON_offs
-jim_DMAC_FUNCGEN		:=	jim_DMAC + DMAC_FUNCGEN_offs
-jim_DMAC_WIDTH			:=	jim_DMAC + DMAC_WIDTH_offs
-jim_DMAC_HEIGHT			:=	jim_DMAC + DMAC_HEIGHT_offs
-jim_DMAC_SHIFT			:=	jim_DMAC + DMAC_SHIFT_offs
-jim_DMAC_MASK_FIRST		:=	jim_DMAC + DMAC_MASK_FIRST_offs
-jim_DMAC_MASK_LAST		:=	jim_DMAC + DMAC_MASK_LAST_offs
-jim_DMAC_DATA_A			:=	jim_DMAC + DMAC_DATA_A_offs
-jim_DMAC_ADDR_A			:=	jim_DMAC + DMAC_ADDR_A_offs
-jim_DMAC_DATA_B			:=	jim_DMAC + DMAC_DATA_B_offs
-jim_DMAC_ADDR_B			:=	jim_DMAC + DMAC_ADDR_B_offs
-jim_DMAC_ADDR_C			:=	jim_DMAC + DMAC_ADDR_C_offs
-jim_DMAC_ADDR_D			:=	jim_DMAC + DMAC_ADDR_D_offs
-jim_DMAC_ADDR_E			:=	jim_DMAC + DMAC_ADDR_E_offs
-jim_DMAC_STRIDE_A		:=	jim_DMAC + DMAC_STRIDE_A_offs
-jim_DMAC_STRIDE_B		:=	jim_DMAC + DMAC_STRIDE_B_offs
-jim_DMAC_STRIDE_C		:=	jim_DMAC + DMAC_STRIDE_C_offs
-jim_DMAC_STRIDE_D		:=	jim_DMAC + DMAC_STRIDE_D_offs
-jim_DMAC_ADDR_D_MIN		:=	jim_DMAC + DMAC_ADDR_D_MIN_offs
-jim_DMAC_ADDR_D_MAX		:=	jim_DMAC + DMAC_ADDR_D_MAX_offs
-
-
-
-
-jim_DMAC_SND_DATA		:= 	jim_DMAC + DMAC_SND_DATA_offs
-jim_DMAC_SND_ADDR		:= 	jim_DMAC + DMAC_SND_ADDR_offs
-jim_DMAC_SND_PERIOD		:= 	jim_DMAC + DMAC_SND_PERIOD_offs
-jim_DMAC_SND_LEN		:= 	jim_DMAC + DMAC_SND_LEN_offs
-jim_DMAC_SND_STATUS		:= 	jim_DMAC + DMAC_SND_STATUS_offs
-jim_DMAC_SND_VOL		:= 	jim_DMAC + DMAC_SND_VOL_offs
-jim_DMAC_SND_REPOFF		:= 	jim_DMAC + DMAC_SND_REPOFF_offs
-jim_DMAC_SND_PEAK		:= 	jim_DMAC + DMAC_SND_PEAK_offs
-
-jim_DMAC_SND_SEL		:= 	jim_DMAC + DMAC_SND_SEL_offs
-jim_DMAC_SND_MA_VOL		:= 	jim_DMAC + DMAC_SND_MA_VOL_offs
-
-jim_DMAC_DMA_CTL		:=	jim_DMAC + DMAC_DMA_CTL_offs
-jim_DMAC_DMA_SRC_ADDR		:=	jim_DMAC + DMAC_DMA_SRC_ADDR_offs
-jim_DMAC_DMA_DEST_ADDR		:=	jim_DMAC + DMAC_DMA_DEST_ADDR_offs
-jim_DMAC_DMA_COUNT		:=	jim_DMAC + DMAC_DMA_COUNT_offs
-jim_DMAC_DMA_DATA		:=	jim_DMAC + DMAC_DMA_DATA_offs
-jim_DMAC_DMA_CTL2		:=	jim_DMAC + DMAC_DMA_CTL2_offs
-jim_DMAC_DMA_PAUSE_VAL		:=	jim_DMAC + DMAC_DMA_PAUSE_VAL_offs
-jim_DMAC_DMA_SEL		:=	jim_DMAC + DMAC_DMA_SEL_offs
-
-jim_DMAC_AERIS_CTL		:=	jim_DMAC + DMAC_AERIS_CTL_offs
-jim_DMAC_AERIS_PROGBASE		:=	jim_DMAC + DMAC_AERIS_PROGBASE_offs
-
-
-jim_I2C_BASE			:= 	jim_DMAC + DMAC_I2C_offs
-jim_I2C_STAT			:= 	jim_I2C_BASE
-jim_I2C_DATA			:= 	jim_I2C_BASE + 1
+JIMDEF "DMAC", "I2C_STAT"		, $70		; status (read)
+JIMDEF "DMAC", "I2C_CMD"		, $70		;command (write) register
+JIMDEF "DMAC", "I2C_DATA"		, $71
 
 I2C_BUSY	:= $80
 I2C_NACK	:= $40
 I2C_STOP	:= $04
 I2C_START	:= $02
 I2C_RNW		:= $01
+
 
 
 fred_JIM_PAGE_HI2		:=	$FFFCFC		; note ignored Blitter/Paula
