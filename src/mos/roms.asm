@@ -1,5 +1,4 @@
 		.include "dp_sys.inc"
-		.include "boot_vecs.inc"
 		.include "hardware.inc"
 		.include "debug.inc"
 		.include "sysvars.inc"

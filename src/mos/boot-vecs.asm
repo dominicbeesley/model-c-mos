@@ -4,8 +4,9 @@
 
 		.export boot_vecs_new	
 		.export boot_vecs_new_len
+		.export bbc_vecs_base
 
-		.code
+		.segment "EXTRA_VECS"
 ; These vectors will get copied to the shadow vectors area at 00 8Fxx
 boot_vecs_new:	
 		.word	$FFFF
@@ -24,9 +25,10 @@ boot_vecs_new:
 		.addr	emu_handle_abort
 boot_vecs_new_len := *-boot_vecs_new
 
-	.segment "BOOT_VECS"
+	.segment "BBC_VECS"
 ; These boot vectors are used at boot mode and when in 6502 compatibility mode
-boot_vec_nmi:	.addr	emu_handle_nmi
-boot_vec_reset:	.addr	emu_handle_res
-boot_vec_irq:	.addr	emu_handle_irq
+bbc_vecs_base:
+		.addr	emu_handle_nmi
+		.addr	emu_handle_res
+		.addr	emu_handle_irq
 
