@@ -99,36 +99,36 @@ enter_FF:
 
 		; copy to "RUN" address which is 00 FFE0
 		; Use JIM interface to copy default extra vectors to bank 00
-		lda	#__EXTRA_VECS_RUN__ >> 8
+		lda	#__HW816_VECS_RUN__ >> 8
 		xba						; big endian
 		sta	fred_JIM_PAGE_HI
-		ldx	#.loword(__EXTRA_VECS_LOAD__)
-		ldy	#.loword(JIM)+<__EXTRA_VECS_RUN__
-		lda	#__EXTRA_VECS_SIZE__
-		mvn	^__EXTRA_VECS_LOAD__, ^JIM
+		ldx	#.loword(__HW816_VECS_LOAD__)
+		ldy	#.loword(JIM)+<__HW816_VECS_RUN__
+		lda	#__HW816_VECS_SIZE__
+		mvn	^__HW816_VECS_LOAD__, ^JIM
 
 		; copy to frigged boot-mode location TODO: can't we have both at 00 FFE0? check BAS816, beeb816 and change VHDL, API doco
 		; Use JIM interface to copy default extra vectors to bank 00
 		lda	#$008F
 		xba						; big endian
 		sta	fred_JIM_PAGE_HI
-		ldx	#.loword(__EXTRA_VECS_LOAD__)
+		ldx	#.loword(__HW816_VECS_LOAD__)
 		ldy	#.loword(JIM)+$E0
-		lda	#__EXTRA_VECS_SIZE__
-		mvn	^__EXTRA_VECS_LOAD__, ^JIM
+		lda	#__HW816_VECS_SIZE__
+		mvn	^__HW816_VECS_LOAD__, ^JIM
 
 
 ; We are now running in BOOT MODE but will soon switch boot mode off - vectors
 ; need to be copied from FF FFFA to 00 FFFA
 
 		; Use JIM interface to copy main emu vectors to bank 0 at 00 FFFA
-		lda	#__BBC_VECS_RUN__ >> 8
+		lda	#__HWBBC_VECS_RUN__ >> 8
 		xba						; big endian
 		sta	fred_JIM_PAGE_HI
-		ldx	#.loword(__BBC_VECS_LOAD__)
-		ldy	#.loword(JIM)+<__BBC_VECS_RUN__
-		lda	#__BBC_VECS_SIZE__
-		mvn	^__BBC_VECS_LOAD__, ^JIM
+		ldx	#.loword(__HWBBC_VECS_LOAD__)
+		ldy	#.loword(JIM)+<__HWBBC_VECS_RUN__
+		lda	#__HWBBC_VECS_SIZE__
+		mvn	^__HWBBC_VECS_LOAD__, ^JIM
 
 ; We are now running in BOOT MODE but will soon switch boot mode off - default
 ; handlers for the vectors must be copied to RAM TODO: this will need to be
