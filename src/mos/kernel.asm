@@ -1,6 +1,4 @@
 
-		.autoimport +
-
 		.include "dp_sys.inc"
 		.include "hardware.inc"
 		.include "deice.inc"
