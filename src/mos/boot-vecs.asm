@@ -1,6 +1,4 @@
 
-		.autoimport +
-
 
 		.export boot_vecs_new	
 		.export boot_vecs_new_len

@@ -3,6 +3,7 @@
 		.include "hardware.inc"
 		.include "deice.inc"
 		.include "debug.inc"
+		.include "vectors.inc"
 
 		.export nat_handle_cop
 		.export nat_handle_brk
@@ -94,6 +95,11 @@ enter_FF:
 		.i16
 		.a16
 
+; Map the BLTURBO registers so that both native and emulation modes see the 
+; same RAM in 0-FFFF, the rest from motherboard
+		lda	#$01
+		sta	sheila_MEM_LOMEMTURBO
+
 ; There need to be two copies of the extra vectors $00 8FE0 in boot-mode and 
 ; 00 FFE0 in non-boot mode
 
@@ -105,7 +111,7 @@ enter_FF:
 		ldx	#.loword(__HW816_VECS_LOAD__)
 		ldy	#.loword(JIM)+<__HW816_VECS_RUN__
 		lda	#__HW816_VECS_SIZE__
-		mvn	^__HW816_VECS_LOAD__, ^JIM
+		mvn	#^__HW816_VECS_LOAD__, #^JIM
 
 		; copy to frigged boot-mode location TODO: can't we have both at 00 FFE0? check BAS816, beeb816 and change VHDL, API doco
 		; Use JIM interface to copy default extra vectors to bank 00
@@ -115,7 +121,7 @@ enter_FF:
 		ldx	#.loword(__HW816_VECS_LOAD__)
 		ldy	#.loword(JIM)+$E0
 		lda	#__HW816_VECS_SIZE__
-		mvn	^__HW816_VECS_LOAD__, ^JIM
+		mvn	#^__HW816_VECS_LOAD__, #^JIM
 
 
 ; We are now running in BOOT MODE but will soon switch boot mode off - vectors
@@ -128,20 +134,20 @@ enter_FF:
 		ldx	#.loword(__HWBBC_VECS_LOAD__)
 		ldy	#.loword(JIM)+<__HWBBC_VECS_RUN__
 		lda	#__HWBBC_VECS_SIZE__
-		mvn	^__HWBBC_VECS_LOAD__, ^JIM
+		mvn	#^__HWBBC_VECS_LOAD__, #^JIM
 
 ; We are now running in BOOT MODE but will soon switch boot mode off - default
 ; handlers for the vectors must be copied to RAM TODO: this will need to be
 ; aligned at the same address in ROM/RAM for boot mode switching!
 
-		; Use JIM interface to copy main emu vectors to bank 0 at 00 FFFA
+		; Use JIM interface to copy default HW handlers
 		lda	#__default_handlers_RUN__ >> 8
 		xba						; big endian
 		sta	fred_JIM_PAGE_HI
 		ldx	#.loword(__default_handlers_LOAD__)
 		ldy	#.loword(JIM)+<__default_handlers_RUN__
 		lda	#__default_handlers_SIZE__
-		mvn	^__default_handlers_LOAD__, ^JIM
+		mvn	#^__default_handlers_LOAD__, #^JIM
 
 
 
@@ -166,7 +172,19 @@ enter_FF:
 		DEBUG_PRINTF "MOS_BASE =%H%A\n"
 
 		
+; Set up the BBC/emulation mode OS vectors to point at their defaults
+		rep	#$30
+		.i16
+		.a16
+		lda	#tblNatShimsEnd-tblNatShims
+		ldx	#.loword(tblNatShims)
+		ldy	#.loword(BBC_USERV)
+		mvn	#^tblNatShims, #^BBC_USERV
+
+
 		sep	#$30
+		.i8
+		.a8
 		phk
 		plb			; databank is code		
 
