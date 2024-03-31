@@ -236,9 +236,13 @@ deice_enter_nat:
 		lda	#deice_base
 		tcd
 
+		sep	#$20
+		.a8
 		lda	#$80
 		tsb	z:<deice_run_flag
 		bne	deice_nat_already_running
+		rep	#$20
+		.a16
 
 		; now can use bank rel addressing
 		phb
