@@ -173,14 +173,24 @@ enter_FF:
 
 		
 ; Set up the BBC/emulation mode OS vectors to point at their defaults
+; which are the entry points in bbc-nat-vectors
 		rep	#$30
 		.i16
 		.a16
-		lda	#tblNatShimsEnd-tblNatShims
-		ldx	#.loword(tblNatShims)
-		ldy	#.loword(BBC_USERV)
-		mvn	#^tblNatShims, #^BBC_USERV
-
+		pea	0
+		plb
+		plb						; bank 0
+		ldx	#(tblNatShimsEnd-tblNatShims)/3		; number to copy
+		ldy	#.loword(BBC_USERV)			; destination in BBC vectors
+		lda	#.loword(tblNatShims)			; address
+@lp:		sta	a:0,Y					; store in bank 0
+		inc	A
+		inc	A
+		inc	A
+		iny
+		iny
+		dex
+		bne	@lp
 
 		sep	#$30
 		.i8
@@ -283,6 +293,17 @@ bankFF:		pea	$FFFF
 		plb
 		plb
 		rts
+
+test_call_bbc_vector:
+		sep	#$30
+		.a8
+		sec
+		xce					; emu mode
+		lda	f:sheila_MEM_CTL
+		ora	#BITS_MEM_CTL_BOOT_MODE
+		sta	f:sheila_MEM_CTL		; boot mode
+		jmp	($200)
+
 
 ; These are cut-down configuration routines, only for use during boot
 ; they have a similar API to those found in the bltutils rom
