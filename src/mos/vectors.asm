@@ -1,96 +1,41 @@
 
 		.include "nat-layout.inc"
+		.include "hardware.inc"
 
 		.export bbcNatVecEnter
 
 		.segment "boot_CODE"
 
 	; we are still running from the MOS rom in bank 0, we need
-	; to enter native mode - but that would map our ROM out
-	; so we need to construct a jump block on the stack to run
-	; from while we switch
+	; to enter native mode 
 bbcNatVecEnter:
+		pha	; spare
 		php
 		pha
-		phx
 
 	; stack
-	;	+4..5	address of routine pushed above
-	;	+3	Flags
-	;	+2	A
-	;	+1	X
+	;	+3..4	address of routine pushed above
+	;	+3	- spare -
+	;	+2	Flags
+	;	+1	A
 
-		ldx	#natEntryJmpLen-1
-@lp:		lda	natEntryJmp,X
-		pha
-		dex
-		bpl	@lp
-
-	; stack
-	;	+n+4..5	address of routine pushed above
-	;	+n+3	Flags
-	;	+n+2	A
-	;	+n+1	X
-	;	+1..n	shim routine
-
-		tsx
-
-		lda	#1
-		pha			; high address of shim routine on stack
-		phx			; low address of shim rountine on stack-1
 		clc
-		rts			; call shim routine on stack
+		xce				; enter native mode
 
-	; TODO: instead of stack, copy this to B0 at boot? Where though it would to be in <E00
-natEntryJmp:
-		xce
-		jml	bbcNatVecEnter2		
-natEntryJmpLen := *-natEntryJmp
-
+		lda	f:sheila_MEM_CTL
+		and	#<~BITS_MEM_CTL_BOOT_MODE
+		sta	f:sheila_MEM_CTL		; exit boot mode
+		jml	@bankFF			; we get an extra instruction in boot mode, use it to swap 
+						; to running in bank FF
 		.code
+@bankFF:		
+	; Now we want to execute the right routine
 
-	.assert natEntryJmpLen=5, error
-	; we're now in native mode with registers as per emu->nat entry	
-bbcNatVecEnter2:
-	; stack
-	;	+9..10	address of routine pushed above
-	;	+8	Flags
-	;	+7	A
-	;	+6	X
-	;	+1..5	shim routine
-		
 		rep	#$20
 		.a16
-		lda	9,S
+		lda	4,S			; return address as pushed by entry point
 		clc
-		adc	#.loword(.loword(NAT_OS_VECS)-.loword(tblNatShims))
-		tcd			; this points at vector chain start in NAT_OS_VECS
+		adc	#.loword(.loword(NAT_OS_VECS)-.loword(tblNatShims)-2)
+		tcd				; this points at vector chain start in NAT_OS_VECS
 
-		lda	7,S		; move Flags,A,X and last byte of shim up
-		sta	9,S
-		lda	5,S		; move Flags,A,X and last byte of shim up
-		sta	7,S
-
-	; stack
-	;	+10	Flags
-	;	+9	A
-	;	+8	X
-	;	+1..7	-spare-
-
-		tsc
-		clc
-		adc	#7		; skip stuff on stack
-		tcs
-
-		sep	#$20
-		.a8
-	
-		plx
-		pla
-		plp
-
-HERE:		jmp 	HERE
-
-
-
-
+		wdm	0
