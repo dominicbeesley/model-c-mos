@@ -4,6 +4,7 @@
 		.include "deice.inc"
 		.include "debug.inc"
 		.include "vectors.inc"
+		.include "nat-layout.inc"
 
 		.export nat_handle_cop
 		.export nat_handle_brk
@@ -168,6 +169,7 @@ enter_FF:
 
 		jsr	roms_scanroms	; only on ctrl-break, but always for now...
 
+
 		jsr	cfgGetMosBase
 		DEBUG_PRINTF "MOS_BASE =%H%A\n"
 
@@ -191,6 +193,14 @@ enter_FF:
 		iny
 		dex
 		bne	@lp
+
+; zeroes to the native OS Vecs
+		lda	#0
+		ldx	#NAT_OS_VECS_COUNT*3
+@lp2:		sta	a:NAT_OS_VECS-3,X
+		dex
+		dex	
+		bne	@lp2	
 
 		sep	#$30
 		.i8
@@ -295,6 +305,17 @@ bankFF:		pea	$FFFF
 		rts
 
 test_call_bbc_vector:
+		rep	#$30
+		.i16
+		.a16
+		lda	#24
+		ldx	#.loword(test_nat_vec_A)
+		ldy	#.loword(TEST_AREA)
+		mvn	#^test_nat_vec_A, #^TEST_AREA
+
+		lda	#TEST_AREA
+		sta	f:NAT_IND1V
+
 		sep	#$30
 		.a8
 		sec
@@ -302,12 +323,72 @@ test_call_bbc_vector:
 		lda	f:sheila_MEM_CTL
 		ora	#BITS_MEM_CTL_BOOT_MODE
 		sta	f:sheila_MEM_CTL		; boot mode
-		jmp	($200)
+		jsr	jind1v_0
+		clc
+		xce
+		lda	f:sheila_MEM_CTL
+		and	#<~BITS_MEM_CTL_BOOT_MODE
+		sta	f:sheila_MEM_CTL		; boot mode
+		jml	@c				; jump back to bank FF
+@c:		DEBUG_PRINTF	"EXIT A=%HA, X=%X, Y=%Y, DP=%D, B=%B, PC=%K%P, Flags=%F"
+		wdm	7
+
+
+jind1v_0:	jml	.loword(jind1v)		; enter in bank 0
+jind1v:		jmp	(BBC_IND1V)
+
+
+
+	; placed in memory at test area and BBC_IND1V pointed at them
+test_nat_vec_A:
+		.addr		TEST_AREA + test_nat_vec_B-test_nat_vec_A
+		.word		0
+		.faraddr	test_handler_1
+		.faraddr	vector_next-1
+		.byte		0
+		.byte		BLOCK_TYPE_LL_NATVEC
+test_nat_vec_B:
+		.addr		0
+		.word		0
+		.faraddr	test_handler_2
+		.faraddr	vector_next-1
+		.byte		0
+		.byte		BLOCK_TYPE_LL_NATVEC
+
+		.a16
+		.i16
+
+test_handler_1:	DEBUG_PRINTF	"HANDLER 1 A=%H%A, X=%X, Y=%Y, DP=%D, B=%B, PC=%K%P, Flags=%F\n"
+		lda	#$B00B
+		ldx	#$DEAD
+		ldy	#$BEEF
+		pea	$2222
+		plb
+		plb
+		sec		
+		rtl
+
+
+test_handler_2:	DEBUG_PRINTF	"HANDLER 2 A=%H%A, X=%X, Y=%Y, DP=%D, B=%B, PC=%K%P, Flags=%F\n"
+		lda	#0
+		php
+		lda	#$D0B0
+		ldx	#$1580
+		ldy	#$5140
+		pea	$3333
+		plb
+		plb
+		plp
+		clc
+		rtl
+
 
 
 ; These are cut-down configuration routines, only for use during boot
 ; they have a similar API to those found in the bltutils rom
 ; all expect .a8, .i8
+		.a8
+		.i8
 
 ;-----------------------------------------------------------------------------
 ; cfgGetAPILevel
