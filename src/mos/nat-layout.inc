@@ -9,20 +9,36 @@ TEST_AREA		:= $1000
 NAT_OS_VECS 		:= $8000
 NAT_OS_VECS_COUNT 	:= 26
 
-BLOCK_TYPE_LL_NATVEC	:= 10
 
+B0LL_FREE_BLOCKS	:= $00FE00
+B0LL_FREE_BLOCKS_END	:= $00FE02
+
+B0B_BASE		:= $00E000
+B0B_END			:= $00FCF8
+
+
+B0B_TYPE_FREE		:= 0
+B0B_TYPE_LL_NATVEC	:= 10
+B0B_SIZE		:= 12
 ; each vector is 2 bytes long - points to a 12 byte block in B0 as in struct llent_nat_vec
 
-.struct llent_nat_vec
+.struct b0b_ll_nat_vec
 	next	.word		; next entry in the linked list (or zero for last)
 	dp	.word		; handler's private DP
 	handler	.faraddr	; far pointer to handler routine (not checked for sanity) suitable for rti
 	return	.faraddr	; far pointer to the exit routine-1 (suitable for rtl)
 	resv	.res 1		; ignored
-	type	.byte		; type should be BLOCK_TYPE_LL_NATVEC
+	type	.byte		; type should be B0B_TYPE_LL_NATVEC
 .endstruct
 
-.assert .sizeof(llent_nat_vec) = 12, error
+.struct b0b_ll_free
+	next	.word		; next entry in the "free" chain
+	resv	.res 9
+	type	.byte
+.endstruct
+
+.assert .sizeof(b0b_ll_nat_vec) = 12, error
+.assert .sizeof(b0b_ll_free) = 12, error
 
 ; NOTE: that the native vectors are 3 byte each, the 3rd byte of each is unused and reserved
 

@@ -5,6 +5,7 @@
 		.export bbcNatVecEnter
 		.export vector_next
 		.export CallAVector_NAT
+		.export AddAVector
 
 		.segment "boot_CODE"
 
@@ -49,11 +50,11 @@ vector_loop:
 		rep	#$30			; ensure 16 bit registers
 		phd				; save LL pointer
 
-		pei	(llent_nat_vec::return + 1); construct stack 
-		pei	(llent_nat_vec::handler+ 2)
-		pei	(llent_nat_vec::handler)
+		pei	(b0b_ll_nat_vec::return + 1); construct stack 
+		pei	(b0b_ll_nat_vec::handler+ 2)
+		pei	(b0b_ll_nat_vec::handler)
 		php
-		pei	(llent_nat_vec::dp)
+		pei	(b0b_ll_nat_vec::dp)
 	; stack	
 	;		Linked list pointer
 	;		far return address to vector_next -1 (suitable for RTL)
@@ -204,3 +205,74 @@ CallAVector_NAT:
 		plp
 		plp
 		rtl
+
+	;BHA contains vector handler address
+	;X   contains vector index
+	;DP  contains handler DP
+	;TODO: use DP instead of f:,X for smaller code?
+AddAVector:	php
+		rep	#$30
+		.a16
+		.i16
+		phy
+		phx
+		pha
+		lda	#B0B_TYPE_LL_NATVEC
+		jsr	allocB0B
+		pla		
+		bcs	@retsec		
+		; store vector pointer (low 16)
+		sta	f:b0b_ll_nat_vec::handler,X
+		; store return pointer (low 16)
+		lda	#.loword(vector_next-1)
+		sta	f:b0b_ll_nat_vec::return,X
+		; store handler DP
+		tdc
+		sta	f:b0b_ll_nat_vec::dp,X
+		sep	#$20
+		.a8
+		; store handler bank
+		phb
+		pla
+		sta	f:b0b_ll_nat_vec::handler+2,X
+		; store return bank
+		phk
+		pla
+		sta	f:b0b_ll_nat_vec::handler+2,X
+		rep	#$30
+		.a16
+		.i16
+
+		txy
+		
+		lda 	1,S				; get back index
+		asl	A
+		adc	1,S
+		and	#$FF
+		adc	#NAT_OS_VECS
+		tax
+
+		; turn off interrupts whilst messing with vector
+		php
+		sei
+
+		lda	f:0,X				; get old head pointer
+		pha
+		tya
+		sta	f:0,X				; head pointer at our block
+
+		tax					; X points at our block again
+		pla
+		sta	f:b0b_ll_nat_vec::next,X	; store old pointer in our block
+		plp
+		plx
+		ply
+		plp
+		clc
+		rts
+@retsec:	plx
+		ply
+		plp
+		sec
+		rtl	
+		

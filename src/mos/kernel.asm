@@ -143,7 +143,7 @@ enter_FF:	xce
 		jsr	deice_init
 
 		jsr	roms_scanroms	; only on ctrl-break, but always for now...
-
+		jsr	initB0Blocks
 
 		jsr	cfgGetMosBase
 		DEBUG_PRINTF "MOS_BASE =%H%A\n"
@@ -281,15 +281,24 @@ bankFF:		pea	$FFFF
 
 test_call_bbc_vector:
 		rep	#$30
-		.i16
 		.a16
-		lda	#24
-		ldx	#.loword(test_nat_vec_A)
-		ldy	#.loword(TEST_AREA)
-		mvn	#^test_nat_vec_A, #^TEST_AREA
+		.i16
+		phk
+		plb
+		lda	#$D00B
+		tcd
+		lda	#.loword(test_handler_1)
+		ldx	#IX_IND1V
+		jsl	AddAVector
 
-		lda	#TEST_AREA
-		sta	f:NAT_IND1V
+		phk
+		plb
+		lda	#$1515
+		tcd
+		lda	#.loword(test_handler_2)
+		ldx	#IX_IND1V
+		jsl	AddAVector
+
 
 		pea	IX_IND1V
 		pld
@@ -304,21 +313,6 @@ jind1v:		jmp	(BBC_IND1V)
 
 
 
-	; placed in memory at test area and BBC_IND1V pointed at them
-test_nat_vec_A:
-		.addr		TEST_AREA + test_nat_vec_B-test_nat_vec_A
-		.word		0
-		.faraddr	test_handler_1
-		.faraddr	vector_next-1
-		.byte		0
-		.byte		BLOCK_TYPE_LL_NATVEC
-test_nat_vec_B:
-		.addr		0
-		.word		0
-		.faraddr	test_handler_2
-		.faraddr	vector_next-1
-		.byte		0
-		.byte		BLOCK_TYPE_LL_NATVEC
 
 		.a16
 		.i16
