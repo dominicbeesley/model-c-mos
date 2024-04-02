@@ -289,7 +289,7 @@ test_call_bbc_vector:
 		tcd
 		lda	#.loword(test_handler_1)
 		ldx	#IX_IND1V
-		jsl	AddAVector
+		jsl	AddToVector
 
 		phk
 		plb
@@ -297,7 +297,7 @@ test_call_bbc_vector:
 		tcd
 		lda	#.loword(test_handler_2)
 		ldx	#IX_IND1V
-		jsl	AddAVector
+		jsl	AddToVector
 
 
 		pea	IX_IND1V

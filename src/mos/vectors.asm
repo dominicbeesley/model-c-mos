@@ -5,7 +5,7 @@
 		.export bbcNatVecEnter
 		.export vector_next
 		.export CallAVector_NAT
-		.export AddAVector
+		.export AddToVector
 
 		.segment "boot_CODE"
 
@@ -210,7 +210,7 @@ CallAVector_NAT:
 	;X   contains vector index
 	;DP  contains handler DP
 	;TODO: use DP instead of f:,X for smaller code?
-AddAVector:	php
+AddToVector:	php
 		rep	#$30
 		.a16
 		.i16
