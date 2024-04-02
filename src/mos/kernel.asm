@@ -140,6 +140,7 @@ enter_FF:
 ; We are now running in BOOT MODE but will soon switch boot mode off - default
 ; handlers for the vectors must be copied to RAM TODO: this will need to be
 ; aligned at the same address in ROM/RAM for boot mode switching!
+; TODO: these could rom from boot rom - always EMU mode?!
 
 		; Use JIM interface to copy default HW handlers
 		lda	#__default_handlers_RUN__ >> 8
@@ -316,21 +317,11 @@ test_call_bbc_vector:
 		lda	#TEST_AREA
 		sta	f:NAT_IND1V
 
-		sep	#$30
-		.a8
-		sec
-		xce					; emu mode
-		lda	f:sheila_MEM_CTL
-		ora	#BITS_MEM_CTL_BOOT_MODE
-		sta	f:sheila_MEM_CTL		; boot mode
-		jsr	jind1v_0
-		clc
-		xce
-		lda	f:sheila_MEM_CTL
-		and	#<~BITS_MEM_CTL_BOOT_MODE
-		sta	f:sheila_MEM_CTL		; boot mode
-		jml	@c				; jump back to bank FF
-@c:		DEBUG_PRINTF	"EXIT A=%HA, X=%X, Y=%Y, DP=%D, B=%B, PC=%K%P, Flags=%F"
+		pea	IX_IND1V
+		pld
+		jsl	CallAVector_NAT
+
+		DEBUG_PRINTF	"EXIT A=%H%A, X=%X, Y=%Y, DP=%D, B=%B, PC=%K%P, Flags=%F"
 		wdm	7
 
 
