@@ -23,15 +23,10 @@ bbcNatVecEnter:
 	;	+1..2	A (16 bits)
 
 		clc
-		xce				; enter native mode
-
-		lda	f:sheila_MEM_CTL
-		and	#<~BITS_MEM_CTL_BOOT_MODE
-		sta	f:sheila_MEM_CTL		; exit boot mode
 		jml	@bankFF			; we get an extra instruction in boot mode, use it to swap 
 						; to running in bank FF
 		.code
-@bankFF:		
+@bankFF:	xce
 	; Now we want to execute the right routine
 
 		rep	#$30
@@ -102,12 +97,10 @@ vec_done:
 
 		sep	#$30
 		.a8
+		; switch to emu mode, we're running FFxxxx so safe to switch
+		; to switch as MOS is mapped at same addr in both modes
 		sec
 		xce					; emu mode
-		lda	f:sheila_MEM_CTL
-		ora	#BITS_MEM_CTL_BOOT_MODE
-		sta	f:sheila_MEM_CTL			; boot mode
-		nop					; waste an instruction before mode swap
 		jml	.loword(@ret)
 @ret:		pla
 		xba
@@ -171,14 +164,12 @@ CallAVector_NAT:
 	;	+3	Flags
 	;	+1..2	A
 
+		; switch to emu mode, we're running FFxxxx so safe to switch
+		; to switch as MOS is mapped at same addr in both modes
 		sec
 		xce
 		.a8
 		.i8
-							; emu mode
-		lda	f:sheila_MEM_CTL
-		ora	#BITS_MEM_CTL_BOOT_MODE
-		sta	f:sheila_MEM_CTL		; boot mode
 	
 		pla
 		xba
@@ -198,15 +189,11 @@ CallAVector_NAT:
 	;	+2	flags returned from vector
 	;	+1	A (8 bit)
 		
-		; enter native mode
 		clc
+		jml	@c		
+@c:		; TODO: this assumes that no interrupt will occur during xce
 		xce
-		; enter boot mode
-		lda	f:sheila_MEM_CTL
-		and	#<~BITS_MEM_CTL_BOOT_MODE
-		sta	f:sheila_MEM_CTL		; boot mode
-		jml	@c				; jump back to bank FF
-@c:		
+
 		lda 	3,S
 		and	#$30				; isolate caller's M/X mode flags
 		eor	#$30				; invert

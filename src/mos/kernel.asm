@@ -69,98 +69,72 @@ emu_handle_res:
 ; We're in boot mode - running from bank 0, first jump to bank FF before
 ; turning off boot mode
 
+		; Enter auto-boot mode
+		lda	sheila_MEM_CTL
+		and	#<~BITS_MEM_CTL_BOOT_MASK
+		ora	#MEM_CTL_AUTOBOOT_MODE
+		sta	sheila_MEM_CTL
+		
+		; enter native mode
+		clc
 		jml	enter_FF
 
 		.code
-enter_FF:
+enter_FF:	xce
 
 		pea	0
 		pld			; direct page is at 0		
 		phk
 		plb			; ensure bank FF
 
-		; ENTER NATIVE MODE
-		clc
-		xce
-
 		; enable JIM interface
 		lda	#JIM_DEVNO_BLITTER
 		sta	fred_JIM_DEVNO
 
-
-; We are now running in BOOT MODE 
-; BANK 00 will map to BANK FF and hardware interrupt vectors will come from
-; Phys 00 8FE0-008FF9 for new vectors and FF FFFA - FF FFFF for old (emu irq, nmi, res)
-
-		rep	#$30
-		.i16
-		.a16
 
 ; Map the BLTURBO registers so that both native and emulation modes see the 
 ; same RAM in 0-FFFF, the rest from motherboard
 		lda	#$01
 		sta	sheila_MEM_LOMEMTURBO
 
+		rep	#$30
+		.i16
+		.a16
+
+
 ; There need to be two copies of the extra vectors $00 8FE0 in boot-mode and 
 ; 00 FFE0 in non-boot mode
 
 		; copy to "RUN" address which is 00 FFE0
-		; Use JIM interface to copy default extra vectors to bank 00
-		lda	#__HW816_VECS_RUN__ >> 8
-		xba						; big endian
-		sta	fred_JIM_PAGE_HI
 		ldx	#.loword(__HW816_VECS_LOAD__)
-		ldy	#.loword(JIM)+<__HW816_VECS_RUN__
+		ldy	#.loword(__HW816_VECS_RUN__)
 		lda	#__HW816_VECS_SIZE__
-		mvn	#^__HW816_VECS_LOAD__, #^JIM
+		mvn	#^__HW816_VECS_LOAD__, #^__HW816_VECS_RUN__
 
 		; copy to frigged boot-mode location TODO: can't we have both at 00 FFE0? check BAS816, beeb816 and change VHDL, API doco
-		; Use JIM interface to copy default extra vectors to bank 00
-		lda	#$008F
-		xba						; big endian
-		sta	fred_JIM_PAGE_HI
 		ldx	#.loword(__HW816_VECS_LOAD__)
-		ldy	#.loword(JIM)+$E0
+		ldy	#$8FE0
 		lda	#__HW816_VECS_SIZE__
-		mvn	#^__HW816_VECS_LOAD__, #^JIM
+		mvn	#^__HW816_VECS_LOAD__, #0
 
-
-; We are now running in BOOT MODE but will soon switch boot mode off - vectors
-; need to be copied from FF FFFA to 00 FFFA
-
-		; Use JIM interface to copy main emu vectors to bank 0 at 00 FFFA
-		lda	#__HWBBC_VECS_RUN__ >> 8
-		xba						; big endian
-		sta	fred_JIM_PAGE_HI
-		ldx	#.loword(__HWBBC_VECS_LOAD__)
-		ldy	#.loword(JIM)+<__HWBBC_VECS_RUN__
-		lda	#__HWBBC_VECS_SIZE__
-		mvn	#^__HWBBC_VECS_LOAD__, #^JIM
+;;;; We are now running in BOOT MODE but will soon switch boot mode off - vectors
+;;;; need to be copied from FF FFFA to 00 FFFA
+;;;
+;;;		ldx	#.loword(__HWBBC_VECS_LOAD__)
+;;;		ldy	#.loword(__HWBBC_VECS_RUN__)
+;;;		lda	#__HWBBC_VECS_SIZE__
+;;;		mvn	#^__HWBBC_VECS_LOAD__, #^__HWBBC_VECS_RUN__
+		
 
 ; We are now running in BOOT MODE but will soon switch boot mode off - default
 ; handlers for the vectors must be copied to RAM TODO: this will need to be
 ; aligned at the same address in ROM/RAM for boot mode switching!
 ; TODO: these could rom from boot rom - always EMU mode?!
 
-		; Use JIM interface to copy default HW handlers
-		lda	#__default_handlers_RUN__ >> 8
-		xba						; big endian
-		sta	fred_JIM_PAGE_HI
 		ldx	#.loword(__default_handlers_LOAD__)
-		ldy	#.loword(JIM)+<__default_handlers_RUN__
+		ldy	#.loword(__default_handlers_RUN__)
 		lda	#__default_handlers_SIZE__
-		mvn	#^__default_handlers_LOAD__, #^JIM
-
-
-
-; We are running in "boot" mode i.e. this ROM is mapped into address space at 00C000 _and_ FFC000
-; we want to turn off boot now 
-
-		
-		lda	f:sheila_MEM_CTL
-		and	#<~BITS_MEM_CTL_BOOT_MODE
-		sta	f:sheila_MEM_CTL
-	
+		mvn	#^__default_handlers_LOAD__, #^__default_handlers_RUN__
 
 		sep	#$30		; 8 bits registers
 		.i8
