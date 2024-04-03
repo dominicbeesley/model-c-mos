@@ -29,6 +29,10 @@ sheila_ACIA_DATA		:= $FFFE09
 sheila_SERIAL_ULA		:= $FFFE10
 
 
+sheila_CRTC_reg                 := $FFFE00
+sheila_CRTC_rw                  := $FFFE01
+
+
 		.macro JIMDEF pagenam, regnam, offs
 .ident(.concat("JIM", pagenam, "_", regnam)) := JIM + offs
 .ident(.concat(pagenam, "_", regnam)) := (.ident(.concat("jim_page_", pagenam)) * 256) + offs

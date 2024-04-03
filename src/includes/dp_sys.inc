@@ -34,9 +34,6 @@ __DP_SYS_INC__:
  	dp_mos_OSBW_A				:= $EF	; OSBYTE/OSWORD A reg value
  	dp_mos_OSBW_X				:= $F0	; OSBYTE/OSWORD X reg value
  	dp_mos_OSBW_Y				:= $F1	; OSBYTE/OSWORD Y reg value
-
-	dp_mos_lptr				:= $EF	; overlays OSBYTE, TODO: move, or rethink
-
  	dp_mos_txtptr				:= $F2	; OS Text pointer (eg star commands and filenames)
  	dp_mos_curROM				:= $F4	; Currently selected ROM
  	dp_mos_curPHROM				:= $F5	; Current PHROM or RFS ROM number or OSRDSC/OSWRSC number
@@ -47,5 +44,8 @@ __DP_SYS_INC__:
  	dp_mos_error_ptr			:= $FD	; Error message pointer, initially set to language version string
  	dp_mos_ESC_flag				:= $FF	; Escape flag (bit 7)
 
+
+
+	dp_mos_lptr				:= $EF	; overlays OSBYTE, TODO: move, or rethink
 
 	.ENDIF
