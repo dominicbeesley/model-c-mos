@@ -3,7 +3,13 @@
 		.include "sysvars.inc"
 		.include "vduvars.inc"
 		.include "hardware.inc"
+		.include "vectors.inc"
+		.include "oslib.inc"
+		.include "debug.inc"
 
+
+		.export VDU_INIT
+		.export _NVWRCH
 
 ; This taken from https://github.com/raybellis/mos120/blob/master/mos120.s
 ; and hacked for native mode
@@ -14,7 +20,7 @@
 
 ;****** 16 COLOUR MODE BYTE MASK LOOK UP TABLE******
 
-_COL16_MASK_TAB:		.byte	$00				; 00000000
+_COL16_MASK_TAB:	.byte	$00				; 00000000
 			.byte	$11				; 00010001
 			.byte	$22				; 00100010
 			.byte	$33				; 00110011
@@ -43,7 +49,7 @@ _COL4_MASK_TAB:		.byte	$00				; 00000000
 ;****** VDU ENTRY POINT LO	 LOOK UP TABLE******
 
 .macro vdu_tbl		addr, count
-			.word	addr
+			.word	.loword(addr)
 			.byte    <(256 - count)
 .endmacro
 
@@ -335,14 +341,7 @@ _TAB_LAT5_MOSZ:		.byte	$04				; 00000100
 			.byte	$0c				; 00001100
 			.byte	$04				; 00000100
 
-;**** REST OF VDU SECTION CONTROL NUMBERS ****
-
-_TAB_CLS_ENTER:		.byte	<_VDU_CLEAR_20K
-			.byte	<_VDU_CLEAR_16K
-			.byte	<_VDU_CLEAR_10K
-			.byte	<_VDU_CLEAR_8K
-			.byte	<_VDU_CLEAR_1K
-
+;;;;;;;;;;;;;;;;; removed CLS entry points table
 
 ;************** MSB OF MEMORY OCCUPIED BY SCREEN BUFFER	 *****************
 
@@ -371,9 +370,13 @@ _TAB_BPR:		.byte	$28				; 00101000
 
 ;******** ROW MULTIPLIACTION TABLE POINTER TO LOOK UP TABLE **************
 
-_TAB_MULTBL_LKUP:	.byte	<_MUL40_TABLE			; 10110101
+_TAB_MULTBL_LKUP_L:	.byte	<_MUL40_TABLE			; 10110101
 			.byte	<_MUL640_TABLE			; 01110101
 			.byte	<_MUL640_TABLE			; 01110101
+
+_TAB_MULTBL_LKUP_H:	.byte	>_MUL40_TABLE			; 10110101
+			.byte	>_MUL640_TABLE			; 01110101
+			.byte	>_MUL640_TABLE			; 01110101
 
 
 ;********** CRTC CURSOR END REGISTER SETTING LOOK UP TABLE ***************
@@ -519,16 +522,14 @@ _LC4BA:			.byte	$04				; &20-&3F - OSHWM+&0400
 ;**									 **
 ;**************************************************************************
 ;**************************************************************************
-;This routine takes up over 40% of the operating system ROM
-;Entry points are variable, as are the results achieved.
-;Tracing any particular path is relatively easy but generalising for
-;commenting is not. For clarity comments will not be as detailed as
-;for later parts of the Operating System.
 
 
-_VDUCHR:		ldx	sysvar_VDU_Q_LEN			; get number of items in VDU queue
+_VDUCHR:		sep	#$30
+			.i8
+			.a8
+			ldx	sysvar_VDU_Q_LEN		; get number of items in VDU queue
 			bne	_BC512				; if parameters needed then C512
-			bit	dp_mos_vdu_status			; else check status byte
+			bit	dp_mos_vdu_status		; else check status byte
 			bvc	__vdu_check_delete		; if cursor editing enabled two cursors exist
 			jsr	_LC568_swapcurs			; swap values
 			jsr	_LCD6A				; then set up write cursor
@@ -541,9 +542,9 @@ _VDUCHR:		ldx	sysvar_VDU_Q_LEN			; get number of items in VDU queue
 __vdu_check_delete:	cmp	#$7f				; is character DELETE ?
 			beq	_BC4ED				; if so C4ED
 
-			cmp	#$20				; is it less than space? (i.e. VDU control code)
+			cmp	#' '				; is it less than space? (i.e. VDU control code)
 			bcc	_BC4EF				; if so C4EF
-			bit	dp_mos_vdu_status			; else check VDU byte ahain
+			bit	dp_mos_vdu_status		; else check VDU byte ahain
 			bmi	_BC4EA				; if screen disabled C4EA
 			jsr	_VDU_OUT_CHAR			; else display a character
 			jsr	_VDU_9				; and cursor right
@@ -555,25 +556,27 @@ _BC4ED:			lda	#$20				; to replace delete character
 
 ;********* read link addresses and number of parameters *****************
 
-_BC4EF:			tay					; Y=A
-			lda	_VDU_TABLE_LO,Y			; get lo byte of link address
-			sta	vduvar_VDU_VEC_JMP			; store it in jump vector
-			lda	_VDU_TABLE_HI,Y			; get hi byte
-			bmi	_BC545				; if negative (as it will be if a direct address)
-								; there are no parameters needed
-								; so C545
-			tax					; else X=A
-			ora	#$f0				; set up negated parameter count
-			sta	sysvar_VDU_Q_LEN			; store it as number of items in VDU queue
-			txa					; get back A
-			lsr					; A=A/16
-			lsr					; 
-			lsr					; 
-			lsr					; 
-			clc					; clear carry
-			adc	#>VDU_DRIVER_PAGE		; add &C3 to get hi byte of link address
-			sta	vduvar_VDU_VEC_JMP+1			; 
-			bit	dp_mos_vdu_status			; check if cursor editing enabled
+_BC4EF:			tay					; save A for later
+			pha					; X=char*3
+			asl	A
+			adc	1,S
+			sta	1,S
+			pla
+			tax
+
+			rep	#$30
+			.a16
+			.i16
+			lda	_VDU_TABLE,X			; get lo byte of link address
+			sta	f:vduvar_VDU_VEC_JMP		; store it in jump vector
+			sep	#$20
+			.a8
+			lda	_VDU_TABLE+2,X			; get Q len
+			sta	sysvar_VDU_Q_LEN		; store it
+			sep	#$10
+			.i8
+			beq	execVDUVEC			; no parameters - execute
+			bit	dp_mos_vdu_status		; check if cursor editing enabled
 			bvs	_BC52F				; if so re-exchange pointers
 			clc					; clear carry
 _VDU_0_6_27:
@@ -586,18 +589,21 @@ _VDU_27:		rts					; and exit
 ;********** parameters are outstanding ***********************************
 ; X=&26A = 2 complement of number of parameters X=&FF for 1, FE for 2 etc.
 
-_BC512:			sta	vduvar_VDU_Q_START+8 - 255,X		; store parameter in queue
+_BC512:			sta	vduvar_VDU_Q_START+8 - 255,X	; store parameter in queue
 			inx					; increment X
-			stx	sysvar_VDU_Q_LEN			; store it as VDU queue
+			stx	sysvar_VDU_Q_LEN		; store it as VDU queue
 			bne	_BC532				; if not 0 C532 as more parameters are needed
-			bit	dp_mos_vdu_status			; get VDU status byte
+			bit	dp_mos_vdu_status		; get VDU status byte
 			bmi	_BC534				; if screen disabled C534
 			bvs	_BC526				; else if cursor editing C526
+
+;;;; TODO: make _VDU_JUMP work if called via emu mode!
+;;;; TODO: this assumes only our module uses this address and is in same bank
 			jsr	_VDU_JUMP			; execute required function
 			clc					; clear carry
 			rts					; and exit
 
-_BC526:			jsr	_LC568_swapcurs				; swap values of cursors
+_BC526:			jsr	_LC568_swapcurs			; swap values of cursors
 			jsr	_LCD6A				; set up write cursor
 			jsr	_VDU_JUMP			; execute required function
 _BC52F:			jsr	_LC565				; re-exchange pointers
@@ -613,27 +619,30 @@ _BC532:			clc					; carry clear
 ;*									 *
 ;*************************************************************************
 
-_BC534:			ldy	vduvar_VDU_VEC_JMP+1			; if upper byte of link address not &C5
-			cpy	#$c5				; printer is not interested
-			bne	_BC532				; so C532
-_VDU_1:			tax					; else X=A
-			lda	dp_mos_vdu_status			; A=VDU status byte
-			lsr					; get bit 0 into carry
-			bcc	_VDU_0_6_27			; if printer not enabled exit
-			txa					; restore A
-			jmp	_PRINTER_OUT_ALWAYS		; else send byte in A (next byte) to printer
+	;; TODO: need a different way to detect printables
+;;_BC534:			ldy	vduvar_VDU_VEC_JMP+1		; if upper byte of link address not &C5
+;;			cpy	#$c5				; printer is not interested
+;;			bne	_BC532				; so C532
+_BC534:			bra	_BC532
+	;; TODO: printer
+_VDU_1:			bra	_VDU_0_6_27
+;;			tax					; else X=A
+;;			lda	dp_mos_vdu_status		; A=VDU status byte
+;;			lsr					; get bit 0 into carry
+;;			bcc	_VDU_0_6_27			; if printer not enabled exit
+;;			txa					; restore A
+;;			jmp	_PRINTER_OUT_ALWAYS		; else send byte in A (next byte) to printer
 
 ;*********** if explicit link address found, no parameters ***************
 
-_BC545:			sta	vduvar_VDU_VEC_JMP+1			; upper byte of link address
-			tya					; restore A
+execVDUVEC:		tya					; restore A
 			cmp	#$08				; is it 7 or less?
 			bcc	_BC553				; if so C553
 			eor	#$ff				; invert it
 			cmp	#$f2				; c is set if A >&0D
 			eor	#$ff				; re invert
 
-_BC553:			bit	dp_mos_vdu_status			; VDU status byte
+_BC553:			bit	dp_mos_vdu_status		; VDU status byte
 			bmi	_BC580				; if display disabled C580
 			php					; push processor flags
 			jsr	_VDU_JUMP			; execute required function
@@ -642,25 +651,25 @@ _BC553:			bit	dp_mos_vdu_status			; VDU status byte
 
 ;**************** main exit routine **************************************
 
-_LC55E:			lda	dp_mos_vdu_status			; VDU status byte
+_LC55E:			lda	dp_mos_vdu_status		; VDU status byte
 			lsr					; Carry is set if printer is enabled
-_BC561:			bit	dp_mos_vdu_status			; VDU status byte
+_BC561:			bit	dp_mos_vdu_status		; VDU status byte
 			bvc	_VDU_0_6_27			; if no cursor editing	C511 to exit
 
 ;***************** cursor editing routines *******************************
 
 _LC565:			jsr	_LCD7A				; restore normal write cursor
 
-_LC568_swapcurs:			php					; save flags and
+_LC568_swapcurs:	php					; save flags and
 			pha					; A
-			ldx	#<vduvar_TXT_CUR_X			; X=&18
-			ldy	#<vduvar_TEXT_IN_CUR_X			; Y=&64
+			ldx	#<vduvar_TXT_CUR_X		; X=&18
+			ldy	#<vduvar_TEXT_IN_CUR_X		; Y=&64
 			jsr	_LCDDE_EXG2_P3			; exchange &300/1+X with &300/1+Y
 			jsr	_LCF06				; set up display address
-			jsr	SET_CURS_CHARSCANAX				; set cursor position
-			lda	dp_mos_vdu_status			; VDU status byte
+			jsr	SET_CURS_CHARSCANAX		; set cursor position
+			lda	dp_mos_vdu_status		; VDU status byte
 			eor	#$02				; invert bit 1 to allow or bar scrolling
-			sta	dp_mos_vdu_status			; VDU status byte
+			sta	dp_mos_vdu_status		; VDU status byte
 			pla					; restore flags and A
 			plp					; 
 			rts					; and exit
@@ -668,11 +677,11 @@ _LC568_swapcurs:			php					; save flags and
 _BC580:			eor	#$06				; if A<>6
 			bne	_BC58C				; return via C58C
 			lda	#$7f				; A=&7F
-			bcc	AND_VDU_STATUS				; and goto C5A8 ALWAYS!!
+			bcc	AND_VDU_STATUS			; and goto C5A8 ALWAYS!!
 
 ;******************* check text cursor in use ***************************
 
-_LC588:			lda	dp_mos_vdu_status			; VDU status byte
+_LC588:			lda	dp_mos_vdu_status		; VDU status byte
 			and	#$20				; set A from bit 5 of status byte
 _BC58C:			rts					; and exit
 
@@ -685,7 +694,7 @@ _BC58C:			rts					; and exit
 ;*************************************************************************
 
 _VDU_14:		ldy	#$00				; Y=0
-			sty	sysvar_SCREENLINES_SINCE_PAGE			; paged mode counter
+			sty	sysvar_SCREENLINES_SINCE_PAGE	; paged mode counter
 			lda	#$04				; A=04
 			bne	OR_VDU_STATUS			; jump to C59D
 
@@ -695,7 +704,9 @@ _VDU_14:		ldy	#$00				; Y=0
 ;*									 *
 ;*************************************************************************
 
-_VDU_2:			jsr	_LE1A2				; select printer buffer and output character
+_VDU_2:			
+		;;TODO: printer
+		;;	jsr	_LE1A2				; select printer buffer and output character
 			lda	#$94				; A=&94
 								; when inverted at C59B this becomes =&01
 
@@ -707,8 +718,8 @@ _VDU_2:			jsr	_LE1A2				; select printer buffer and output character
 
 _VDU_21:		eor	#$95				; if A=&15 A now =&80: if A=&94 A now =1
 
-OR_VDU_STATUS:		ora	dp_mos_vdu_status			; VDU status byte set bit 0 or bit 7
-			bne	STA_VDU_STATUS				; branch forward to store
+OR_VDU_STATUS:		ora	dp_mos_vdu_status		; VDU status byte set bit 0 or bit 7
+			bne	STA_VDU_STATUS			; branch forward to store
 
 
 
@@ -718,7 +729,9 @@ OR_VDU_STATUS:		ora	dp_mos_vdu_status			; VDU status byte set bit 0 or bit 7
 ;*									 *
 ;*************************************************************************
 
-_VDU_3:			jsr	_LE1A2				; select printer buffer and output character
+_VDU_3:
+		;;TODO: printer
+		;;	jsr	_LE1A2				; select printer buffer and output character
 			lda	#$0a				; A=10 to clear status bits below...
 
 ;*************************************************************************
@@ -729,8 +742,8 @@ _VDU_3:			jsr	_LE1A2				; select printer buffer and output character
 ; A=&F or &A
 
 _VDU_15:		eor	#$f4				; convert to &FB or &FE
-AND_VDU_STATUS:		and	dp_mos_vdu_status			; VDU status byte clear bit 0 or bit 2 of status
-STA_VDU_STATUS:		sta	dp_mos_vdu_status			; VDU status byte
+AND_VDU_STATUS:		and	dp_mos_vdu_status		; VDU status byte clear bit 0 or bit 2 of status
+STA_VDU_STATUS:		sta	dp_mos_vdu_status		; VDU status byte
 _BC5AC_rts:		rts					; exit
 
 ;*************************************************************************
@@ -739,11 +752,11 @@ _BC5AC_rts:		rts					; exit
 ;*									 *
 ;*************************************************************************
 
-_VDU_4:			lda	vduvar_PIXELS_PER_BYTE_MINUS1			; pixels per byte
-			beq	_BC5AC_rts				; if no graphics in current mode C5AC
+_VDU_4:			lda	vduvar_PIXELS_PER_BYTE_MINUS1	; pixels per byte
+			beq	_BC5AC_rts			; if no graphics in current mode C5AC
 			jsr	_LC951				; set CRT controller for text cursor
 			lda	#$df				; this to clear bit 5 of status byte
-			bne	AND_VDU_STATUS				; via C5A8 exit
+			bne	AND_VDU_STATUS			; via C5A8 exit
 
 ;*************************************************************************
 ;*									 *
@@ -751,11 +764,11 @@ _VDU_4:			lda	vduvar_PIXELS_PER_BYTE_MINUS1			; pixels per byte
 ;*									 *
 ;*************************************************************************
 
-_VDU_5:			lda	vduvar_PIXELS_PER_BYTE_MINUS1			; pixels per byte
-			beq	_BC5AC_rts				; if none this is text mode so exit
+_VDU_5:			lda	vduvar_PIXELS_PER_BYTE_MINUS1	; pixels per byte
+			beq	_BC5AC_rts			; if none this is text mode so exit
 			lda	#$20				; set up graphics cursor
 			jsr	_LC954				; via C954
-			bne	OR_VDU_STATUS				; set bit 5 via exit C59D
+			bne	OR_VDU_STATUS			; set bit 5 via exit C59D
 
 ;*************************************************************************
 ;*									 *
@@ -765,36 +778,36 @@ _VDU_5:			lda	vduvar_PIXELS_PER_BYTE_MINUS1			; pixels per byte
 
 _VDU_8:			jsr	_LC588				; A=0 if text cursor A=&20 if graphics cursor
 			bne	_BC61F				; move cursor left 8 pixels if graphics
-			dec	vduvar_TXT_CUR_X			; else decrement text column
-			ldx	vduvar_TXT_CUR_X			; store new text column
-			cpx	vduvar_TXT_WINDOW_LEFT			; if it is less than text window left
+			dec	vduvar_TXT_CUR_X		; else decrement text column
+			ldx	vduvar_TXT_CUR_X		; store new text column
+			cpx	vduvar_TXT_WINDOW_LEFT		; if it is less than text window left
 			bmi	__curs_t_wrap_left		; do wraparound	 cursor to rt of screen 1 line up
-			lda	vduvar_6845_CURSOR_ADDR			; text cursor 6845 address
+			lda	vduvar_6845_CURSOR_ADDR		; text cursor 6845 address
 			sec					; subtract
-			sbc	vduvar_BYTES_PER_CHAR				; bytes per character
+			sbc	vduvar_BYTES_PER_CHAR		; bytes per character
 			tax					; put in X
-			lda	vduvar_6845_CURSOR_ADDR+1			; get text cursor 6845 address
+			lda	vduvar_6845_CURSOR_ADDR+1	; get text cursor 6845 address
 			sbc	#$00				; subtract 0
-			cmp	vduvar_SCREEN_BOTTOM_HIGH			; compare with hi byte of screen RAM address
+			cmp	vduvar_SCREEN_BOTTOM_HIGH	; compare with hi byte of screen RAM address
 			bcs	__curs_t_wrap_top		; if = or greater
-			adc	vduvar_SCREEN_SIZE_HIGH			; add screen RAM size hi byte to wrap around
+			adc	vduvar_SCREEN_SIZE_HIGH		; add screen RAM size hi byte to wrap around
 __curs_t_wrap_top:	tay					; Y=A
 			jmp	SET_CRTC_CURSeqAX_adj		; A hi and X lo byte of cursor position
 
 ;***************** execute wraparound left-up*****************************
 
-__curs_t_wrap_left:	lda	vduvar_TXT_WINDOW_RIGHT			; text window right
-			sta	vduvar_TXT_CUR_X			; text column
+__curs_t_wrap_left:	lda	vduvar_TXT_WINDOW_RIGHT		; text window right
+			sta	vduvar_TXT_CUR_X		; text column
 
 ;*************** cursor up ***********************************************
 
-_BC5F4:			dec	sysvar_SCREENLINES_SINCE_PAGE			; paged mode counter
+_BC5F4:			dec	sysvar_SCREENLINES_SINCE_PAGE	; paged mode counter
 			bpl	_BC5FC				; if still greater than 0 skip next instruction
-			inc	sysvar_SCREENLINES_SINCE_PAGE			; paged mode counter to restore X=0
-_BC5FC:			ldx	vduvar_TXT_CUR_Y			; current text line
-			cpx	vduvar_TXT_WINDOW_TOP			; top of text window
+			inc	sysvar_SCREENLINES_SINCE_PAGE	; paged mode counter to restore X=0
+_BC5FC:			ldx	vduvar_TXT_CUR_Y		; current text line
+			cpx	vduvar_TXT_WINDOW_TOP		; top of text window
 			beq	_BC60A				; if its at top of window C60A
-			dec	vduvar_TXT_CUR_Y			; else decrement current text line
+			dec	vduvar_TXT_CUR_Y		; else decrement current text line
 			jmp	_LC6AF				; and carry on moving cursor
 
 ;******** cursor at top of window ****************************************
@@ -802,7 +815,7 @@ _BC5FC:			ldx	vduvar_TXT_CUR_Y			; current text line
 _BC60A:			clc					; clear carry
 			jsr	_LCD3F				; check for window violatations
 			lda	#$08				; A=8 to check for software scrolling
-			bit	dp_mos_vdu_status			; compare against VDU status byte
+			bit	dp_mos_vdu_status		; compare against VDU status byte
 			bne	_BC619				; if not enabled C619
 			jsr	_LC994				; set screen start register and adjust RAM
 			bne	_BC61C				; jump C61C
@@ -817,13 +830,13 @@ _BC61F:			ldx	#$00				; X=0 to select horizontal parameters
 ;********** cursor down with graphics in use *****************************
 ;X=2 for vertical or 0 for horizontal
 
-_LC621:			stx	dp_mos_vdu_wksp+1			; store X
+_LC621:			stx	dp_mos_vdu_wksp+1		; store X
 			jsr	_LD10D				; check for window violations
-			ldx	dp_mos_vdu_wksp+1			; restore X
+			ldx	dp_mos_vdu_wksp+1		; restore X
 			sec					; set carry
-			lda	vduvar_GRA_CUR_INT,X			; current graphics cursor X>1=vertical
+			lda	vduvar_GRA_CUR_INT,X		; current graphics cursor X>1=vertical
 			sbc	#$08				; subtract 8 to move back 1 character
-			sta	vduvar_GRA_CUR_INT,X			; store in current graphics cursor X>1=verticaal
+			sta	vduvar_GRA_CUR_INT,X		; store in current graphics cursor X>1=verticaal
 			bcs	_BC636				; if carry set skip next
 			dec	vduvar_GRA_CUR_INT+1,X		; current graphics cursor hi -1
 _BC636:			lda	dp_mos_vdu_wksp			; &DA=0 if no violation else 1 if vert violation
@@ -832,14 +845,14 @@ _BC636:			lda	dp_mos_vdu_wksp			; &DA=0 if no violation else 1 if vert violation
 			jsr	_LD10D				; check for window violations
 			beq	_BC658				; if none C658
 
-			ldx	dp_mos_vdu_wksp+1			; else get back X
-			lda	vduvar_GRA_WINDOW_RIGHT,X			; graphics window rt X=0 top X=2
+			ldx	dp_mos_vdu_wksp+1		; else get back X
+			lda	vduvar_GRA_WINDOW_RIGHT,X	; graphics window rt X=0 top X=2
 			cpx	#$01				; is X=0
 			bcs	_BC64A				; if not C64A
 			sbc	#$06				; else subtract 7
 
-_BC64A:			sta	vduvar_GRA_CUR_INT,X			; current graphics cursor X>1=vertical
-			lda	vduvar_GRA_WINDOW_RIGHT+1,X		; graphics window hi rt X=0 top X=2
+_BC64A:			sta	vduvar_GRA_CUR_INT,X		; current graphics cursor X>1=vertical
+			lda	vduvar_GRA_WINDOW_RIGHT+1,X	; graphics window hi rt X=0 top X=2
 			sbc	#$00				; subtract carry
 			sta	vduvar_GRA_CUR_INT+1,X		; current graphics cursor X<2=horizontal else vertical
 			txa					; A=X
@@ -863,37 +876,37 @@ _BC660:			ldx	#$02				; else X=2
 ;*									 *
 ;*************************************************************************
 
-_VDU_9:			lda	dp_mos_vdu_status			; VDU status byte
+_VDU_9:			lda	dp_mos_vdu_status		; VDU status byte
 			and	#$20				; check bit 5
 			bne	_BC6B4				; if set then graphics cursor in use so C6B4
-			ldx	vduvar_TXT_CUR_X			; text column
-			cpx	vduvar_TXT_WINDOW_RIGHT			; text window right
+			ldx	vduvar_TXT_CUR_X		; text column
+			cpx	vduvar_TXT_WINDOW_RIGHT		; text window right
 			bcs	_BC684				; if X exceeds window right then C684
-			inc	vduvar_TXT_CUR_X			; text column
-			lda	vduvar_6845_CURSOR_ADDR			; text cursor 6845 address
-			adc	vduvar_BYTES_PER_CHAR				; add bytes per character
+			inc	vduvar_TXT_CUR_X		; text column
+			lda	vduvar_6845_CURSOR_ADDR		; text cursor 6845 address
+			adc	vduvar_BYTES_PER_CHAR		; add bytes per character
 			tax					; X=A
-			lda	vduvar_6845_CURSOR_ADDR+1			; text cursor 6845 address
+			lda	vduvar_6845_CURSOR_ADDR+1	; text cursor 6845 address
 			adc	#$00				; add carry if set
 			jmp	SET_CRTC_CURSeqAX_adj		; use AX to set new cursor address
 
 ;********: text cursor down and right *************************************
 
-_BC684:			lda	vduvar_TXT_WINDOW_LEFT			; text window left
-			sta	vduvar_TXT_CUR_X			; text column
+_BC684:			lda	vduvar_TXT_WINDOW_LEFT		; text window left
+			sta	vduvar_TXT_CUR_X		; text column
 
 ;********: text cursor down *************************************
 
 _BC68A:			clc					; clear carry
 			jsr	_LCAE3				; check bottom margin, X=line count
-			ldx	vduvar_TXT_CUR_Y			; current text line
-			cpx	vduvar_TXT_WINDOW_BOTTOM			; bottom margin
+			ldx	vduvar_TXT_CUR_Y		; current text line
+			cpx	vduvar_TXT_WINDOW_BOTTOM	; bottom margin
 			bcs	_BC69B				; if X=>current bottom margin C69B
-			inc	vduvar_TXT_CUR_Y			; else increment current text line
+			inc	vduvar_TXT_CUR_Y		; else increment current text line
 			bcc	_LC6AF				; 
 _BC69B:			jsr	_LCD3F				; check for window violations
 			lda	#$08				; check bit 3
-			bit	dp_mos_vdu_status			; VDU status byte
+			bit	dp_mos_vdu_status		; VDU status byte
 			bne	_BC6A9				; if software scrolling enabled C6A9
 			jsr	_LC9A4				; perform hardware scroll
 			bne	_LC6AC				; 
@@ -909,13 +922,13 @@ _BC6B4:			ldx	#$00				;
 
 ;************** graphic cursor up  (X=2) **********************************
 
-_BC6B6:			stx	dp_mos_vdu_wksp+1			; store X
+_BC6B6:			stx	dp_mos_vdu_wksp+1		; store X
 			jsr	_LD10D				; check for window violations
-			ldx	dp_mos_vdu_wksp+1			; get back X
+			ldx	dp_mos_vdu_wksp+1		; get back X
 			clc					; clear carry
-			lda	vduvar_GRA_CUR_INT,X			; current graphics cursor X>1=vertical
+			lda	vduvar_GRA_CUR_INT,X		; current graphics cursor X>1=vertical
 			adc	#$08				; Add 8 pixels
-			sta	vduvar_GRA_CUR_INT,X			; current graphics cursor X>1=vertical
+			sta	vduvar_GRA_CUR_INT,X		; current graphics cursor X>1=vertical
 			bcc	_BC6CB				; 
 			inc	vduvar_GRA_CUR_INT+1,X		; current graphics cursor X<2=horizontal else vertical
 _BC6CB:			lda	dp_mos_vdu_wksp			; A=0 no window violations 1 or 2 indicates violation
@@ -923,13 +936,13 @@ _BC6CB:			lda	dp_mos_vdu_wksp			; A=0 no window violations 1 or 2 indicates viol
 			jsr	_LD10D				; check for window violations
 			beq	_BC658				; if no violations C658
 
-			ldx	dp_mos_vdu_wksp+1			; get back X
-			lda	vduvar_GRA_WINDOW_LEFT,X			; graphics window X<2 =left else bottom
+			ldx	dp_mos_vdu_wksp+1		; get back X
+			lda	vduvar_GRA_WINDOW_LEFT,X	; graphics window X<2 =left else bottom
 			cpx	#$01				; If X=0
 			bcc	_BC6DF				; C6DF
 			adc	#$06				; else add 7
-_BC6DF:			sta	vduvar_GRA_CUR_INT,X			; current graphics cursor X>1=vertical
-			lda	vduvar_GRA_WINDOW_LEFT+1,X		; graphics window hi X<2 =left else bottom
+_BC6DF:			sta	vduvar_GRA_CUR_INT,X		; current graphics cursor X>1=vertical
+			lda	vduvar_GRA_WINDOW_LEFT+1,X	; graphics window hi X<2 =left else bottom
 			adc	#$00				; add anny carry
 			sta	vduvar_GRA_CUR_INT+1,X		; current graphics cursor X<2=horizontal else vertical
 			txa					; A=X
@@ -962,32 +975,32 @@ _BC6F5:			ldx	#$02				; else X=2 to indicate vertical movement
 ;Note that last parameter is always in 0323
 
 _VDU_28:		ldx	vduvar_MODE			; screen mode
-			lda	vduvar_VDU_Q_START+6			; get bottom margin
-			cmp	vduvar_VDU_Q_START+8			; compare with top margin
+			lda	vduvar_VDU_Q_START+6		; get bottom margin
+			cmp	vduvar_VDU_Q_START+8		; compare with top margin
 			bcc	_BC758				; if bottom margin exceeds top return
 			cmp	_TEXT_ROW_TABLE,X		; text window bottom margin maximum
 			beq	_BC70C				; if equal then its OK
 			bcs	_BC758				; else exit
 
-_BC70C:			lda	vduvar_VDU_Q_START+7			; get right margin
+_BC70C:			lda	vduvar_VDU_Q_START+7		; get right margin
 			tay					; put it in Y
 			cmp	_TEXT_COL_TABLE,X		; text window right hand margin maximum
 			beq	_BC717				; if equal then OK
 			bcs	_BC758				; if greater than maximum exit
 
 _BC717:			sec					; set carry to subtract
-			sbc	vduvar_VDU_Q_START+5			; left margin
+			sbc	vduvar_VDU_Q_START+5		; left margin
 			bmi	_BC758				; if left greater than right exit
 			tay					; else A=Y (window width)
 			jsr	_LCA88				; calculate number of bytes in a line
 			lda	#$08				; A=8 to set bit  of &D0
-			jsr	OR_VDU_STATUS				; indicating that text window is defined
+			jsr	OR_VDU_STATUS			; indicating that text window is defined
 			ldx	#$20				; point to parameters
 			ldy	#$08				; point to text window margins
 			jsr	_LD48A				; (&300/3+Y)=(&300/3+X)
 			jsr	_LCEE8				; set up screen address
 			bcs	_VDU_30				; home cursor within window
-_BC732:			jmp	SET_CURS_CHARSCANAX				; set cursor position
+_BC732:			jmp	SET_CURS_CHARSCANAX		; set cursor position
 
 
 ;*************************************************************************
@@ -1007,8 +1020,8 @@ _BC732:			jmp	SET_CURS_CHARSCANAX				; set cursor position
 
 
 _OSWORD_9:		ldy	#$03				; Y=3 to point to hi byte of Y coordinate
-_BC737:			lda	(dp_mos_OSBW_X),Y			; get it
-			sta	vduvar_TEMP_8,Y		; store it
+_BC737:			lda	(dp_mos_OSBW_X),Y		; get it
+			sta	vduvar_TEMP_8,Y			; store it
 			dey					; point to next byte
 			bpl	_BC737				; transfer till Y=&FF lo byte of X coordinate in &328
 			lda	#$28				; 
@@ -1034,12 +1047,12 @@ _BC737:			lda	(dp_mos_OSBW_X),Y			; get it
 ;	3=green colour component } when set using analogue colours
 ;	4=blue colour component /
 
-_OSWORD_11:		and	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
+_OSWORD_11:		and	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 			tax					; put it in X
-			lda	vduvar_PALLETTE,X			; colour pallette
+			lda	vduvar_PALLETTE,X		; colour pallette
 _BC74F:			iny					; increment Y to point to byte 1
 
-_BC750:			sta	(dp_mos_OSBW_X),Y			; store data
+_BC750:			sta	(dp_mos_OSBW_X),Y		; store data
 			lda	#$00				; issue 0s
 			cpy	#$04				; to next bytes until Y=4
 			bne	_BC74F				; 
@@ -1056,17 +1069,17 @@ _BC758:			rts					; and exit
 
 _VDU_12:		jsr	_LC588				; A=0 if text cursor A=&20 if graphics cursor
 			bne	_BC7BD				; if graphics cursor &C7BD
-			lda	dp_mos_vdu_status			; VDU status byte
+			lda	dp_mos_vdu_status		; VDU status byte
 			and	#$08				; check if software scrolling (text window set)
 			bne	_BC767				; if so C767
-			jmp	_LCBC1_DOCLS				; initialise screen display and home cursor
+			jmp	_LCBC1_DOCLS			; initialise screen display and home cursor
 
-_BC767:			ldx	vduvar_TXT_WINDOW_TOP			; top of text window
-_BC76A:			stx	vduvar_TXT_CUR_Y			; current text line
+_BC767:			ldx	vduvar_TXT_WINDOW_TOP		; top of text window
+_BC76A:			stx	vduvar_TXT_CUR_Y		; current text line
 			jsr	_LCEAC				; clear a line
 
-			ldx	vduvar_TXT_CUR_Y			; current text line
-			cpx	vduvar_TXT_WINDOW_BOTTOM			; bottom margin
+			ldx	vduvar_TXT_CUR_Y		; current text line
+			cpx	vduvar_TXT_WINDOW_BOTTOM	; bottom margin
 			inx					; X=X+1
 			bcc	_BC76A				; if X at compare is less than bottom margin clear next
 
@@ -1080,8 +1093,8 @@ _BC76A:			stx	vduvar_TXT_CUR_Y			; current text line
 _VDU_30:		jsr	_LC588				; A=0 if text cursor A=&20 if graphics cursor
 			beq	_BC781				; if text cursor C781
 			jmp	_LCFA6				; home graphic cursor if graphic
-_BC781:			sta	vduvar_VDU_Q_START+8			; store 0 in last two parameters
-			sta	vduvar_VDU_Q_START+7			; 
+_BC781:			sta	vduvar_VDU_Q_START+8		; store 0 in last two parameters
+			sta	vduvar_VDU_Q_START+7		; 
 
 
 ;*************************************************************************
@@ -1099,18 +1112,18 @@ _VDU_31:		jsr	_LC588				; A=0 if text cursor A=&20 if graphics cursor
 			bne	_BC758				; exit
 			jsr	_LC7A8				; exchange text column/line with workspace 0328/9
 			clc					; clear carry
-			lda	vduvar_VDU_Q_START+7			; get X coordinate
-			adc	vduvar_TXT_WINDOW_LEFT			; add to text window left
-			sta	vduvar_TXT_CUR_X			; store as text column
-			lda	vduvar_VDU_Q_START+8			; get Y coordinate
+			lda	vduvar_VDU_Q_START+7		; get X coordinate
+			adc	vduvar_TXT_WINDOW_LEFT		; add to text window left
+			sta	vduvar_TXT_CUR_X		; store as text column
+			lda	vduvar_VDU_Q_START+8		; get Y coordinate
 			clc					; 
-			adc	vduvar_TXT_WINDOW_TOP			; add top of text window
-			sta	vduvar_TXT_CUR_Y			; current text line
+			adc	vduvar_TXT_WINDOW_TOP		; add top of text window
+			sta	vduvar_TXT_CUR_Y		; current text line
 			jsr	_LCEE8				; set up screen address
 			bcc	_BC732				; set cursor position if C=0 (point on screen)
-_LC7A8:			ldx	#<vduvar_TXT_CUR_X			; else point to workspace
-			ldy	#<vduvar_TEMP_8		; and line/column to restore old values
-			jmp	_LCDDE_EXG2_P3				; exchange &300/1+X with &300/1+Y
+_LC7A8:			ldx	#<vduvar_TXT_CUR_X		; else point to workspace
+			ldy	#<vduvar_TEMP_8			; and line/column to restore old values
+			jmp	_LCDDE_EXG2_P3			; exchange &300/1+X with &300/1+Y
 
 
 ;*************************************************************************
@@ -1136,17 +1149,17 @@ _BC7BD:			jsr	_LCFA6				; home graphic cursor
 ;*									 *
 ;*************************************************************************
 
-_VDU_16:		lda	vduvar_PIXELS_PER_BYTE_MINUS1			; pixels per byte
+_VDU_16:		lda	vduvar_PIXELS_PER_BYTE_MINUS1	; pixels per byte
 			beq	_BC7F8				; if 0 current mode has no graphics so exit
 			ldx	vduvar_GRA_BACK			; Background graphics colour
-			ldy	vduvar_GRA_PLOT_BACK			; background graphics plot mode (GCOL n)
+			ldy	vduvar_GRA_PLOT_BACK		; background graphics plot mode (GCOL n)
 			jsr	_LD0B3				; set graphics byte mask in &D4/5
 			ldx	#$00				; graphics window
 			ldy	#$28				; workspace
 			jsr	_LD47C				; set(300/7+Y) from (300/7+X)
 			sec					; set carry
-			lda	vduvar_GRA_WINDOW_TOP			; graphics window top lo.
-			sbc	vduvar_GRA_WINDOW_BOTTOM			; graphics window bottom lo
+			lda	vduvar_GRA_WINDOW_TOP		; graphics window top lo.
+			sbc	vduvar_GRA_WINDOW_BOTTOM	; graphics window bottom lo
 			tay					; Y=difference
 			iny					; increment
 			sty	vduvar_GRA_WKSP			; and store in workspace (this is line count)
@@ -1188,12 +1201,12 @@ _VDU_17:		ldy	#$00				; Y=0
 
 _VDU_18:		ldy	#$02				; Y=2
 
-_BC7FF:			lda	vduvar_VDU_Q_START+8			; get last parameter
+_BC7FF:			lda	vduvar_VDU_Q_START+8		; get last parameter
 			bpl	_BC805				; if +ve it's foreground colour so C805
 			iny					; else Y=Y+1
-_BC805:			and	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
+_BC805:			and	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 			sta	dp_mos_vdu_wksp			; store it
-			lda	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
+			lda	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 			beq	_BC82B				; if none exit
 			and	#$07				; else limit to an available colour and clear M
 			clc					; clear carry
@@ -1206,13 +1219,13 @@ _BC805:			and	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
 			bcs	_BC82C				; then its graphics so C82C else
 			lda	vduvar_TXT_FORE			; foreground text colour
 			eor	#$ff				; invert
-			sta	dp_mos_vdu_txtcolourEOR			; text colour byte to be orred or EORed into memory
+			sta	dp_mos_vdu_txtcolourEOR		; text colour byte to be orred or EORed into memory
 			eor	vduvar_TXT_BACK			; background text colour
-			sta	dp_mos_vdu_txtcolourOR			; text colour byte to be orred or EORed into memory
+			sta	dp_mos_vdu_txtcolourOR		; text colour byte to be orred or EORed into memory
 _BC82B:			rts					; and exit
 
-_BC82C:			lda	vduvar_VDU_Q_START+7			; get first parameter
-			sta	vduvar_GRA_FORE,Y			; text colour Y=0=foreground 1=background etc.
+_BC82C:			lda	vduvar_VDU_Q_START+7		; get first parameter
+			sta	vduvar_GRA_FORE,Y		; text colour Y=0=foreground 1=background etc.
 			rts					; exit
 
 _BC833:			lda	#$20				; 
@@ -1229,10 +1242,10 @@ _BC833:			lda	#$20				;
 _VDU_20:		ldx	#$05				; X=5
 
 			lda	#$00				; A=0
-_BC83D:			sta	vduvar_TXT_FORE,X			; zero all colours
+_BC83D:			sta	vduvar_TXT_FORE,X		; zero all colours
 			dex					; 
 			bpl	_BC83D				; until X=&FF
-			ldx	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
+			ldx	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 			beq	_BC833				; if none its MODE 7 so C833
 			lda	#$ff				; A=&FF (white, all bits set)
 			cpx	#$0f				; if not mode 2 (16 colours)
@@ -1242,27 +1255,27 @@ _BC83D:			sta	vduvar_TXT_FORE,X			; zero all colours
 _BC850:			sta	vduvar_TXT_FORE			; foreground text colour
 			sta	vduvar_GRA_FORE			; foreground graphics colour
 			eor	#$ff				; invert A
-			sta	dp_mos_vdu_txtcolourOR			; text colour byte to be orred or EORed into memory
-			sta	dp_mos_vdu_txtcolourEOR			; text colour byte to be orred or EORed into memory
-			stx	vduvar_VDU_Q_START+4			; set first parameter of 5
+			sta	dp_mos_vdu_txtcolourOR		; text colour byte to be orred or EORed into memory
+			sta	dp_mos_vdu_txtcolourEOR		; text colour byte to be orred or EORed into memory
+			stx	vduvar_VDU_Q_START+4		; set first parameter of 5
 			cpx	#$03				; if there are 4 colours
 			beq	_BC874				; goto C874
 			bcc	_BC885				; if less there are 2 colours goto C885
 								; else there are 16 colours
-			stx	vduvar_VDU_Q_START+5			; set second parameter
+			stx	vduvar_VDU_Q_START+5		; set second parameter
 _BC868:			jsr	_VDU_19				; do VDU 19 etc
-			dec	vduvar_VDU_Q_START+5			; decrement first parameter
-			dec	vduvar_VDU_Q_START+4			; and last parameter
+			dec	vduvar_VDU_Q_START+5		; decrement first parameter
+			dec	vduvar_VDU_Q_START+4		; and last parameter
 			bpl	_BC868				; 
 			rts					; 
 
 ;********* 4 colour mode *************************************************
 
 _BC874:			ldx	#$07				; X=7
-			stx	vduvar_VDU_Q_START+5			; set first parameter
+			stx	vduvar_VDU_Q_START+5		; set first parameter
 _BC879:			jsr	_VDU_19				; and do VDU 19
-			lsr	vduvar_VDU_Q_START+5			; 
-			dec	vduvar_VDU_Q_START+4			; 
+			lsr	vduvar_VDU_Q_START+5		; 
+			dec	vduvar_VDU_Q_START+4		; 
 			bpl	_BC879				; 
 			rts					; exit
 
@@ -1289,14 +1302,14 @@ _LC88F:			stx	vduvar_VDU_Q_START+5			; both parameters
 
 _VDU_19:		php					; push processor flags
 			sei					; disable interrupts
-			lda	vduvar_VDU_Q_START+4			; get first parameter and
-			and	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
+			lda	vduvar_VDU_Q_START+4		; get first parameter and
+			and	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 			tax					; toi make legal  X=A
-			lda	vduvar_VDU_Q_START+5			; A=second parameter
+			lda	vduvar_VDU_Q_START+5		; A=second parameter
 _LC89E:			and	#$0f				; make legal
-			sta	vduvar_PALLETTE,X			; colour pallette
+			sta	vduvar_PALLETTE,X		; colour pallette
 			tay					; Y=A
-			lda	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
+			lda	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 			sta	dp_mos_X			; store it
 			cmp	#$03				; is it 4 colour mode??
 			php					; save flags
@@ -1345,10 +1358,10 @@ _BC8CC:			jsr	_LEA11				; call Osbyte 155 pass data to pallette register
 ;byte 0 = logical colour;  byte 1 physical colour; bytes 2-4=0
 
 _OSWORD_12:		php					; push flags
-			and	vduvar_COL_COUNT_MINUS1			; and with number of logical colours less 1
+			and	vduvar_COL_COUNT_MINUS1		; and with number of logical colours less 1
 			tax					; X=A
 			iny					; Y=Y+1
-			lda	(dp_mos_OSBW_X),Y			; get phsical colour
+			lda	(dp_mos_OSBW_X),Y		; get phsical colour
 			jmp	_LC89E				; do VDU19 with parameters in X and A
 
 
@@ -1362,8 +1375,8 @@ _OSWORD_12:		php					; push flags
 ;*************************************************************************
 ;parameter in &323
 
-_VDU_22:		lda	vduvar_VDU_Q_START+8			; get parameter
-			jmp	_LCB33				; goto CB33
+_VDU_22:		lda	vduvar_VDU_Q_START+8		; get parameter
+			jmp	setMode				; goto CB33
 
 
 ;*************************************************************************
@@ -1377,7 +1390,7 @@ _VDU_22:		lda	vduvar_VDU_Q_START+8			; get parameter
 ;31B character to define
 ;31C to 323 definition
 
-_VDU_23:		lda	vduvar_VDU_Q_START			; get character to define
+_VDU_23:		lda	vduvar_VDU_Q_START		; get character to define
 			cmp	#$20				; is it ' '
 			bcc	_VDU_23_CTRL			; if less then it is a control instruction, goto C93F
 _VDU_23_DEFINE_CHAR:	pha					; else save parameter
@@ -1388,22 +1401,22 @@ _VDU_23_DEFINE_CHAR:	pha					; else save parameter
 			lsr					; 
 			tax					; X=A
 			lda	_LC40D,X			; get font flag mask from table (A=&80/2^X)
-			bit	vduvar_EXPLODE_FLAGS			; font flag
+			bit	vduvar_EXPLODE_FLAGS		; font flag
 			bne	_BC927				; and if A<>0 C927 storage area is established already
-			ora	vduvar_EXPLODE_FLAGS			; or with font flag to set bit found to be 0
-			sta	vduvar_EXPLODE_FLAGS			; font flag
+			ora	vduvar_EXPLODE_FLAGS		; or with font flag to set bit found to be 0
+			sta	vduvar_EXPLODE_FLAGS		; font flag
 			txa					; get back A
 			and	#$03				; And 3 to clear all but bits 0 and 1
 			clc					; clear carry
 			adc	#$bf				; add &BF (A=&C0,&C1,&C2) to select a character page
-			sta	dp_mos_vdu_wksp+5			; store it
+			sta	dp_mos_vdu_wksp+5		; store it
 			lda	vduvar_EXPLODE_FLAGS,X		; get font location byte (normally &0C)
-			sta	dp_mos_vdu_wksp+3			; store it
+			sta	dp_mos_vdu_wksp+3		; store it
 			ldy	#$00				; Y=0 so (&DE) holds (&C000 -&C2FF)
-			sty	dp_mos_vdu_wksp+2			; 
-			sty	dp_mos_vdu_wksp+4			; 
-_BC920:			lda	(dp_mos_vdu_wksp+4),Y			; transfer page to storage area
-			sta	(dp_mos_vdu_wksp+2),Y			; 
+			sty	dp_mos_vdu_wksp+2		; 
+			sty	dp_mos_vdu_wksp+4		; 
+_BC920:			lda	(dp_mos_vdu_wksp+4),Y		; transfer page to storage area
+			sta	(dp_mos_vdu_wksp+2),Y		; 
 			dey					; 
 			bne	_BC920				; 
 
@@ -1411,8 +1424,8 @@ _BC927:			pla					; get back A
 			jsr	_LD03E				; set up character definition pointers
 
 			ldy	#$07				; Y=7
-_BC92D:			lda	vduvar_VDU_Q_START+1,Y			; transfer definition parameters
-			sta	(dp_mos_vdu_wksp+4),Y			; to RAM definition
+_BC92D:			lda	vduvar_VDU_Q_START+1,Y		; transfer definition parameters
+			sta	(dp_mos_vdu_wksp+4),Y		; to RAM definition
 			dey					; 
 			bpl	_BC92D				; 
 			rts					; and exit
@@ -1423,9 +1436,11 @@ _BC937:			rts					; and exit
 
 ;************ VDU EXTENSION **********************************************
 
-_LC938:			lda	vduvar_VDU_Q_START+4			; A=fifth VDU parameter
+_LC938:			lda	vduvar_VDU_Q_START+4		; A=fifth VDU parameter
 			clc					; clear carry
-__vdu_23_vduv:		jmp	(VEC_VDUV)			; jump via VDUV vector
+__vdu_23_vduv:		pea	IX_VDUV
+			jsl	CallAVector_NAT			; call VDUV vector and exit
+			rts
 
 ;********** VDU control commands *****************************************
 
@@ -1439,33 +1454,33 @@ _VDU_23_CTRL:		cmp	#$01				; is A=1
 			jsr	_LC588				; A=0 if text cursor, A=&20 if graphics cursor
 			bne	_BC937				; if graphics exit
 			lda	#$20				; A=&20 - preload to turn cursor off
-			ldy	vduvar_VDU_Q_START+1			; Y=second VDU parameter
+			ldy	vduvar_VDU_Q_START+1		; Y=second VDU parameter
 			beq	_LC954				; if 0, jump to C954 to turn cursor off
-_LC951:			lda	vduvar_CUR_START_PREV			; get last setting of CRT controller register
+_LC951:			lda	vduvar_CUR_START_PREV		; get last setting of CRT controller register
 								; for cursor on
 _LC954:			ldy	#$0a				; Y=10 - cursor control register number
 			bne	_BC985				; jump to C985, Y=register, Y=value
 
 ;********** set CRT controller *******************************************
 
-_VDU_23_SET_CRTC:	lda	vduvar_VDU_Q_START+2			; get third
-			ldy	vduvar_VDU_Q_START+1			; and second parameter
+_VDU_23_SET_CRTC:	lda	vduvar_VDU_Q_START+2		; get third
+			ldy	vduvar_VDU_Q_START+1		; and second parameter
 SET_CRTC_YeqA:		cpy	#$07				; is Y=7
 			bcc	_BC985				; if less C985
 			bne	_BC967				; else if >7 C967
-			adc	oswksp_VDU_VERTADJ			; else ADD screen vertical display adjustment
+			adc	oswksp_VDU_VERTADJ		; else ADD screen vertical display adjustment
 
 _BC967:			cpy	#$08				; If Y<>8
 			bne	_BC972				; C972
 			ora	#$00				; if bit 7 set
 			bmi	_BC972				; C972
-			eor	oswksp_VDU_INTERLACE			; else EOR with interlace toggle
+			eor	oswksp_VDU_INTERLACE		; else EOR with interlace toggle
 
 _BC972:			cpy	#$0a				; Y=10??
 			bne	_BC985				; if not C985
-			sta	vduvar_CUR_START_PREV			; last setting of CRT controller register
+			sta	vduvar_CUR_START_PREV		; last setting of CRT controller register
 			tay					; Y=A
-			lda	dp_mos_vdu_status			; VDU status byte
+			lda	dp_mos_vdu_status		; VDU status byte
 			and	#$20				; check bit 5 printing at graphics cursor??
 			php					; push flags
 			tya					; Y=A
@@ -1475,8 +1490,12 @@ _BC972:			cpy	#$0a				; Y=10??
 
 
 			;;; TODO: native
-_BC985:			sty	a:.loword(sheila_CRTC_reg)		; else set CRTC address register
-			sta	a:.loword(sheila_CRTC_rw)		; and poke new value to register Y
+_BC985:			pha
+			tya
+			sta	f:sheila_CRTC_reg		; else set CRTC address register
+			pla
+			sta	f:sheila_CRTC_rw		; and poke new value to register Y
+			DEBUG_PRINTF "CRTC %Y=%A  %F\n"
 _BC98B:			rts					; exit
 
 
@@ -1491,7 +1510,7 @@ _BC98B:			rts					; exit
 ;*									 *
 ;*************************************************************************
 
-_VDU_25:		ldx	vduvar_PIXELS_PER_BYTE_MINUS1			; pixels per byte
+_VDU_25:		ldx	vduvar_PIXELS_PER_BYTE_MINUS1	; pixels per byte
 			beq	_LC938				; if no graphics available go to VDU Extension
 			jmp	_LD060				; else enter Plot routine at D060
 
@@ -1579,11 +1598,19 @@ SET_CRTCY_AXDIV8:	pha					; Push A
 _BCA27:			sbc	#$74				; mode 7 subtract &74
 			eor	#$20				; EOR with &20
 			;; TODO: native addresses use far
-SET_CRTC_YeqAX:		sty	a:.loword(sheila_CRTC_reg)		; write to CRTC address file register
-			sta	a:.loword(sheila_CRTC_rw)		; and to relevant address (register 14)
-			iny					; Increment Y
-			sty	a:.loword(sheila_CRTC_reg)		; write to CRTC address file register
-			stx	a:.loword(sheila_CRTC_rw)		; and to relevant address (register 15)
+SET_CRTC_YeqAX:		DEBUG_PRINTF "CRTC %Y=%A %X %F\n"
+			pha
+			tya
+			sta	f:sheila_CRTC_reg		; write to CRTC address file register
+			pla
+			pha
+			sta	f:sheila_CRTC_rw		; and to relevant address (register 14)
+			iny
+			tya					; Increment Y
+			sta	f:sheila_CRTC_reg		; write to CRTC address file register
+			txa
+			sta	f:sheila_CRTC_rw		; and to relevant address (register 15)
+			pla
 			rts					; and RETURN
 
 ;*************************************************************************
@@ -1707,7 +1734,8 @@ _LCAD4:			pha					; store A
 ;********* control scrolling in paged mode *******************************
 
 _BCAE0:			jsr	_LCB14				; zero paged mode line counter
-_LCAE3:			jsr	_OSBYTE_118			; osbyte 118 check keyboard status; set LEDs
+_LCAE3:			lda	#OSBYTE_118_SET_KEYBOARD_LEDS
+			cop	COP_06_OPOSB			; osbyte 118 check keyboard status; set LEDs
 			bcc	_BCAEA				; if carry clear CAEA
 			bmi	_BCAE0				; if M set CAE0 do it again
 
@@ -1732,7 +1760,8 @@ _BCAEA:			lda	dp_mos_vdu_status			; VDU status byte
 			bcc	_BCB19				; increment line counter and exit
 
 			clc					; clear carry
-_BCB0E:			jsr	_OSBYTE_118			; osbyte 118 check keyboard status; set LEDs
+_BCB0E:			lda	#OSBYTE_118_SET_KEYBOARD_LEDS
+			cop	COP_06_OPOSB			; osbyte 118 check keyboard status; set LEDs
 			sec					; set carry
 			bpl	_BCB0E				; if +ve result then loop till shift pressed
 
@@ -1744,36 +1773,56 @@ _BCB19:			inc	sysvar_SCREENLINES_SINCE_PAGE			; paged mode counter
 _BCB1C:			rts					; 
 
 ;********* intitialise VDU driver with MODE in A *************************
+	; FAR call!
+VDU_INIT:		php
+			sep	#$30
+			.a8
+			.i8
+			pea	0
+			pld
+			phd
+			plb
+			plb					; bank 0 / DPSYS
 
-_VDU_INIT_MODE:		pha					; Save MODE in A
+			pha					; Save MODE in A
 			ldx	#$7f				; Prepare X=&7F for reset loop
 			lda	#$00				; A=0
-			sta	dp_mos_vdu_status			; Clear VDU status byte to set default conditions
+			sta	dp_mos_vdu_status		; Clear VDU status byte to set default conditions
 
 __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37E
 			dex					
 			bne	__vdu_mode_init_loop		
 
-			jsr	_OSBYTE_20			; Implode character definitions
+			;;jsr	_OSBYTE_20			; Implode character definitions
 			pla					; Get initial MODE back to A
 			ldx	#$7f				; X=&7F
-			stx	vduvar_MO7_CUR_CHAR			; MODE 7 copy cursor character (could have set this at CB1E)
+			stx	vduvar_MO7_CUR_CHAR		; MODE 7 copy cursor character (could have set this at CB1E)
+			jsr	setMode
+			plp
+			rtl
+		
 
 ;********* enter here from VDU 22,n - MODE *******************************
 
-_LCB33:			bit	sysvar_RAM_AVAIL			; Check available RAM
+setMode:		DEBUG_PRINTF "MODE %A\n"
+
+			bit	sysvar_RAM_AVAIL		; Check available RAM
 			bmi	_BCB3A				; If 32K, use all MODEs
 			ora	#$04				; Only 16K available, force to use MODEs 4-7
 
 _BCB3A:			and	#$07				; X=A and 7 ensure legal mode
-			tax					; X=mode
+			tax					; X=mode			
 			stx	vduvar_MODE			; Save current screen MODE
-			lda	_TBL_MODE_COLOURS,X			; Get number of colours -1 for this MODE
-			sta	vduvar_COL_COUNT_MINUS1			; Set current number of logical colours less 1
+
+			phk
+			plb
+
+			lda	_TBL_MODE_COLOURS,X		; Get number of colours -1 for this MODE
+			sta	f:vduvar_COL_COUNT_MINUS1		; Set current number of logical colours less 1
 			lda	_TXT_BPC_TABLE,X		; Get bytes/character for this MODE
-			sta	vduvar_BYTES_PER_CHAR				; Set bytes per character
-			lda	_TBL_VDU_PIXPB,X			; Get pixels/byte for this MODE
-			sta	vduvar_PIXELS_PER_BYTE_MINUS1			; Set pixels per byte
+			sta	f:vduvar_BYTES_PER_CHAR		; Set bytes per character
+			lda	_TBL_VDU_PIXPB,X		; Get pixels/byte for this MODE
+			sta	f:vduvar_PIXELS_PER_BYTE_MINUS1	; Set pixels per byte
 			bne	_BCB56				; If non-zero, skip past
 			lda	#$07				; byte/pixel=0, this is MODE 7, prepare A=7 offset into mask table
 
@@ -1781,20 +1830,21 @@ _BCB56:			asl					; A=A*2
 			tay					; Y=A
 
 			lda	_TAB_VDU_MASK_R,Y		; mask table
-			sta	vduvar_RIGHTMOST_PIX_MASK			; colour mask left
+			sta	f:vduvar_RIGHTMOST_PIX_MASK	; colour mask left
 _BCB5E:			asl					; A=A*2
 			bpl	_BCB5E				; If still +ve CB5E
-			sta	vduvar_LEFTMOST_PIX_MASK			; colour mask right
-			ldy	_TAB_MAP_TYPE,X			; screen display memory index table
-			sty	vduvar_MODE_SIZE			; memory map type
+			sta	f:vduvar_LEFTMOST_PIX_MASK			; colour mask right
+			lda	_TAB_MAP_TYPE,X			; screen display memory index table
+			sta	f:vduvar_MODE_SIZE		; memory map type
+			tay
 			lda	_TAB_LAT5_MOSZ,Y		; VDU section control
 			jsr	_WRITE_SYS_VIA_PORTB		; set hardware scrolling to VIA
 			lda	_TAB_LAT4_MOSZ,Y		; VDU section control
 			jsr	_WRITE_SYS_VIA_PORTB		; set hardware scrolling to VIA
 			lda	_VDU_MEMSZ_TAB,Y		; Screen RAM size hi byte table
-			sta	vduvar_SCREEN_SIZE_HIGH			; screen RAM size hi byte
+			sta	f:vduvar_SCREEN_SIZE_HIGH	; screen RAM size hi byte
 			lda	_VDU_MEMLOC_TAB,Y		; screen ram address hi byte
-			sta	vduvar_SCREEN_BOTTOM_HIGH			; hi byte of screen RAM address
+			sta	f:vduvar_SCREEN_BOTTOM_HIGH	; hi byte of screen RAM address
 
 			; translate mode map type (0=20K, 1=16K, 2=10k, 3=8K, 4=1K)
 			; to index into 	0 => 3,C=1
@@ -1808,19 +1858,19 @@ _BCB5E:			asl					; A=A*2
 			eor	#$07				; 
 			lsr					; /2
 			tax					; X=A
-			lda	_TAB_MULTBL_LKUP,X		; row multiplication table pointer
-			sta	dp_mos_vdu_mul			; store it
-			lda	#>_MUL640_TABLE			; A=&C3
-			sta	dp_mos_vdu_mul+1			; store it (&E0) now points to C3B5 or C375
+			lda	_TAB_MULTBL_LKUP_L,X		; row multiplication table pointer
+			sta	z:dp_mos_vdu_mul		; store it
+			lda	_TAB_MULTBL_LKUP_H,X		; row multiplication table pointer
+			sta	z:dp_mos_vdu_mul+1		; store it (&E0) now points to C3B5 or C375
 
 ;;			.assert >_MUL640_TABLE = >_MUL40_TABLE, error, "_MUL640_TABLE and _MUL40_TABLE must start in same page"
 
 			lda	_TAB_BPR,X			; get nuber of bytes per row from table
-			sta	vduvar_BYTES_PER_ROW				; store as bytes per character row
+			sta	vduvar_BYTES_PER_ROW		; store as bytes per character row
 
-			stx	vduvar_BYTES_PER_ROW+1			; bytes per character row
+			stx	vduvar_BYTES_PER_ROW+1		; bytes per character row
 			lda	#$43				; A=&43
-			jsr	AND_VDU_STATUS				; A=A and &D0:&D0=A
+			jsr	AND_VDU_STATUS			; A=A and &D0:&D0=A
 			ldx	vduvar_MODE			; screen mode
 			lda	_ULA_SETTINGS,X			; get video ULA control setting
 			jsr	VID_ULA_SET			; set video ULA using osbyte 154 code
@@ -1829,13 +1879,19 @@ _BCB5E:			asl					; A=A*2
 			ldx	_TAB_CRTCBYMOSZ,Y			; get cursor end register data from table
 			ldy	#$0b				; Y=11
 
-_BCBB0:			lda	_CRTC_REG_TAB,X			; get end of 6845 registers 0-11 table
+
+			pea	0
+			plb
+			plb
+
+@lp:			lda	f:_CRTC_REG_TAB,X		; get end of 6845 registers 0-11 table
 			jsr	SET_CRTC_YeqA			; set register Y
 			dex					; reduce pointers
 			dey					; 
-			bpl	_BCBB0				; and if still >0 do it again
+			bpl	@lp				; and if still >0 do it again
 
 			plp					; pull flags
+
 			jsr	_VDU_20				; set default colours
 			jsr	_VDU_26				; set default windows
 
@@ -1846,17 +1902,35 @@ _LCBC1_DOCLS:		ldx	#$00				; X=0
 			jsr	SET_CRTC_CURSeqAX_adj		; use AX to set new cursor address
 			ldy	#$0c				; Y=12
 			jsr	SET_CRTC_YeqAX			; set registers 12 and 13 in CRTC
+
+
+			php
+			rep	#$10
+			.i16
+			lda	#0
+			xba
+			lda	vduvar_SCREEN_BOTTOM_HIGH
+			xba
+			tax					; set copy source
+			txy
+			iny					; set copy dest
+
+			xba					; B=0
 			lda	vduvar_TXT_BACK			; background text colour
-			ldx	vduvar_MODE_SIZE			; memory map type
-			ldy	_TAB_CLS_ENTER,X		; get section control number
-			sty	vduvar_VDU_VEC_JMP			; set it in jump vector lo
-			ldy	#>_VDU_CLEAR_20K		; Y=&CC
-			sty	vduvar_VDU_VEC_JMP+1			; upper byte of link address
+			sta	f:$FF0000,X				
+			lda	vduvar_SCREEN_SIZE_HIGH
+			xba
+			dec	A
+			mvn	#$FF,#$FF			; CLS
+
+
+			plp
+
 			ldx	#$00				; X=0
 			stx	sysvar_SCREENLINES_SINCE_PAGE			; paged mode counter
 			stx	vduvar_TXT_CUR_X			; text column
 			stx	vduvar_TXT_CUR_Y			; current text line
-			jmp	(vduvar_VDU_VEC_JMP)			; jump vector set up previously to clear screen memory
+			rts
 
 
 ;*************************************************************************
@@ -1878,117 +1952,11 @@ _BCBF8:			lda	(dp_mos_vdu_wksp+4),Y			; get first byte
 			rts					; then exit
 
 
-;*************************************************************************
-;*									 *
-;*	 MAIN SCREEN CLEARANCE ROUTINE					 *
-;*									 *
-;*************************************************************************
-;on entry A contains background colour which is set in every byte
-;of the screen
-
-;************************ Mode 0,1,2 entry point *************************
-
-;;	.assert >_VDU_CLEAR_20K = >_VDU_CLEAR_1K, error, "CLS routine entry points must all be in same page"
-
-_VDU_CLEAR_20K:		sta	$3000,X				; 
-			sta	$3100,X				; 
-			sta	$3200,X				; 
-			sta	$3300,X				; 
-			sta	$3400,X				; 
-			sta	$3500,X				; 
-			sta	$3600,X				; 
-			sta	$3700,X				; 
-			sta	$3800,X				; 
-			sta	$3900,X				; 
-			sta	$3a00,X				; 
-			sta	$3b00,X				; 
-			sta	$3c00,X				; 
-			sta	$3d00,X				; 
-			sta	$3e00,X				; 
-			sta	$3f00,X				; 
-
-;************************ Mode 3 entry point *****************************
-_VDU_CLEAR_16K:
-			sta	$4000,X				; 
-			sta	$4100,X				; 
-			sta	$4200,X				; 
-			sta	$4300,X				; 
-			sta	$4400,X				; 
-			sta	$4500,X				; 
-			sta	$4600,X				; 
-			sta	$4700,X				; 
-			sta	$4800,X				; 
-			sta	$4900,X				; 
-			sta	$4a00,X				; 
-			sta	$4b00,X				; 
-			sta	$4c00,X				; 
-			sta	$4d00,X				; 
-			sta	$4e00,X				; 
-			sta	$4f00,X				; 
-			sta	$5000,X				; 
-			sta	$5100,X				; 
-			sta	$5200,X				; 
-			sta	$5300,X				; 
-			sta	$5400,X				; 
-			sta	$5500,X				; 
-			sta	$5600,X				; 
-			sta	$5700,X				; 
-
-_VDU_CLEAR_10K:
-;************************ Mode 4,5 entry point ***************************
-
-			sta	$5800,X				; 
-			sta	$5900,X				; 
-			sta	$5a00,X				; 
-			sta	$5b00,X				; 
-			sta	$5c00,X				; 
-			sta	$5d00,X				; 
-			sta	$5e00,X				; 
-			sta	$5f00,X				; 
-
-_VDU_CLEAR_8K:
-;************************ Mode 6 entry point *****************************
-
-			sta	$6000,X				; 
-			sta	$6100,X				; 
-			sta	$6200,X				; 
-			sta	$6300,X				; 
-			sta	$6400,X				; 
-			sta	$6500,X				; 
-			sta	$6600,X				; 
-			sta	$6700,X				; 
-			sta	$6800,X				; 
-			sta	$6900,X				; 
-			sta	$6a00,X				; 
-			sta	$6b00,X				; 
-			sta	$6c00,X				; 
-			sta	$6d00,X				; 
-			sta	$6e00,X				; 
-			sta	$6f00,X				; 
-			sta	$7000,X				; 
-			sta	$7100,X				; 
-			sta	$7200,X				; 
-			sta	$7300,X				; 
-			sta	$7400,X				; 
-			sta	$7500,X				; 
-			sta	$7600,X				; 
-			sta	$7700,X				; 
-			sta	$7800,X				; 
-			sta	$7900,X				; 
-			sta	$7a00,X				; 
-			sta	$7b00,X				; 
-
-_VDU_CLEAR_1K:
-;************************ Mode 7 entry point *****************************
-
-			sta	$7c00,X				; 
-			sta	$7d00,X				; 
-			sta	$7e00,X				; 
-			sta	$7f00,X				; 
-			inx					; 
-			beq	_BCD65				; exit
 
 ;****************** execute required function ****************************
+
+;;;; TODO: make _VDU_JUMP work if called via emu mode!
+;;;; TODO: this assumes only our module uses this address and is in same bank
 
 _VDU_JUMP:		jmp	(vduvar_VDU_VEC_JMP)			; jump vector set up previously
 
@@ -2040,9 +2008,12 @@ _BCD34:			sta	sysvar_CUR_OSHWM			; current value of page (OSHWM)
 			tay					; Y=A
 			beq	_BCD06				; return via CD06 (ERROR?)
 
-			ldx	#$11				; X=&11
-			jmp	_OSBYTE_143			; issue paged ROM service call &11
+			ldx	#SERVICE_11_FONT_BANG		; X=&11
+			lda	#OSBYTE_143_SERVICE_CALL
+			cop	COP_06_OPOSB			; issue paged ROM service call &11
 								; font implosion/explosion warning
+			rts
+
 
 ;******** move text cursor to next line **********************************
 
@@ -3946,3 +3917,149 @@ _BD93E:			tay					; Pass high byte of address to Y
 			rts					; and return address in YX
 
 
+;*************************************************************************
+;*									 *
+;*	 OSBYTE 154 (&9A) SET VIDEO ULA					 *
+;*									 *
+;*************************************************************************
+
+_OSBYTE_154:		txa					; osbyte entry! X transferred to A thence to
+
+
+VID_ULA_SET:		php					; save flags
+			sep	#$20
+			.a8
+			sei					; disable interupts
+			sta	f:sysvar_VIDPROC_CTL_COPY	; save RAM copy of new parameter
+			sta	f:sheila_VIDULA_ctl		; write to control register
+			lda	f:sysvar_FLASH_MARK_PERIOD	; read	space count
+			sta	f:sysvar_FLASH_CTDOWN		; set flash counter to this value
+			plp					; get back status
+			rts					; and return
+
+
+
+;*************************************************************************
+;*									 *
+;*	  OSBYTE &9B (155) write to palette register			 *
+;*									 *
+;*************************************************************************
+;entry X contains value to write
+_OSBYTE_155:		txa					; A=X
+_LEA11:			eor	#$07				; convert to palette format
+			php					; 
+			sei					; prevent interrupts
+			sta	sysvar_VIDPROC_PAL_COPY		; store as current palette setting
+			sta	f:sheila_VIDULA_pal		; store actual colour in register
+			plp					; get back flags
+			rts					; and exit
+
+; WRCH control routine
+; ====================
+		; Enter her from main NATIVE vector as a FAR call
+			.a16
+			.i16
+
+_NVWRCH:		pha					; Save all registers
+			txa					
+			pha					
+			tya					
+			pha					
+
+			pea	0
+			pld					; TODO: get rid - set by CallAVector?
+			phd
+			plb
+			plb
+
+			sep	#$30
+			.a8
+			.i8
+
+
+			lda	5,S				; Get A back from stack
+			pha					; Save A
+			bit	sysvar_ECO_OSWRCH_INTERCEPT	; Check OSWRCH interception flag
+			bpl	__no_intercept			; Not set, skip interception call
+			tay					; Pass character to Y
+			lda	#$04				; A=4 for OSWRCH call
+			pea	IX_NETV
+			pld
+			jsl	CallAVector_NAT			; Call interception code
+			bcs	_BE10D				; If claimed, jump past to exit
+__no_intercept:		clc					; Prepare to not send this to printer
+			lda	#$02				; Check output destination
+			bit	sysvar_OUTSTREAM_DEST		; Is VDU driver disabled?
+			bne	_BE0C8				; Yes, skip past VDU driver
+			pla					; Get character back
+			pha					; Resave character
+			jsr	_VDUCHR				; Call VDU driver
+								; On exit, C=1 if character to be sent to printer
+
+_BE0C8:			
+
+;;TODO:printer/serial
+;;
+;;			lda	#$08				; Check output destination
+;;			bit	sysvar_OUTSTREAM_DEST		; Is printer seperately enabled?
+;;			bne	_BE0D1				; Yes, jump to call printer driver
+;;			bcc	_BE0D6				; Carry clear, don't sent to printer
+;;_BE0D1:			pla					; Get character back
+;;			pha					; Resave character
+;;			jsr	_PRINTER_OUT			; Call printer driver
+;;
+;;_BE0D6:			lda	sysvar_OUTSTREAM_DEST		; Check output destination
+;;			ror	A				; Is serial output enabled?
+;;			bcc	_BE0F7				; No, skip past serial output
+;;			ldy	RS423_TIMEOUT			; Get serial timout counter
+;;			dey					; Decrease counter
+;;			bpl	_BE0F7				; Timed out, skip past serial code
+;;			pla					; Get character back
+;;			pha					; Resave character
+;;			php					; Save IRQs
+;;			sei					; Disable IRQs
+;;			ldx	#$02				; X=2 for serial output buffer
+;;			pha					; Save character
+;;			jsr	_OSBYTE_152			; Examine serial output buffer
+;;			bcc	_BE0F0				; Buffer not full, jump to send character
+;;			jsr	_LE170				; Wait for buffer to empty a bit
+;;_BE0F0:			pla					; Get character back
+;;			ldx	#$02				; X=2 for serial output buffer
+;;			jsr	_BUFFER_SAVE			; Send character to serial output buffer
+;;			plp					; Restore IRQs
+;;
+;;TODO:spool/files
+;;_BE0F7:		lda	#$10				; Check output destination
+;;			bit	sysvar_OUTSTREAM_DEST		; Is SPOOL output disabled?
+;;			bne	_BE10D				; Yes, skip past SPOOL output
+;;			ldy	OSB_SPOOL_HND			; Get SPOOL handle
+;;			beq	_BE10D				; If not open, skip past SPOOL output
+;;			pla					; Get character back
+;;			pha					; Resave character
+;;			sec					
+;;			ror	CRFS_ACTIVE			; Set RFS/CFS's 'spooling' flag
+;;			jsr	OSBPUT				; Write character to SPOOL channel
+;;			lsr	CRFS_ACTIVE			; Reset RFS/CFS's 'spooling' flag
+
+_BE10D:			pla					; Restore all registers
+			pla					
+			tay					
+			pla					
+			tax					
+			pla					
+			rtl					; Exit
+
+
+
+		;;TODO sound
+_VDU_7:			rts
+
+
+;****************** Write A to SYSTEM VIA register B *************************
+				; called from &CB6D, &CB73
+_WRITE_SYS_VIA_PORTB:	php					; push flags
+			sep	#$24				; disable interupts and little A
+			.a8
+			sta	f:sheila_SYSVIA_orb		; write register B from Accumulator
+			plp					; get back flags
+			rts					; and exit

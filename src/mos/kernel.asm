@@ -5,6 +5,9 @@
 		.include "debug.inc"
 		.include "vectors.inc"
 		.include "nat-layout.inc"
+		.include "oslib.inc"
+		.include "sysvars.inc"
+		.include "vduvars.inc"
 
 		.export nat_handle_cop
 		.export nat_handle_brk
@@ -97,6 +100,37 @@ enter_FF:	xce
 		lda	#$01
 		sta	sheila_MEM_LOMEMTURBO
 
+;TODO:::::::::::::::: ZERO DPSYS :::::::::: This should depend on break type -see original MOS
+
+		lda	#0
+		ldx	#$C0
+@l:		sta	z:0,X
+		inx
+		bne	@l
+
+;TODO:::::::::::::::: ZERO/FF SYSVARS :::::::::: This should depend on break type -see original MOS
+
+
+			ldx	#$90
+			ldy	#$87-$36
+			lda	#$00				; A=0
+_BDA44:			cpx	#$ce				; zero &200+X to &2CD
+			bcc	_BDA4A				; 
+			lda	#$ff				; then set &2CE to &2FF to &FF
+_BDA4A:			sta	$200,X				; 
+			inx					; 
+			bne	_BDA44				; 
+
+
+
+
+_BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
+			sta	$236-1,Y			; to &1FF+Y
+			dey					; until
+			bne	_BDA5B				; 1FF+Y=&200
+
+
+
 		rep	#$30
 		.i16
 		.a16
@@ -176,6 +210,24 @@ enter_FF:	xce
 		dex
 		dex	
 		bne	@lp2	
+
+
+		
+		sep	#$30
+		.i8
+		.a8
+		lda	#$80
+		sta	sysvar_RAM_AVAIL
+
+		DEBUG_PRINTF "VDU_INIT\n"
+		lda	#3
+		jsl	VDU_INIT
+
+		DEBUG_PRINTF "TEST_VDU\n"
+		lda	#65
+		pea	IX_WRCHV
+		pld
+		jsl	CallAVector_NAT
 
 		sep	#$30
 		.i8
@@ -492,3 +544,123 @@ tblMosLocs:	.word	$FFC0	; map 0, mosram dis
 		.word	$7D00	; map 1, mosram en
 
 
+
+;;;;;;;;;;;;;;;;;; TODO: split this up into relevant modules?
+
+
+; -------------------------------------------------------------------------
+; |									  |
+; |	  DEFAULT MOS VARIABLES SETTINGS				  |
+; |									  |
+; -------------------------------------------------------------------------
+
+;* Read/Written by OSBYTE &A6 to &FC
+
+default_sysvars:
+			.addr	$0190				; OSBYTE variables base address		 &236	*FX166/7
+								; (address to add to osbyte number)
+			.addr	BBC_EXT_VEC_BASE		; Address of extended vectors		 &238	*FX168/9
+			.addr	oswksp_ROMTYPE_TAB		; Address of ROM information table	 &23A	*FX170/1
+			.addr	0				; Address of key translation table	 &23C	*FX172/3  ;;;;TODO: Do this in keyboard module?!
+			.word	vduvars_start			; Address of VDU variables		 &23E	*FX174/5
+
+			.byte	$00				; CFS/Vertical sync Timeout counter	 &240	*FX176
+			.byte	$00				; Current input buffer number		 &241	*FX177
+			.byte	$ff				; Keyboard interrupt processing flag	 &242	*FX178
+			.byte	$00				; Primary OSHWM (default PAGE)		 &243	*FX179
+			.byte	$00				; Current OSHWM (PAGE)			 &244	*FX180
+			.byte	$01				; RS423 input mode			 &245	*FX181
+			.byte	$00				; Character explosion state		 &246	*FX182
+			.byte	$00				; CFS/RFS selection, CFS=0 ROM=2	 &247	*FX183
+			.byte	$00				; Video ULA control register copy	 &248	*FX184
+			.byte	$00				; Pallette setting copy			 &249	*FX185
+			.byte	$00				; ROM number selected at last BRK	 &24A	*FX186
+			.byte	$ff				; BASIC ROM number			 &24B	*FX187
+			.byte	$04				; Current ADC channel number		 &24C	*FX188
+			.byte	$04				; Maximum ADC channel number		 &24D	*FX189
+			.byte	$00				; ADC conversion 0/8bit/12bit		 &24E	*FX190
+			.byte	$ff				; RS423 busy flag (bit 7=0, busy)	 &24F	*FX191
+
+			.byte	$56				; ACIA control register copy		 &250	*FX192
+			.byte	$19				; Flash counter				 &251	*FX193
+			.byte	$19				; Flash mark period count		 &252	*FX194
+			.byte	$19				; Flash space period count		 &253	*FX195
+			.byte	$32				; Keyboard auto-repeat delay		 &254	*FX196
+			.byte	$08				; Keyboard auto-repeat rate		 &255	*FX197
+			.byte	$00				; *EXEC file handle			 &256	*FX198
+			.byte	$00				; *SPOOL file handle			 &257	*FX199
+			.byte	$00				; Break/Escape handing			 &258	*FX200
+			.byte	$00				; Econet keyboard disable flag		 &259	*FX201
+			.byte	$20				; Keyboard status			 &25A	*FX202
+								; bit 3=1 shift pressed
+								; bit 4=0 caps	lock
+								; bit 5=0 shift lock
+								; bit 6=1 control bit
+								; bit 7=1 shift enabled
+			.byte	$09				; Serial input buffer full threshold	 &25B	*FX203
+			.byte	$00				; Serial input suppression flag		 &25C	*FX204
+			.byte	$00				; Cassette/RS423 flag (0=CFS, &40=RS423) &25D	*FX205
+			.byte	$00				; Econet OSBYTE/OSWORD interception flag &25E	*FX206
+			.byte	$00				; Econet OSRDCH interception flag	 &25F	*FX207
+
+			.byte	$00				; Econet OSWRCH interception flag	 &260	*FX208
+			.byte	$50				; Speech enable/disable flag (&20/&50)	 &261	*FX209
+			.byte	$00				; Sound output disable flag		 &262	*FX210
+			.byte	$03				; BELL channel number			 &263	*FX211
+			.byte	$90				; BELL amplitude/Envelope number	 &264	*FX212
+			.byte	$64				; BELL frequency			 &265	*FX213
+			.byte	$06				; BELL duration				 &266	*FX214
+			.byte	$81				; Startup message/!BOOT error status	 &267	*FX215
+			.byte	$00				; Length of current soft key string	 &268	*FX216
+			.byte	$00				; Lines printed since last paged halt	 &269	*FX217
+			.byte	$00				; 0-(Number of items in VDU queue)	 &26A	*FX218
+			.byte	$09				; TAB key value				 &26B	*FX219
+			.byte	$1b				; ESCAPE character			 &26C	*FX220
+
+				; The following are input buffer code interpretation variables for
+				; bytes entered into the input buffer with b7 set (is 128-255).
+				; The standard keyboard only enters characters &80-&BF with the
+				; function keys, but other characters can be entered, for instance
+				; via serial input of via other keyboard input systems.
+				; 0=ignore key
+				; 1=expand as soft key
+				; 2-FF add to base for ASCII code
+			.byte	$01				; C0-&CF				 &26D	*FX221
+			.byte	$d0				; D0-&DF				 &26E	*FX222
+			.byte	$e0				; E0-&EF				 &26F	*FX223
+			.byte	$f0				; F0-&FF				 &270	*FX224
+			.byte	$01				; 80-&8F function key			 &271	*FX225
+			.byte	$80				; 90-&9F Shift+function key		 &272	*FX226
+			.byte	$90				; A0-&AF Ctrl+function key		 &273	*FX227
+			.byte	$00				; B0-&BF Shift+Ctrl+function key	 &274	*FX228
+
+			.byte	$00				; ESCAPE key status (0=ESC, 1=ASCII)	 &275	*FX229
+			.byte	$00				; ESCAPE action				 &276	*FX230
+_BD9B7:			.byte	$ff				; USER 6522 Bit IRQ mask		 &277	*FX231
+			.byte	$ff				; 6850 ACIA Bit IRQ bit mask		 &278	*FX232
+			.byte	$ff				; System 6522 IRQ bit mask		 &279	*FX233
+			.byte	$00				; Tube prescence flag			 &27A	*FX234
+			.byte	$00				; Speech processor prescence flag	 &27B	*FX235
+			.byte	$00				; Character destination status		 &27C	*FX236
+			.byte	$00				; Cursor editing status			 &27D	*FX237
+
+;****************** Soft Reset high water mark ***************************
+
+			.byte	$00				; unused				 &27E	*FX238
+			.byte	$00				; unused				 &27F	*FX239
+			.byte	$00				; Country code				 &280	*FX240
+			.byte	$00				; User flag				 &281	*FX241
+			.byte	$64				; Serial ULA control register copy	 &282	*FX242
+			.byte	$05				; Current system clock state		 &283	*FX243
+			.byte	$ff				; Soft key consitancy flag		 &284	*FX244
+			.byte	$01				; Printer destination			 &285	*FX245
+			.byte	$0a				; Printer ignore character		 &286	*FX246
+
+;****************** Hard Reset High water mark ***************************
+
+			.byte	$00				; Break Intercept Vector JMP opcode	 &288	*FX247
+			.byte	$00				; Break Intercept Vector address low	 &288	*FX248
+			.byte	$00				; Break Intercept Vector address high	 &289	*FX249
+			.byte	$00				; unused (memory used for VDU)		 &28A	*FX250
+			.byte	$00				; unused (memory used for display)	 &28B	*FX251
+			.byte	$ff				; Current language ROM number		 &28C	*FX252
