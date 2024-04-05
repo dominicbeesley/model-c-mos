@@ -269,7 +269,7 @@ AddToVector:	php
 		ply
 		plp
 		clc
-		rts
+		rtl
 @retsec:	plx
 		ply
 		plp
