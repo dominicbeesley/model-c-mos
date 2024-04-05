@@ -24,6 +24,11 @@ OSBYTE_253_VAR_LAST_RESET		:=	253
 
 
 ;;;; COP CALLS - from Communicator 
+COP_00_OPWRC				:=	$00		; WRCH
+COP_01_OPWRS				:=	$01		; Write string immediate
+COP_02_OPWRA				:=	$02		; Write string BHA
+COP_03_OPNLI				:=	$03		; Write LF/CR
+
 COP_06_OPOSB				:=	$06		; OBYTE
 
 

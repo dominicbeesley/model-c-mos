@@ -21,6 +21,9 @@
 		.export emu_handle_nmi
 		.export emu_handle_res
 
+		.export nat2emu_rtl
+
+
 		.export bank0
 		.export bankFF
 
@@ -44,16 +47,22 @@ emu_handle_abort:
 
 
 
-nat_handle_cop:		
+nat_handle_cop:	jml	cop_handle_nat	
 nat_handle_brk:	rti
 nat_handle_nmi:		
 nat_handle_irq:	rti
 
 		.a8
-emu_handle_cop:	rti
+emu_handle_cop:	clc		
+		xce				; enter native mode 
+		jml	cop_handle_emu
 emu_handle_irq:	
 emu_handle_nmi:	rti
 
+
+nat2emu_rtl:	sec
+		xce
+		rtl
 
 		.segment "boot_CODE"
 
@@ -233,25 +242,14 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.i8
 		.a8
 		phk
-		plb			; databank is code		
+		plb			; databank is code	
+
 
 here:		
-		ldy	#10		
-		ldx	#0
-		stx	$0
-@wlp:		dex
-		bne	@wlp
-		dec	$0
-		bne	@wlp
-		dey
-		bne	@wlp
 
-		phk
-		plb
-		lda	#>test_str
-		xba
-		lda	#<test_str
-		jsr	printStrBHA
+		cop	COP_01_OPWRS
+		.byte	"Hello",0	
+
 	
 		jmp	here
 
