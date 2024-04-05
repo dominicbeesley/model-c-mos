@@ -229,7 +229,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		sta	sysvar_RAM_AVAIL
 
 		DEBUG_PRINTF "VDU_INIT\n"
-		lda	#3
+		lda	#1
 		jsl	VDU_INIT
 
 		DEBUG_PRINTF "TEST_VDU\n"

@@ -2466,13 +2466,15 @@ _LCFBF:			ldx	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
 			and	#$20				; and out bit 5 printing at graphics cursor
 			bne	_BCF5D				; if set CF5D
 			ldy	#$07				; else Y=7
-			cpx	#$03				; if X=3
-			beq	_VDU_OUT_COL4			; goto CFEE to handle 4 colour modes
-			bcs	_VDU_OUT_COL16			; else if X>3 D01E to deal with 16 colours
 
 			phb
 			phk
 			plb
+
+			cpx	#$03				; if X=3
+			beq	_VDU_OUT_COL4			; goto CFEE to handle 4 colour modes
+			bcs	_VDU_OUT_COL16			; else if X>3 D01E to deal with 16 colours
+
 _VDU_OUT_COL2:		lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
 			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
 			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
@@ -2503,9 +2505,8 @@ __mode7_xlate_char:	lda	_TELETEXT_CHAR_TAB+1,Y	; convert with teletext conversio
 
 ;***********four colour modes ********************************************
 
-_VDU_OUT_COL4:		phb
-			phk
-			plb
+_VDU_OUT_COL4:		
+@lp:
 			;;TODO: assumes font in bank FF and this code in FF and screen in FF!
 			lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
 			pha					; save it
@@ -2533,7 +2534,7 @@ _VDU_OUT_COL4:		phb
 			tya					; A=Y
 			sbc	#$08				; A=A-9
 			tay					; Y=A
-			bpl	_VDU_OUT_COL4			; if +ve do loop again
+			bpl	@lp				; if +ve do loop again
 _BD017:			plb
 			rts					; exit
 
@@ -2546,10 +2547,7 @@ _BD018:			tya					; Y=Y-&21
 
 ;******* 16 COLOUR MODES *************************************************
 
-_VDU_OUT_COL16:		phb
-			phk
-			plb
-			lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
+_VDU_OUT_COL16:		lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
 			sta	z:dp_mos_vdu_wksp+2		; store it
 			sec					; set carry
 _BD023:			lda	#$00				; A=0
