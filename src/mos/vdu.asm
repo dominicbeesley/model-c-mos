@@ -1518,25 +1518,25 @@ _VDU_25:		ldx	vduvar_PIXELS_PER_BYTE_MINUS1	; pixels per byte
 
 ;********** adjust screen RAM addresses **********************************
 
-_LC994:			ldx	vduvar_6845_SCREEN_START				; window area start address lo
-			lda	vduvar_6845_SCREEN_START+1			; window area start address hi
+_LC994:			ldx	vduvar_6845_SCREEN_START	; window area start address lo
+			lda	vduvar_6845_SCREEN_START+1	; window area start address hi
 			jsr	_LCCF8				; subtract bytes per character row from this
 			bcs	_BC9B3				; if no wraparound needed C9B3
 
-			adc	vduvar_SCREEN_SIZE_HIGH			; screen RAM size hi byte to wrap around
+			adc	vduvar_SCREEN_SIZE_HIGH		; screen RAM size hi byte to wrap around
 			bcc	_BC9B3				; 
 
-_LC9A4:			ldx	vduvar_6845_SCREEN_START				; window area start address lo
-			lda	vduvar_6845_SCREEN_START+1			; window area start address hi
+_LC9A4:			ldx	vduvar_6845_SCREEN_START	; window area start address lo
+			lda	vduvar_6845_SCREEN_START+1	; window area start address hi
 			jsr	_LCAD4				; add bytes per char. row
 			bpl	_BC9B3				; 
 
 			sec					; wrap around i other direction
-			sbc	vduvar_SCREEN_SIZE_HIGH			; screen RAM size hi byte
-_BC9B3:			sta	vduvar_6845_SCREEN_START+1			; window area start address hi
-			stx	vduvar_6845_SCREEN_START				; window area start address lo
+			sbc	vduvar_SCREEN_SIZE_HIGH		; screen RAM size hi byte
+_BC9B3:			sta	vduvar_6845_SCREEN_START+1	; window area start address hi
+			stx	vduvar_6845_SCREEN_START	; window area start address lo
 			ldy	#$0c				; Y=12
-			bne	SET_CRTCY_AXDIV8				; jump to CA0E
+			bne	SET_CRTCY_AXDIV8		; jump to CA0E
 
 
 ;*************************************************************************
@@ -1640,15 +1640,15 @@ _VDU_24:		jsr	_LCA81				; exchange 310/3 with 328/3
 			jsr	_LD149				; scale pointers to mode
 			ldx	#$1c				; X=&1C
 			jsr	_LD149				; scale pointers to mode
-			lda	vduvar_VDU_Q_START+4			; check for negative margins
-			ora	vduvar_VDU_Q_START+2			; 
+			lda	vduvar_VDU_Q_START+4		; check for negative margins
+			ora	vduvar_VDU_Q_START+2		; 
 			bmi	_LCA81				; if found exchange 310/3 with 328/3 and exit
-			lda	vduvar_VDU_Q_START+8			; 
+			lda	vduvar_VDU_Q_START+8		; 
 			bne	_LCA81				; exchange 310/3 with 328/3 and exit
 			ldx	vduvar_MODE			; screen mode
-			lda	vduvar_VDU_Q_START+6			; right margin hi
+			lda	vduvar_VDU_Q_START+6		; right margin hi
 			sta	dp_mos_vdu_wksp			; store it
-			lda	vduvar_VDU_Q_START+5			; right margin lo
+			lda	vduvar_VDU_Q_START+5		; right margin lo
 			lsr	dp_mos_vdu_wksp			; /2
 			ror					; A=A/2
 			lsr	dp_mos_vdu_wksp			; /2
@@ -1707,11 +1707,11 @@ _VDU_29:		ldx	#$20				;
 _VDU_127:		jsr	_VDU_8				; cursor left
 			jsr	_LC588				; A=0 if text cursor A=&20 if graphics cursor
 			bne	__vdu_del_modeX			; if graphics then CAC7
-			ldx	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
+			ldx	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 			beq	__vdu_del_mode7			; if mode 7 CAC2
-			sta	dp_mos_vdu_wksp+4			; else store A (always 0)
+			sta	dp_mos_vdu_wksp+4		; else store A (always 0)
 			lda	#$c0				; A=&C0
-			sta	dp_mos_vdu_wksp+5			; store in &DF (&DE) now points to C300 SPACE pattern
+			sta	dp_mos_vdu_wksp+5		; store in &DF (&DE) now points to C300 SPACE pattern
 			jmp	_LCFBF				; display a space
 
 __vdu_del_mode7:	lda	#$20				; A=&20
@@ -2268,29 +2268,29 @@ _BCE9E:			sta	dp_mos_vdu_top_scanline+1,X		;
 
 ;*********** clear a line ************************************************
 
-_LCEAC:			lda	vduvar_TXT_CUR_X			; text column
+_LCEAC:			lda	vduvar_TXT_CUR_X		; text column
 			pha					; save it
 			jsr	_LCE6E				; set text column to left hand column
 			jsr	_LCF06				; set up display address
 			sec					; set carry
-			lda	vduvar_TXT_WINDOW_RIGHT			; text window right
-			sbc	vduvar_TXT_WINDOW_LEFT			; text window left
-			sta	dp_mos_vdu_wksp+2			; as window width
+			lda	vduvar_TXT_WINDOW_RIGHT		; text window right
+			sbc	vduvar_TXT_WINDOW_LEFT		; text window left
+			sta	dp_mos_vdu_wksp+2		; as window width
 _BCEBF:			lda	vduvar_TXT_BACK			; background text colour
-			ldy	vduvar_BYTES_PER_CHAR				; bytes per character
+			ldy	vduvar_BYTES_PER_CHAR		; bytes per character
 
 _BCEC5:			dey					; Y=Y-1 decrementing loop counter
-			sta	(dp_mos_vdu_top_scanline),Y		; store background colour at this point on screen
+			sta	(dp_mos_vdu_top_scanline),Y	; store background colour at this point on screen
 			bne	_BCEC5				; if Y<>0 do it again
 			txa					; else A=X
 			clc					; clear carry to add
-			adc	vduvar_BYTES_PER_CHAR				; bytes per character
+			adc	vduvar_BYTES_PER_CHAR		; bytes per character
 			tax					; X=A restoring it
-			lda	dp_mos_vdu_top_scanline+1			; get hi byte
+			lda	dp_mos_vdu_top_scanline+1	; get hi byte
 			adc	#$00				; Add carry if any
 			bpl	_BCEDA				; if +ve CeDA
 			sec					; else wrap around
-			sbc	vduvar_SCREEN_SIZE_HIGH			; screen RAM size hi byte
+			sbc	vduvar_SCREEN_SIZE_HIGH		; screen RAM size hi byte
 
 
 
