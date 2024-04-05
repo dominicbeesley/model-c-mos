@@ -1497,7 +1497,7 @@ _BC985:			pha
 			sta	f:sheila_CRTC_reg		; else set CRTC address register
 			pla
 			sta	f:sheila_CRTC_rw		; and poke new value to register Y
-			DEBUG_PRINTF "CRTC %Y=%A  %F\n"
+;;			DEBUG_PRINTF "CRTC %Y=%A  %F\n"
 _BC98B:			rts					; exit
 
 
@@ -1600,8 +1600,8 @@ SET_CRTCY_AXDIV8:	pha					; Push A
 
 _BCA27:			sbc	#$74				; mode 7 subtract &74
 			eor	#$20				; EOR with &20
-			;; TODO: native addresses use far
-SET_CRTC_YeqAX:		DEBUG_PRINTF "CRTC %Y=%A %X %F\n"
+SET_CRTC_YeqAX:		
+;;			DEBUG_PRINTF "CRTC %Y=%A %X %F\n"
 			pha
 			tya
 			sta	f:sheila_CRTC_reg		; write to CRTC address file register
@@ -1802,8 +1802,6 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 			stx	vduvar_MO7_CUR_CHAR		; MODE 7 copy cursor character (could have set this at CB1E)
 			jsr	setMode
 
-			WDM	0
-
 			; setup WRCHV vector native mode
 			rep	#$30
 			.a16
@@ -1826,7 +1824,8 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 
 ;********* enter here from VDU 22,n - MODE *******************************
 
-setMode:		DEBUG_PRINTF "MODE %A\n"
+setMode:		
+;;			DEBUG_PRINTF "MODE %A\n"
 
 			bit	sysvar_RAM_AVAIL		; Check available RAM
 			bmi	_BCB3A				; If 32K, use all MODEs
@@ -1884,8 +1883,6 @@ _BCB5E:			asl					; A=A*2
 			sta	z:dp_mos_vdu_mul		; store it
 			lda	_TAB_MULTBL_LKUP_H,X		; row multiplication table pointer
 			sta	z:dp_mos_vdu_mul+1		; store it (&E0) now points to C3B5 or C375
-
-;;			.assert >_MUL640_TABLE = >_MUL40_TABLE, error, "_MUL640_TABLE and _MUL40_TABLE must start in same page"
 
 			lda	_TAB_BPR,X			; get nuber of bytes per row from table
 			sta	vduvar_BYTES_PER_ROW		; store as bytes per character row
@@ -2346,17 +2343,22 @@ _BCEF7:			ldx	vduvar_TXT_CUR_Y			; current text line
 _LCF06:			lda	vduvar_TXT_CUR_Y			; current text line
 			asl					; A=A*2
 			tay					; Y=A
+			phb
+			phk
+			plb
 			lda	(dp_mos_vdu_mul),Y		; get CRTC multiplication table pointer
-			sta	dp_mos_vdu_top_scanline+1			; &D9=A
+			sta	z:dp_mos_vdu_top_scanline+1			; &D9=A
 			iny					; Y=Y+1
-			lda	#$02				; A=2
-			and	vduvar_MODE_SIZE			; memory map type
-			php					; save flags
 			lda	(dp_mos_vdu_mul),Y		; get CRTC multiplication table pointer
-			plp					; pull flags
-			beq	_BCF1E				; 
-			lsr	dp_mos_vdu_top_scanline+1			; &D9=&D9/2
-			ror					; A=A/2 +(128*carry)
+			plb
+			pha
+			lda	vduvar_MODE_SIZE		; memory map type
+			ror	A
+			ror	A
+			pla
+			bcc	_BCF1E				; 
+			lsr	z:dp_mos_vdu_top_scanline+1	; &D9=&D9/2
+			ror	A				; A=A/2 +(128*carry)
 _BCF1E:			adc	vduvar_6845_SCREEN_START				; window area start address lo
 			sta	dp_mos_vdu_top_scanline			; store it
 			lda	dp_mos_vdu_top_scanline+1			; 
@@ -3822,10 +3824,14 @@ _LD864:			lda	vduvar_GRA_WINDOW_BOTTOM,X			; else set up graphics scan line vari
 			lsr					; A=A/2
 			asl					; A=A*2 this gives integer value bit 0 =0
 			tay					; Y=A
+			phb
+			phk
+			plb
 			lda	(dp_mos_vdu_mul),Y		; get high byte of offset from screen RAM start
 			sta	dp_mos_vdu_wksp			; store it
 			iny					; Y=Y+1
 			lda	(dp_mos_vdu_mul),Y		; get lo byte
+			plb
 			ldy	vduvar_MODE_SIZE			; get screen map type
 			beq	_BD884				; if 0 (modes 0,1,2) goto D884
 			lsr	dp_mos_vdu_wksp			; else &DA=&DA/2
