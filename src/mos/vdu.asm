@@ -14,6 +14,8 @@
 ; This taken from https://github.com/raybellis/mos120/blob/master/mos120.s
 ; and hacked for native mode
 
+;THIS CODE ASSUMES IT IS RUNNING IN BANK FF/Same bank as Screen
+
 
 			.byte	$08,$0d,$0d			; Termination byte in next table
 
@@ -1546,40 +1548,41 @@ _BC9B3:			sta	vduvar_6845_SCREEN_START+1			; window area start address hi
 _VDU_26:		lda	#$00				; A=0
 			ldx	#$2c				; X=&2C
 
-_BC9C1:			sta	vduvar_GRA_WINDOW_LEFT,X			; clear all windows
+_BC9C1:			sta	vduvar_GRA_WINDOW_LEFT,X	; clear all windows
 			dex					; 
 			bpl	_BC9C1				; until X=&FF
 
 			ldx	vduvar_MODE			; screen mode
-			ldy	_TEXT_COL_TABLE,X		; text window right hand margin maximum
-			sty	vduvar_TXT_WINDOW_RIGHT			; text window right
+			lda	f:_TEXT_COL_TABLE,X		; text window right hand margin maximum
+			sta	vduvar_TXT_WINDOW_RIGHT		; text window right
+			tay
 			jsr	_LCA88				; calculate number of bytes in a line
-			ldy	_TEXT_ROW_TABLE,X		; text window bottom margin maximum
-			sty	vduvar_TXT_WINDOW_BOTTOM			; bottom margin
+			lda	f:_TEXT_ROW_TABLE,X		; text window bottom margin maximum
+			sta	vduvar_TXT_WINDOW_BOTTOM	; bottom margin			
 			ldy	#$03				; Y=3
-			sty	vduvar_VDU_Q_START+8			; set as last parameter
+			sty	vduvar_VDU_Q_START+8		; set as last parameter
 			iny					; increment Y
-			sty	vduvar_VDU_Q_START+6			; set parameters
-			dec	vduvar_VDU_Q_START+7			; 
-			dec	vduvar_VDU_Q_START+5			; 
+			sty	vduvar_VDU_Q_START+6		; set parameters
+			dec	vduvar_VDU_Q_START+7		; 
+			dec	vduvar_VDU_Q_START+5		; 
 			jsr	_VDU_24				; and do VDU 24
 			lda	#$f7				; 
-			jsr	AND_VDU_STATUS				; clear bit 3 of &D0
-			ldx	vduvar_6845_SCREEN_START				; window area start address lo
-			lda	vduvar_6845_SCREEN_START+1			; window area start address hi
-SET_CRTC_CURSeqAX_adj:	stx	vduvar_6845_CURSOR_ADDR			; text cursor 6845 address
-			sta	vduvar_6845_CURSOR_ADDR+1			; text cursor 6845 address
-			bpl	SET_CURS_CHARSCANAX				; set cursor position
+			jsr	AND_VDU_STATUS			; clear bit 3 of &D0
+			ldx	vduvar_6845_SCREEN_START	; window area start address lo
+			lda	vduvar_6845_SCREEN_START+1	; window area start address hi
+SET_CRTC_CURSeqAX_adj:	stx	vduvar_6845_CURSOR_ADDR		; text cursor 6845 address
+			sta	vduvar_6845_CURSOR_ADDR+1	; text cursor 6845 address
+			bpl	SET_CURS_CHARSCANAX		; set cursor position
 			sec					; 
-			sbc	vduvar_SCREEN_SIZE_HIGH			; screen RAM size hi byte
+			sbc	vduvar_SCREEN_SIZE_HIGH		; screen RAM size hi byte
 
 ;**************** set cursor position ************************************
 
-SET_CURS_CHARSCANAX:	stx	dp_mos_vdu_top_scanline			; set &D8/9 from X/A
-			sta	dp_mos_vdu_top_scanline+1			; 
-			ldx	vduvar_6845_CURSOR_ADDR			; text cursor 6845 address
-			lda	vduvar_6845_CURSOR_ADDR+1			; text cursor 6845 address
-			ldy	#$0e				; Y=15
+SET_CURS_CHARSCANAX:	stx	dp_mos_vdu_top_scanline		; set &D8/9 from X/A
+			sta	dp_mos_vdu_top_scanline+1	; 
+			ldx	vduvar_6845_CURSOR_ADDR		; text cursor 6845 address
+			lda	vduvar_6845_CURSOR_ADDR+1	; text cursor 6845 address
+			ldy	#$0e				; Y=14
 SET_CRTCY_AXDIV8:	pha					; Push A
 			lda	vduvar_MODE			; screen mode
 			cmp	#$07				; is it mode 7?
@@ -1652,7 +1655,7 @@ _VDU_24:		jsr	_LCA81				; exchange 310/3 with 328/3
 			bne	_LCA81				; exchange 310/3 with 328/3
 			ror					; A=A/2
 			lsr					; A=A/2
-			cmp	_TEXT_COL_TABLE,X		; text window right hand margin maximum
+			cmp	f:_TEXT_COL_TABLE,X		; text window right hand margin maximum
 			beq	_BCA7A				; if equal CA7A
 			bpl	_LCA81				; exchange 310/3 with 328/3
 
@@ -1798,9 +1801,28 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 			ldx	#$7f				; X=&7F
 			stx	vduvar_MO7_CUR_CHAR		; MODE 7 copy cursor character (could have set this at CB1E)
 			jsr	setMode
+
+			WDM	0
+
+			; setup WRCHV vector native mode
+			rep	#$30
+			.a16
+			.i16
+			phb
+			pea	0
+			pld				
+			phk
+			plb
+			lda	#.loword(_NVWRCH)
+			ldx	#IX_WRCHV
+			jsl	AddToVector
+			plb			
+
 			plp
 			rtl
 		
+			.a8
+			.i8
 
 ;********* enter here from VDU 22,n - MODE *******************************
 
@@ -1925,6 +1947,7 @@ _LCBC1_DOCLS:		ldx	#$00				; X=0
 
 
 			plp
+			.i8
 
 			ldx	#$00				; X=0
 			stx	sysvar_SCREENLINES_SINCE_PAGE			; paged mode counter
@@ -2441,34 +2464,44 @@ _LCFBF:			ldx	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
 			beq	_VDU_OUT_COL4			; goto CFEE to handle 4 colour modes
 			bcs	_VDU_OUT_COL16			; else if X>3 D01E to deal with 16 colours
 
-_BCFD0:			lda	(dp_mos_vdu_wksp+4),Y			; get pattern byte
-			ora	dp_mos_vdu_txtcolourOR			; text colour byte to be orred or EORed into memory
-			eor	dp_mos_vdu_txtcolourEOR			; text colour byte to be orred or EORed into memory
-			sta	(dp_mos_vdu_top_scanline),Y		; write to screen
+			phb
+			phk
+			plb
+_VDU_OUT_COL2:		lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
+			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
+			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
+			sta	(dp_mos_vdu_top_scanline),Y	; write to screen
 			dey					; Y=Y-1
-			bpl	_BCFD0				; if still +ve do loop again
+			bpl	_VDU_OUT_COL2				; if still +ve do loop again
+			plb
 			rts					; and exit
 
 ;******* convert teletext characters *************************************
 ;mode 7
-_VDU_OUT_MODE7:		ldy	#$02				; Y=2
+_VDU_OUT_MODE7:		phb
+			phk
+			plb
+			ldy	#$02				; Y=2
 __mode7_xlate_loop:	cmp	_TELETEXT_CHAR_TAB,Y		; compare with teletext conversion table
 			beq	__mode7_xlate_char		; if equal then CFE9
 			dey					; else Y=Y-1
 			bpl	__mode7_xlate_loop		; and if +ve CFDE
 
-__mode7_out_char:	sta	(dp_mos_vdu_top_scanline,X)		; if not write byte to screen
+__mode7_out_char:	sta	(dp_mos_vdu_top_scanline)	; if not write byte to screen
+			plb
 			rts					; and exit
 
-
-
-__mode7_xlate_char:	lda	_TELETEXT_CHAR_TAB+1,Y		; convert with teletext conversion table
+__mode7_xlate_char:	lda	_TELETEXT_CHAR_TAB+1,Y	; convert with teletext conversion table
 			bne	__mode7_out_char		; and write it
 
 
 ;***********four colour modes ********************************************
 
-_VDU_OUT_COL4:		lda	(dp_mos_vdu_wksp+4),Y			; get pattern byte
+_VDU_OUT_COL4:		phb
+			phk
+			plb
+			;;TODO: assumes font in bank FF and this code in FF and screen in FF!
+			lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
 			pha					; save it
 			lsr					; move hi nybble to lo
 			lsr					; 
@@ -2476,9 +2509,9 @@ _VDU_OUT_COL4:		lda	(dp_mos_vdu_wksp+4),Y			; get pattern byte
 			lsr					; 
 			tax					; X=A
 			lda	_COL16_MASK_TAB,X		; 4 colour mode byte mask look up table
-			ora	dp_mos_vdu_txtcolourOR			; text colour byte to be orred or EORed into memory
-			eor	dp_mos_vdu_txtcolourEOR			; text colour byte to be orred or EORed into memory
-			sta	(dp_mos_vdu_top_scanline),Y		; write to screen
+			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
+			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
+			sta	(dp_mos_vdu_top_scanline),Y	; write to screen
 			tya					; A=Y
 
 			clc					; clear carry
@@ -2488,14 +2521,15 @@ _VDU_OUT_COL4:		lda	(dp_mos_vdu_wksp+4),Y			; get pattern byte
 			and	#$0f				; clear high nybble
 			tax					; X=A
 			lda	_COL16_MASK_TAB,X		; 4 colour mode byte mask look up table
-			ora	dp_mos_vdu_txtcolourOR			; text colour byte to be orred or EORed into memory
-			eor	dp_mos_vdu_txtcolourEOR			; text colour byte to be orred or EORed into memory
-			sta	(dp_mos_vdu_top_scanline),Y		; write to screen
+			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
+			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
+			sta	(dp_mos_vdu_top_scanline),Y	; write to screen
 			tya					; A=Y
 			sbc	#$08				; A=A-9
 			tay					; Y=A
 			bpl	_VDU_OUT_COL4			; if +ve do loop again
-_BD017:			rts					; exit
+_BD017:			plb
+			rts					; exit
 
 
 
@@ -2506,25 +2540,28 @@ _BD018:			tya					; Y=Y-&21
 
 ;******* 16 COLOUR MODES *************************************************
 
-_VDU_OUT_COL16:		lda	(dp_mos_vdu_wksp+4),Y			; get pattern byte
-			sta	dp_mos_vdu_wksp+2			; store it
+_VDU_OUT_COL16:		phb
+			phk
+			plb
+			lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
+			sta	z:dp_mos_vdu_wksp+2		; store it
 			sec					; set carry
 _BD023:			lda	#$00				; A=0
-			rol	dp_mos_vdu_wksp+2			; carry now occupies bit 0 of DC
+			rol	z:dp_mos_vdu_wksp+2		; carry now occupies bit 0 of DC
 			beq	_BD018				; when DC=0 again D018 to deal with next pattern byte
 			rol					; get bit 7 from &DC into A bit 0
-			asl	dp_mos_vdu_wksp+2			; rotate again to get second
+			asl	z:dp_mos_vdu_wksp+2			; rotate again to get second
 			rol					; bit into A
 			tax					; and store result in X
 			lda	_COL4_MASK_TAB,X		; multiply by &55 using look up table
-			ora	dp_mos_vdu_txtcolourOR			; and set colour factors
-			eor	dp_mos_vdu_txtcolourEOR			; 
-			sta	(dp_mos_vdu_top_scanline),Y		; and store result
+			ora	z:dp_mos_vdu_txtcolourOR	; and set colour factors
+			eor	z:dp_mos_vdu_txtcolourEOR	; 
+			sta	(dp_mos_vdu_top_scanline),Y	; and store result
 			clc					; clear carry
 			tya					; Y=Y+8 moving screen RAM pointer on 8 bytes
 			adc	#$08				; 
 			tay					; 
-			bcc	_BD023				; iloop to D023 to deal with next bit pair
+			bra	_BD023				; iloop to D023 to deal with next bit pair
 
 
 ;************* calculate pattern address for given code ******************
@@ -2533,14 +2570,14 @@ _BD023:			lda	#$00				; A=0
 _LD03E:			asl					; 23456780  C holds 1
 			rol					; 34567801  C holds 2
 			rol					; 45678012  C holds 3
-			sta	dp_mos_vdu_wksp+4			; save this pattern
+			sta	z:dp_mos_vdu_wksp+4			; save this pattern
 			and	#$03				; 00000012
 			rol					; 00000123 C=0
 			tax					; X=A=0 - 7
 			and	#$03				; A=00000023
 			adc	#$bf				; A=&BF,C0 or C1
 			tay					; this is used as a pointer
-			lda	_LC40D,X			; A=&80/2^X i.e.1,2,4,8,&10,&20,&40, or &80
+			lda	f:_LC40D,X			; A=&80/2^X i.e.1,2,4,8,&10,&20,&40, or &80
 			bit	vduvar_EXPLODE_FLAGS			; with font flag
 			beq	_BD057				; if 0 D057
 			ldy	vduvar_EXPLODE_FLAGS,X		; else get hi byte from table
@@ -3961,10 +3998,8 @@ _LEA11:			eor	#$07				; convert to palette format
 			.i16
 
 _NVWRCH:		pha					; Save all registers
-			txa					
-			pha					
-			tya					
-			pha					
+			phx
+			phy
 
 			pea	0
 			pld					; TODO: get rid - set by CallAVector?
@@ -4041,12 +4076,15 @@ _BE0C8:
 ;;			jsr	OSBPUT				; Write character to SPOOL channel
 ;;			lsr	CRFS_ACTIVE			; Reset RFS/CFS's 'spooling' flag
 
-_BE10D:			pla					; Restore all registers
-			pla					
-			tay					
-			pla					
-			tax					
-			pla					
+_BE10D:			pla					; get back 8 bit (ignored)
+			
+			rep	#$30				; back to 16 bit registers for vector code
+			.a16
+			.i16
+								; Restore all registers 16 bit
+			ply					
+			plx					
+			pla
 			rtl					; Exit
 
 
