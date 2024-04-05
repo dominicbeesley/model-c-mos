@@ -238,20 +238,72 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		pld
 		jsl	CallAVector_NAT
 
-		sep	#$30
-		.i8
-		.a8
-		phk
-		plb			; databank is code	
+		rep	#$30
+		.i16
+		.a16
 
-
-here:		
+		ldx	#0
+here:		lda	#17
+		cop	COP_00_OPWRC
+		txa
+		and	#$0F
+		cop	COP_00_OPWRC
+		lda	#17
+		cop	COP_00_OPWRC
+		txa
+		lsr	A
+		lsr	A
+		lsr	A
+		lsr	A
+		and	#$0F
+		ora	#$80
+		cop	COP_00_OPWRC
 
 		cop	COP_01_OPWRS
-		.byte	"Hello",0	
+		.byte	"Hello ",0	
+		inx
+		jsr	PrintHexX
+		bra	here
 
-	
-		jmp	here
+
+PrintHexA:
+	php
+	sep	#$20
+	.a8
+	pha
+	lsr	A
+	lsr	A
+	lsr	A
+	lsr	A
+	jsr	@nyb
+	pla
+	pha
+	jsr	@nyb
+	pla
+	plp
+	rts
+@nyb:	and	#$F
+	ora	#'0'
+	cmp	#$3A
+	bcc	@s
+	adc	#'A'-$3A-1
+@s:	cop	COP_00_OPWRC
+	rts
+
+PrintHexX:
+	php
+	rep	#$30
+	.i16
+	.a16
+	pha
+	txa
+	xba
+	jsr	PrintHexA
+	xba
+	jsr	PrintHexA
+	pla
+	plp
+	rts
 
 
 
@@ -265,7 +317,7 @@ SERIAL_TXDATA	:= sheila_ACIA_DATA
 
 		
 		.a8
-PrintA:		php				; register size agnostic!
+DbgPrintA:	php				; register size agnostic!
 		sep	#$20
 		pha        	   		
 @lp:		lda	f:SERIAL_STATUS		;CHECK TX STATUS        		
@@ -280,7 +332,7 @@ PrintA:		php				; register size agnostic!
 
 		.a8
 		.i8
-printStrBHA:	phx
+DbgPrintStrBHA:	phx
 		phy
 		php
 		sep	#$30
@@ -293,7 +345,7 @@ printStrBHA:	phx
 		ldy	#0
 @lp:		lda	[dp_mos_lptr],Y		; long pointer!
 		beq	@out
-		jsr	PrintA
+		jsr	DbgPrintA
 		iny
 		bne	@lp			; max 256 chars
 @out:		iny

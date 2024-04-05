@@ -569,11 +569,11 @@ _BC4EF:			tay					; save A for later
 			rep	#$30
 			.a16
 			.i16
-			lda	_VDU_TABLE,X			; get lo byte of link address
-			sta	f:vduvar_VDU_VEC_JMP		; store it in jump vector
+			lda	f:_VDU_TABLE,X			; get lo byte of link address
+			sta	vduvar_VDU_VEC_JMP		; store it in jump vector
 			sep	#$20
 			.a8
-			lda	_VDU_TABLE+2,X			; get Q len
+			lda	f:_VDU_TABLE+2,X		; get Q len
 			sta	sysvar_VDU_Q_LEN		; store it
 			sep	#$10
 			.i8
@@ -1215,8 +1215,8 @@ _BC805:			and	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 			adc	dp_mos_vdu_wksp			; Add last parameter to get pointer to table
 			tax					; pointer into X
 
-			lda	_LC423,X			; get colour to mask from table
-			sta	vduvar_TXT_FORE,Y			; colour Y=0=text fgnd 1= text bkgnd 2=graphics fg etc
+			lda	f:_LC423,X			; get colour to mask from table
+			sta	vduvar_TXT_FORE,Y		; colour Y=0=text fgnd 1= text bkgnd 2=graphics fg etc
 			cpy	#$02				; If Y>1
 			bcs	_BC82C				; then its graphics so C82C else
 			lda	vduvar_TXT_FORE			; foreground text colour
@@ -2279,9 +2279,13 @@ _LCEAC:			lda	vduvar_TXT_CUR_X		; text column
 _BCEBF:			lda	vduvar_TXT_BACK			; background text colour
 			ldy	vduvar_BYTES_PER_CHAR		; bytes per character
 
+			phb
+			phk
+			plb
 _BCEC5:			dey					; Y=Y-1 decrementing loop counter
 			sta	(dp_mos_vdu_top_scanline),Y	; store background colour at this point on screen
 			bne	_BCEC5				; if Y<>0 do it again
+			plb
 			txa					; else A=X
 			clc					; clear carry to add
 			adc	vduvar_BYTES_PER_CHAR		; bytes per character
