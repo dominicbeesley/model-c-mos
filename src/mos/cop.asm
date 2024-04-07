@@ -81,8 +81,8 @@ cop_handle_emu: plp
 		ply
 		plx
 		pla
-		plb
-		pld
+		plb				; NOTE: this gets set back to 0
+		pld				; NOTE: this gets set back to 0
 
 		jml	nat2emu_rtl		; native mode to emu mode exit shim
 
@@ -187,18 +187,18 @@ tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
 		.word	.loword(COP_01)		;OPWRS 01 = Write String Immediate
 		.word	.loword(COP_02)		;OPWRA 02 = Write string at BHA
 		.word	.loword(COP_03)		;OPNLI 03 = OSNEWL - write CR/LF
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
+		.word   .loword(COP_NotImpl)	;4
+		.word   .loword(COP_NotImpl)	;5
+		.word   .loword(COP_NotImpl)	;6
+		.word   .loword(COP_NotImpl)	;7
+		.word   .loword(COP_08)		;OPCAV 08 = Call A Vector **NEW**
+		.word   .loword(COP_NotImpl)	;9
+		.word   .loword(COP_NotImpl)	;A
+		.word   .loword(COP_NotImpl)	;B
+		.word   .loword(COP_NotImpl)	;C
+		.word   .loword(COP_NotImpl)	;D
+		.word   .loword(COP_NotImpl)	;E
+		.word   .loword(COP_NotImpl)	;F
 
 		.word   .loword(COP_NotImpl)
 		.word   .loword(COP_NotImpl)
@@ -245,9 +245,9 @@ COP_03:		lda   #$000a
 ;		* On exit:  DBAXY preserved                                                    *
 ;		*                                                                              *
 ;		********************************************************************************
-COP_00:		pea	IX_WRCHV
-		pld
-		jml	CallAVector_NAT
+COP_00:		lda	#IX_WRCHV
+		sta	DPCOP_DP
+		jmp	COP_08
 
 
 ;		********************************************************************************
@@ -256,15 +256,19 @@ COP_00:		pea	IX_WRCHV
 ;		* read characters from bytes following cop, check for 0 and pass on to write   *
 ;		* character routine                                                            *
 ;		********************************************************************************
-COP_01:		inc   DPCOP_PC
-                lda   [DPCOP_PC]
-                and   #$00ff
-                beq   @ret
+COP_01:		inc	DPCOP_PC
+		sep	#$20
+		.a8
+                lda	[DPCOP_PC]
+                sta	DPCOP_AH
+                rep	#$20
+                .a16
+                beq	@ret
                 phd
                 phk
-                jsr   COP_00
+                jsr	COP_00
                 pld
-                bra   COP_01
+                bra	COP_01
 
 @ret:		rtl
 
@@ -307,3 +311,4 @@ COP_02:		lda   DPCOP_X         ;get passed X and check is < 2 and use to determi
 COP_NotImpl:	sec
 		stz	DPCOP_X
 		rtl
+

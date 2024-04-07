@@ -31,6 +31,7 @@ COP_03_OPNLI				:=	$03		; Write LF/CR
 
 COP_06_OPOSB				:=	$06		; OBYTE
 
+COP_08_OPCAV				:=	$08		; Call A Vector - !*bad call on Communicator
 
 ;;;; Service calls
 

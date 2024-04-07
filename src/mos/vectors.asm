@@ -1,10 +1,12 @@
 
 		.include "nat-layout.inc"
 		.include "hardware.inc"
+		.include "cop.inc"
+		.include "vectors.inc"
 
 		.export bbcNatVecEnter
 		.export vector_next
-		.export CallAVector_NAT
+		.export COP_08
 		.export AddToVector
 
 		.segment "boot_CODE"
@@ -113,57 +115,49 @@ vec_done:
 
 		.i16
 		.a16
- 	;-----------------------------------------------------------------------------
-	; CallAVector_NAT - FAR
-	;-----------------------------------------------------------------------------
-	; Call a vector from Native/non-boot mode
-	; The vector INDEX to be called should be in DP
-	; entry/exit always in i16/a16
-	; Entry
-	;	DP 	vector index
-	;		other registers except DP as per vector definition
-	; Exit
-	;	DP 	undefined	
-	;		other registers except DP as per vector definition
-CallAVector_NAT:
-		php					; original caller's flags, preserve mode bits
-		per	@ret-1				; 16 bit emu/boot mode return address
-		php					; flags
-		rep	#$20
-		pha					; spare
-		pha
+
+;		********************************************************************************
+;		* COP 08 - OPCAV - Call A Vector                                               *
+;		*                                                                              *
+;		* Calls the vector whose index is in DP                                        *
+;		*                                                                              *
+;		* Entry                                                                        *
+;		*    DP   The INDEX of the vector to be called                                 *
+;		*         All other registers as per vector API                                *
+;		*                                                                              *
+;		* Exit                                                                         *
+;		*    DP   Corrupted                                                            *
+;		*         All other registers as per vector API, 8 bit vectors will zero the   *
+;		*         high bytes of index registers, B/DP are not updated for 8 bit        *
+;		*         vectors                                                              *
+;		********************************************************************************
+COP_08:
+
+		lda	DPCOP_DP			; vector index
+		asl	A				; vector index * 2
+		adc	#BBC_USERV			; turn to BBC vector address				
+
+		phd					; save COP DP
+		tcd					; DP = vector address
+		lda	z:0				; A = vector contents
+		dec	A				; decrement - suitable for an RTL
+		pld					; get back COP DP
+
+		phd					; save COP DP
+		per	@ret-1				; 16 bit emu/boot mode return address - TODO: IRQ1/IRQ2/BRKV need to be made suitable for RTI instead of RTS
+		pea	0
+		plb					; bank = 0 / ignored, stack a 0
+		pha					; stack vector address
+
+		; set entry registers for the vector
+		ldx	DPCOP_X
+		ldy	DPCOP_Y
 
 	; Stack
-	;	+8	caller flags
-	;	+6..7	return address from vector
-	;	+5	flags
-	;	+3..4	spare
-	;	+1..2	A
-
-		; move flags down to +3
-		lda	5,S
-		sta	3,S
-
-	; Stack
-	;	+8	caller flags
-	;	+6..7	return address from vector
-	;	+4..5	-spare-
-	;	+3      flags
-	;	+1..2	A
-
-		tdc
-		asl	A
-		ora	#$200
-		tcd
-		lda	z:0
-		sta	4,S
-
-	; Stack
-	;	+8	caller flags
-	;	+6..7	return address from vector
-	;	+4..5	vector contents
-	;	+3	Flags
-	;	+1..2	A
+	;	+6	COP_DP
+	;	+4..5	return address from vector
+	;	+3	0
+	;	+1..2   vector contents / handler address
 
 		; switch to emu mode, we're running FFxxxx so safe to switch
 		; to switch as MOS is mapped at same addr in both modes
@@ -171,39 +165,72 @@ CallAVector_NAT:
 		xce
 		.a8
 		.i8
-	
-		pla
+
+		lda	DPCOP_P
+		pha					; Caller's flags	
+
+	; Stack
+	;	+7	COP_DP
+	;	+5..6	return address from vector
+	;	+4	0 program bank address
+	;	+2..3   vector contents / handler address
+	;	+1	caller's flags
+
+		lda	DPCOP_AH+1
 		xba
-		pla
-		xba
-		rti
+		lda	DPCOP_AH
+		
+		plp					; pop caller's flags
+		jml	nat2emu_rtl			; enter emu mode and set DP/B to 0
+	; The vector handler will be entered with stack:
+	; Stack
+	;	+3..4	COP_DP
+	;	+1..2	return address from vector	; suitable for RTS or RTI
+
+
 @ret:		
 		.a8
 		.i8
-
 	;;TODO: CHECK: DOES PHP in emu push 1's in M/X
-		php
 		pha
-
+		php
+		
 	; Stack
-	;	+3	original caller flags
-	;	+2	flags returned from vector
-	;	+1	A (8 bit)
+	;	+3..4	COP_DP
+	;	+2	A (8 bit)
+	;	+1	flags returned from vector
 		
 		clc
 		jml	@c		
-@c:		; TODO: this assumes that no interrupt will occur during xce
+@c:		; TODO: this assumes that no interrupt will occur during xce TODO: test what happens on real CPU
 		xce
 
-		lda 	3,S
-		and	#$30				; isolate caller's M/X mode flags
-		eor	#$30				; invert
-		eor	2,S				; assume returned M/X flags are both 1
-		sta	3,S				; back on stack
+		; get back DP cop
+		tsc
+		tcd
+		pei	(3)
+		pld
 
-		pla	
-		plp
-		plp
+
+		pla
+		eor	DPCOP_P
+		and	#$CF			; mask out original flags
+		eor	DPCOP_P			; get back Caller's flags and nothing else
+		sta	DPCOP_P			; set flags but keep M/X from caller
+
+		pla				; get back 8 bit A
+
+		rep	#$30
+		.a16
+		.i16
+
+		sta	DPCOP_AH
+		pld				; discard/re-pull DP cop
+		stx	DPCOP_X
+		sty	DPCOP_Y
+
+		; BANK/DP in COP DP left as on entry for 8 bit vectors
+
 		rtl
 
 	;BHA contains vector handler address

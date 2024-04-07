@@ -59,9 +59,16 @@ emu_handle_cop:	clc
 emu_handle_irq:	
 emu_handle_nmi:	rti
 
-
-nat2emu_rtl:	sec
+		; enter emu mode and set DP/B to 0
+nat2emu_rtl:	php
+		pea	0
+		pld
+		phd
+		plb
+		plb
+		sec
 		xce
+		plp
 		rtl
 
 		.segment "boot_CODE"
@@ -229,18 +236,39 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		sta	sysvar_RAM_AVAIL
 
 		DEBUG_PRINTF "VDU_INIT\n"
-		lda	#1
+		lda	#2
 		jsl	VDU_INIT
-
-		DEBUG_PRINTF "TEST_VDU\n"
-		lda	#65
-		pea	IX_WRCHV
-		pld
-		jsl	CallAVector_NAT
 
 		rep	#$30
 		.i16
 		.a16
+
+		lda	#'X'
+		cop	COP_00_OPWRC
+
+	.macro	PLOT	code, xx, yy		
+		lda	#25
+		cop	COP_00_OPWRC
+		lda	#<code
+		cop	COP_00_OPWRC
+		lda	#<xx
+		cop	COP_00_OPWRC
+		lda	#>xx
+		cop	COP_00_OPWRC
+		lda	#<yy
+		cop	COP_00_OPWRC
+		lda	#>yy
+		cop	COP_00_OPWRC
+	.endmacro
+
+
+		PLOT	69,500,500
+
+
+		PLOT	4,0,0
+		PLOT	5,800,400
+
+	wdm 0
 
 		ldx	#0
 here:		lda	#17
@@ -260,7 +288,7 @@ here:		lda	#17
 		cop	COP_00_OPWRC
 
 		cop	COP_01_OPWRS
-		.byte	"Hello ",0	
+		.byte	"Hello",10,13,0	
 		inx
 		jsr	PrintHexX
 		bra	here
@@ -380,68 +408,6 @@ bankFF:		pea	$FFFF
 		plb
 		plb
 		rts
-
-test_call_bbc_vector:
-		rep	#$30
-		.a16
-		.i16
-		phk
-		plb
-		lda	#$D00B
-		tcd
-		lda	#.loword(test_handler_1)
-		ldx	#IX_IND1V
-		jsl	AddToVector
-
-		phk
-		plb
-		lda	#$1515
-		tcd
-		lda	#.loword(test_handler_2)
-		ldx	#IX_IND1V
-		jsl	AddToVector
-
-
-		pea	IX_IND1V
-		pld
-		jsl	CallAVector_NAT
-
-		DEBUG_PRINTF	"EXIT A=%H%A, X=%X, Y=%Y, DP=%D, B=%B, PC=%K%P, Flags=%F"
-		wdm	7
-
-
-jind1v_0:	jml	.loword(jind1v)		; enter in bank 0
-jind1v:		jmp	(BBC_IND1V)
-
-
-
-
-		.a16
-		.i16
-
-test_handler_1:	DEBUG_PRINTF	"HANDLER 1 A=%H%A, X=%X, Y=%Y, DP=%D, B=%B, PC=%K%P, Flags=%F\n"
-		lda	#$B00B
-		ldx	#$DEAD
-		ldy	#$BEEF
-		pea	$2222
-		plb
-		plb
-		sec		
-		rtl
-
-
-test_handler_2:	DEBUG_PRINTF	"HANDLER 2 A=%H%A, X=%X, Y=%Y, DP=%D, B=%B, PC=%K%P, Flags=%F\n"
-		lda	#0
-		php
-		lda	#$D0B0
-		ldx	#$1580
-		ldy	#$5140
-		pea	$3333
-		plb
-		plb
-		plp
-		clc
-		rtl
 
 
 
