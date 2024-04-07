@@ -2666,7 +2666,10 @@ _BD0AE:			sta	dp_mos_vdu_wksp+2		; store A
 ;graphics mode in Y
 ;colour in X
 
-_LD0B3:			txa					; A=X
+_LD0B3:			phb
+			phk
+			plb
+			txa					; A=X
 			ora	_LC41C,Y			; or with GCOL plot options table byte
 			eor	_LC41D,Y			; EOR with following byte
 			sta	dp_mos_vdu_gracolourOR		; and store it
@@ -2674,6 +2677,7 @@ _LD0B3:			txa					; A=X
 			ora	_LC41B,Y			; 
 			eor	_LC420,Y			; 
 			sta	dp_mos_vdu_gracolourEOR		; 
+			plb
 			rts					; exit with masks in &D4/5
 
 
@@ -3869,8 +3873,8 @@ _BD884:			adc	vduvar_6845_SCREEN_START				; add screen top left hand corner lo
 			pha					; 
 			and	vduvar_PIXELS_PER_BYTE_MINUS1			; and then Add pixels per byte-1
 			adc	vduvar_PIXELS_PER_BYTE_MINUS1			; 
-			tay					; Y=A
-			lda	_TAB_VDU_MASK_R,Y	; A=&80 /2^Y using look up table
+			tax					; Y=A
+			lda	f:_TAB_VDU_MASK_R,X		; A=&80 /2^Y using look up table
 			sta	dp_mos_vdu_grpixmask			; store it
 			pla					; get back A
 			ldy	vduvar_PIXELS_PER_BYTE_MINUS1			; Y=&number of pixels/byte
