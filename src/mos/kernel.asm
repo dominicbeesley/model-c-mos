@@ -243,6 +243,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.i16
 		.a16
 
+here2:
 		lda	#'X'
 		cop	COP_00_OPWRC
 
@@ -261,14 +262,27 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		cop	COP_00_OPWRC
 	.endmacro
 
+		; gcol
+		lda	#18
+		cop	COP_00_OPWRC
+		lda	#0
+		cop	COP_00_OPWRC
+		lda	$0
+		and	#$F
+		inc	$0
+		cop	COP_00_OPWRC
 
 		PLOT	69,500,500
-
-
 		PLOT	4,0,0
 		PLOT	5,800,400
 
-	wdm 0
+		ldx	#10
+		ldy	#0
+@l1:		dey
+		bne	@l1
+		dex	
+		bne	@l1
+
 
 		ldx	#0
 here:		lda	#17
@@ -291,7 +305,11 @@ here:		lda	#17
 		.byte	"Hello",10,13,0	
 		inx
 		jsr	PrintHexX
-		bra	here
+
+		cpx	#$00
+		bne	here
+		jmp	here2
+
 
 
 PrintHexA:

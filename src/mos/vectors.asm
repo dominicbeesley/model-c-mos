@@ -122,14 +122,17 @@ vec_done:
 ;		* Calls the vector whose index is in DP                                        *
 ;		*                                                                              *
 ;		* Entry                                                                        *
-;		*    DP   The INDEX of the vector to be called                                 *
-;		*         All other registers as per vector API                                *
+;		*    DP   The INDEX of the vector to be called.                                *
+;		*         Other registers as per vector API.                                   *
 ;		*                                                                              *
 ;		* Exit                                                                         *
 ;		*    DP   Corrupted                                                            *
-;		*         All other registers as per vector API, 8 bit vectors will zero the   *
-;		*         high bytes of index registers, B/DP are not updated for 8 bit        *
-;		*         vectors                                                              *
+;		*         Other registers updated as per vector API.                           *
+;		*         8 bit vectors will not alter the high bytes of A,X,Y registers and   *
+;		*         B/DP are not altered updated for 8 bit vectors.                      *
+;		*                                                                              *
+;		*         8 bit vectors are those with IX<=$1A even where they are handled by  *
+;		*         a native mode handler.                                               *
 ;		********************************************************************************
 COP_08:
 
@@ -219,15 +222,15 @@ COP_08:
 		sta	DPCOP_P			; set flags but keep M/X from caller
 
 		pla				; get back 8 bit A
+		sta	DPCOP_AH		; store only bottom 8 bits!
+		stx	DPCOP_X			; store only bottom 8 bits!
+		sty	DPCOP_Y			; store only bottom 8 bits!
 
 		rep	#$30
 		.a16
 		.i16
 
-		sta	DPCOP_AH
 		pld				; discard/re-pull DP cop
-		stx	DPCOP_X
-		sty	DPCOP_Y
 
 		; BANK/DP in COP DP left as on entry for 8 bit vectors
 
