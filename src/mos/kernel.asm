@@ -39,6 +39,9 @@ nat_handle_abort:
 		lda	#DEICE_STATE_ABORT
 		jml	deice_enter_nat
 		rti
+
+		.a8
+		.i8
 emu_handle_abort:
 		pha
 		lda	#DEICE_STATE_ABORT
@@ -53,6 +56,7 @@ nat_handle_nmi:
 nat_handle_irq:	rti
 
 		.a8
+		.i8
 emu_handle_cop:	clc		
 		xce				; enter native mode 
 		jml	cop_handle_emu
@@ -70,6 +74,11 @@ nat2emu_rtl:	php
 		xce
 		plp
 		rtl
+
+test_wdm_b0:	sec
+		xce
+		wdm	0
+@l:		jmp	@l
 
 		.segment "boot_CODE"
 
@@ -239,10 +248,15 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		lda	#2
 		jsl	VDU_INIT
 
+		jml	test_wdm_b0
+
+
+
 		rep	#$30
 		.i16
 		.a16
 
+		ldx	#0
 here2:
 		lda	#'X'
 		cop	COP_00_OPWRC
@@ -276,15 +290,15 @@ here2:
 		PLOT	4,0,0
 		PLOT	5,800,400
 
-		ldx	#10
+		
+		lda	#10
 		ldy	#0
 @l1:		dey
 		bne	@l1
-		dex	
+		dec	A	
 		bne	@l1
 
 
-		ldx	#0
 here:		lda	#17
 		cop	COP_00_OPWRC
 		txa
@@ -305,8 +319,8 @@ here:		lda	#17
 		.byte	"Hello",10,13,0	
 		inx
 		jsr	PrintHexX
-
-		cpx	#$00
+		txa
+		and	#$ff
 		bne	here
 		jmp	here2
 
