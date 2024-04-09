@@ -1,10 +1,16 @@
 
-		.include "nat-layout.inc"
+		.include	"nat-layout.inc"
 
 
-		.export initB0Blocks
-		.export freeB0Block
-		.export allocB0Block
+		.export	initB0Blocks
+		.export	freeB0Block
+		.export	allocB0Block
+
+		.export	initHandles
+		.export findHandleByAddr
+		.export allocHandle
+		.export getHandleYtoX
+		.export freeHandleForB0BlockX
 
 	; b0blocks are 12 byte long blocks that are pre-allocated in bank 0 
 	; that can be allocated by the OS. They are typically used to contain
@@ -103,8 +109,8 @@ allocB0Block:	php
 		; if this was the last block then clear the last block pointer - point the last
 		; block pointer at the front pointer this will cause the next "free" to
 		; magically update both list pointers
-                lda	#B0LL_FREE_BLOCKS
-                sta	f:B0LL_FREE_BLOCKS_END
+		lda	#B0LL_FREE_BLOCKS
+		sta	f:B0LL_FREE_BLOCKS_END
 @sk:		lda	f:$000000,x     		; get the blocks next pointer
 		sta	f:B0LL_FREE_BLOCKS		; store as the front pointer (will be 0 if last block)
 		lda	#$ffff          		; blank out the block
@@ -123,5 +129,220 @@ allocB0Block:	php
 		txa
 		plp
 		clc
+		rts
+
+
+
+initHandles:	
+		phd
+		; TODO: In the commy MOS this block is allocated with the MM functions
+		; see fe/b2fc
+		pea	EXSYS
+		pld
+		ldx	#>HANDLE_BLOCK
+		stx   	<EXSYS_FpHandles+1
+		ldx	#.loword(HANDLE_BLOCK)
+		lda	#HANDLE_BLOCK_LEN
+		sta  	[<EXSYS_FpHandles]
+		tay
+		lda	#$0000
+		dey
+		dey
+@cllp:		sta	[<EXSYS_FpHandles],y
+		dey
+		dey
+		bne	@cllp
+
+;;                lda	f:$00fe04
+;;                ldy	#$0002
+;;                sta	[<EXSYS_FpHandles],y
+
+		pld
+		rts
+
+
+;	********************************************************************************
+;	* Allocate a Handle                                                            *
+;	*                                                                              *
+;	* On Entry                                                                     *
+;	*   X     The B0Block address to store in the handle                           *
+;	*                                                                              *
+;	* On Exit                                                                      *
+;	*   If Cy=1:                                                                   *
+;	*         No handle allocated, run out of handles                              *
+;	*   If Cy=0:                                                                   *
+;	*   Y     The handle                                                           *
+;	*                                                                              *
+;	* Others preserved                                                             *
+;	********************************************************************************
+allocHandle:	phd
+		pha
+		pea	EXSYS
+		pld
+		ldy	#$0000
+		lda	[<EXSYS_FpHandles],y		; getHandleBlockSize
+		and	#$fffe
+		beq	@retsec
+		tay
+@lp:		dey
+		dey
+		beq	@retsec
+		lda	[<EXSYS_FpHandles],y
+		bne	@lp
+		txa
+		sta	[<EXSYS_FpHandles],y
+		pla
+		pld
+		clc
+		rts
+
+@retsec:	pla
+		pld
+		sec
+		rts
+
+;	********************************************************************************
+;	* Given a handle in Y returns the B0Block pointer. For odd numbered handles    *
+;	* (well known handles) the block is returned for valid handles. For even       *
+;	* numbered handles, searches the [Handle Allocation Table].                    *
+;	*                                                                              *
+;	* On Entry:                                                                    *
+;	*    Y   Contains a handle                                                     *
+;	*                                                                              *
+;	* On Exit:                                                                     *
+;	*    C=0 Found                                                                 *
+;	*    DP  the address of the handle block                                       *
+;	* or C=1 Failed - no such handle allocated                                     *
+;	*                                                                              *
+;	* TODO: corrupts X unnecessarily, lots of tax etc that is unnecessary          *
+;	********************************************************************************
+getHandleYtoX:	phd
+		pha
+		tya
+		beq	@retsec
+		bit	#$0001
+		bne	@wellknownhandle
+		pea	EXSYS
+		pld
+		lda	[<EXSYS_FpHandles],y
+@ok:		tax
+		beq	@retsec
+		cpx	#$ffff
+		beq	@retsec
+		bne	@retclc
+
+@wellknownhandle:
+;;		tyx
+;;		cpx	#$000a
+;;		bcs	@retsec
+;;		phb
+;;		phk
+;;		.dbank	K (auto)
+;;		plb
+;;		lda	0+(tblWellKnownHandlePointers & $ffff)-1,x
+;;		plb
+;;		eor	#$0000
+;;		beq	@retsec
+;;		pha
+;;		pld
+;;		lda	bob_ll_irq_pri__next
+;;		bra	@ok
+
+@retsec:	pla
+		pld
+		sec
+		rts
+
+
+@retclc:	pla
+		pld
+		clc
+		rts
+
+
+;;tblWellKnownHandlePointers:	.dd2 $fe04 ;HDMMM
+;;		.dd2	$0000           ;HDMM0 - QRY
+;;		.dd2	$fe08           ;HDMMC
+;;		.dd2	$fe0a           ;HDMMW
+;;		.dd2	$fe0c           ;HDMMV
+
+;	********************************************************************************
+;	* The [Handle Allocation Table] pointed to by long pointer at $FF02 is         *
+;	* searched for this entry and its entry is zeroed if found                     *
+;	*                                                                              *
+;	* On entry:                                                                    *
+;	*    X    contains a handle block pointer                                      *
+;	*                                                                              *
+;	* On exit:                                                                     *
+;	*    C=0  indicates block found                                                *
+;	*    Y    contains the index of the entry (handle ? QRY?)                      *
+;	*    X,D  preserved                                                            *
+;	* or C=1  the pointer was not found                                            *
+;	*    Y    contains the index of the last entry (entries are allocated          *
+;	* descending                                                                   *
+;	*         so the first in address order)                                       *
+;	*                                                                              *
+;	* TODO: why not use the find method below!                                     *
+;	********************************************************************************
+freeHandleForB0BlockX:	
+		phx
+		pea	EXSYS
+		pld
+		ldy	#$0000
+		lda	[<EXSYS_FpHandles],y ;get pointer to end of handle block + 2
+		tay
+		dey
+		dey
+@lp:		lda	[<EXSYS_FpHandles],y
+		cmp	$01,S           ;compare to passed in X
+		beq	@fnd
+		dey
+		dey                   ;move backwards through handle list
+		bne	@lp
+		plx
+		sec
+		rts
+
+@fnd:		lda	#$0000
+		sta	[<EXSYS_FpHandles],y ;zero out the entry and return clc
+		plx
+		clc
+		rts
+
+;	********************************************************************************
+;	* The [Handle Allocation Table] pointed to by long pointer at $FF02 is         *
+;	* searched for an entry that contains X                                        *
+;	*                                                                              *
+;	* On entry:                                                                    *
+;	*    X    contains a handle block pointer                                      *
+;	*                                                                              *
+;	* On exit:                                                                     *
+;	*    C=0  indicates block found                                                *
+;	*    Y    contains the index of the entry (handle)                             *
+;	* or C=1  the pointer was not found                                            *
+;	*    Y    contains the index of the last entry (entries are allocated          *
+;	* descending                                                                   *
+;	*         so the first in address order)                                       *
+;	*                                                                              *
+;	*    X    preserved                                                            *
+;	*    D,A  corrupted                                                            *
+;	********************************************************************************
+findHandleByAddr:	
+		pea	EXSYS
+		pld
+		ldy	#$0000
+		lda	[<EXSYS_FpHandles],y
+		tay
+		dey
+		dey
+		txa
+@lp:		cmp	[<EXSYS_FpHandles],y
+		beq	@retclc
+		dey
+		dey
+		bne	@lp
+		sec
+		rts
+@retclc:	clc
 		rts
 

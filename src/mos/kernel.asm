@@ -207,6 +207,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		jsr	deice_init
 
 		jsr	roms_scanroms	; only on ctrl-break, but always for now...
+		jsr	initHandles
 		jsr	initB0Blocks
 
 		jsr	cfgGetMosBase
