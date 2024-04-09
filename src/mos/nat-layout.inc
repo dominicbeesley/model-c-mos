@@ -11,8 +11,11 @@ NAT_OS_VECS 		:= $8000
 NAT_OS_VECS_COUNT 	:= 26
 
 
+
 B0LL_FREE_BLOCKS	:= $00FE00
 B0LL_FREE_BLOCKS_END	:= $00FE02
+B0LL_IRQ_BLOCKS		:= $00FE06
+B0_IRQ_STACK		:= $00FE10
 
 B0B_BASE		:= $00E000
 B0B_END			:= $00FCF8
@@ -20,6 +23,7 @@ B0B_END			:= $00FCF8
 
 B0B_TYPE_FREE		:= 0
 B0B_TYPE_LL_NATVEC	:= 10
+B0B_TYPE_LL_IRQ		:= 14
 B0B_SIZE		:= 12
 ; each vector is 2 bytes long - points to a 12 byte block in B0 as in struct llent_nat_vec
 
@@ -38,8 +42,29 @@ B0B_SIZE		:= 12
 	type	.byte
 .endstruct
 
+; IRQ blocks have a primary and secondary block
+.struct b0b_ll_irq_pri
+	next	.word		; 0..1	next entry in the "free" chain
+	irqf	.faraddr	; 2..4	far pointer to HW status register	
+	mand	.byte		; 5	and mask
+	meor    .byte		; 6	eor mask
+	psec	.word		; 7..8  pointer to secondary block
+	fpand	.faraddr	; 9..11 far pointer to AND mask
+.endstruct
+
+.struct b0b_ll_irq_sec
+	prior	.byte		; 0	interrupt priority
+	dp	.word		; 1..2	handler DP
+	flags	.byte		; 3	handler flags on entry
+	fphand  .faraddr	; 4..6  handler far address
+	hitct	.dword		; 7..10	count of accesses
+	type    .byte		; 11	= 14
+.endstruct
+
 .assert .sizeof(b0b_ll_nat_vec) = 12, error
 .assert .sizeof(b0b_ll_free) = 12, error
+.assert .sizeof(b0b_ll_irq_pri) = 12, error
+.assert .sizeof(b0b_ll_irq_sec) = 12, error
 
 ; NOTE: that the native vectors are 3 byte each, the 3rd byte of each is unused and reserved
 

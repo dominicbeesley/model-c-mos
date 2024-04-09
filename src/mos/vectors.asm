@@ -248,7 +248,7 @@ AddToVector:	php
 		phx
 		pha
 		lda	#B0B_TYPE_LL_NATVEC
-		jsr	allocB0B
+		jsr	allocB0Block
 		pla		
 		bcs	@retsec		
 		; store vector pointer (low 16)

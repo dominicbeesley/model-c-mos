@@ -200,12 +200,56 @@ tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
 		.word   .loword(COP_NotImpl)	;E
 		.word   .loword(COP_NotImpl)	;F
 
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_NotImpl)
-		.word   .loword(COP_15)			;OPASC = OSASCI - write and expand <CR> to <LF><CR>
+		.word   .loword(COP_NotImpl)	;10
+		.word   .loword(COP_NotImpl)	;11
+		.word   .loword(COP_NotImpl)	;12
+		.word   .loword(COP_NotImpl)	;13
+		.word   .loword(COP_NotImpl)	;14
+		.word   .loword(COP_15)		;OPASC = OSASCI - write and expand <CR> to <LF><CR>
+		.word   .loword(COP_NotImpl)	;16
+		.word   .loword(COP_NotImpl)	;17
+		.word   .loword(COP_NotImpl)	;18
+		.word   .loword(COP_NotImpl)	;19
+		.word   .loword(COP_NotImpl)	;1A
+		.word   .loword(COP_NotImpl)	;1B
+		.word   .loword(COP_NotImpl)	;1C
+		.word   .loword(COP_NotImpl)	;1D
+		.word   .loword(COP_NotImpl)	;1E
+		.word   .loword(COP_NotImpl)	;1F
+
+		.word   .loword(COP_NotImpl)	;20
+		.word   .loword(COP_NotImpl)	;21
+		.word   .loword(COP_NotImpl)	;22
+		.word   .loword(COP_NotImpl)	;23
+		.word   .loword(COP_NotImpl)	;24
+		.word   .loword(COP_NotImpl)	;24
+		.word   .loword(COP_NotImpl)	;26
+		.word   .loword(COP_NotImpl)	;27
+		.word   .loword(COP_NotImpl)	;28
+		.word   .loword(COP_NotImpl)	;29
+		.word   .loword(COP_NotImpl)	;2A
+		.word   .loword(COP_NotImpl)	;2B
+		.word   .loword(COP_NotImpl)	;2C
+		.word   .loword(COP_NotImpl)	;2D
+		.word   .loword(COP_NotImpl)	;2E
+		.word   .loword(COP_2F)		;OPIIQ - insert interrupt handler
+
+		.word   .loword(COP_30)		;OPRIQ - remove interrupt handler
+		.word   .loword(COP_31)		;OPMIQ - modify interrupt handler
+		.word   .loword(COP_NotImpl)	;32
+		.word   .loword(COP_NotImpl)	;33
+		.word   .loword(COP_NotImpl)	;34
+		.word   .loword(COP_NotImpl)	;34
+		.word   .loword(COP_NotImpl)	;36
+		.word   .loword(COP_NotImpl)	;37
+		.word   .loword(COP_NotImpl)	;38
+		.word   .loword(COP_NotImpl)	;39
+		.word   .loword(COP_NotImpl)	;3A
+		.word   .loword(COP_NotImpl)	;3B
+		.word   .loword(COP_NotImpl)	;3C
+		.word   .loword(COP_NotImpl)	;3D
+		.word   .loword(COP_NotImpl)	;3E
+		.word   .loword(COP_NotImpl)	;3F
 
 tblCopDispatchLen := *-tblCOPDispatch
 

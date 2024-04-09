@@ -4,7 +4,7 @@
 
 		.export initB0Blocks
 		.export freeB0Block
-		.export allocB0B
+		.export allocB0Block
 
 	; b0blocks are 12 byte long blocks that are pre-allocated in bank 0 
 	; that can be allocated by the OS. They are typically used to contain
@@ -36,6 +36,12 @@ initB0Blocks:	php
 		plp
 		rts
 
+;	********************************************************************************
+;	* Return the block pointed to X to the free list                               *
+;	*                                                                              *
+;	* On Entry:                                                                    *
+;	*    X   is a pointer to a B0Block                                             *
+;	********************************************************************************
 freeB0Block:	phy
 		php
 		sei
@@ -65,7 +71,7 @@ freeB0Block:	phy
 		rts
 
 ;	********************************************************************************
-;	* Appears to allocate a block from the free list                               *
+;	* Allocate a B0Block from the free list                                        *
 ;	*                                                                              *
 ;	* On entry:                                                                    *
 ;	*     A   contains the B0B type                                                *
@@ -79,8 +85,7 @@ freeB0Block:	phy
 ;	*                                                                              *
 ;	*******************************************************************************
 
-
-allocB0B:	php
+allocB0Block:	php
 		sei
 		rep	#$30
 		.a16

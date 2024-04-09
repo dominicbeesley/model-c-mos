@@ -33,6 +33,10 @@ COP_06_OPOSB				:=	$06		; OBYTE
 
 COP_08_OPCAV				:=	$08		; Call A Vector - !*bad call on Communicator
 
+COP_2F_OPIIQ				:=	$2F		; Add an IRQ handler
+COP_30_OPRIQ				:=	$30		; Remove and IRQ handler
+COP_31_OPMIQ				:=	$31		; Modify and IRQ handler
+
 ;;;; Service calls
 
 SERVICE_0_NOP				:=	$0

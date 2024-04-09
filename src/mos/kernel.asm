@@ -38,7 +38,7 @@ nat_handle_abort:
 		pha
 		lda	#DEICE_STATE_ABORT
 		jml	deice_enter_nat
-		rti
+		rti	
 
 		.a8
 		.i8
@@ -52,15 +52,20 @@ emu_handle_abort:
 
 nat_handle_cop:	jml	cop_handle_nat	
 nat_handle_brk:	rti
-nat_handle_nmi:		
-nat_handle_irq:	rti
+nat_handle_nmi:	rti
+nat_handle_irq:	jml	default_IVIRQ	
 
 		.a8
 		.i8
 emu_handle_cop:	clc		
 		xce				; enter native mode 
 		jml	cop_handle_emu
-emu_handle_irq:	
+emu_handle_irq:	clc
+		xce
+		jsl	default_IVIRQ_emu
+		sec
+		xce
+		rti
 emu_handle_nmi:	rti
 
 		; enter emu mode and set DP/B to 0
@@ -236,7 +241,8 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		dex	
 		bne	@lp2	
 
-
+		jsl	setupIRQstackandhandlers
+		cli
 		
 		sep	#$30
 		.i8
