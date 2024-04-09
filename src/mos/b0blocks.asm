@@ -139,11 +139,15 @@ initHandles:
 		; see fe/b2fc
 		pea	EXSYS
 		pld
-		ldx	#>HANDLE_BLOCK
+		
+		ldx	#.loword(HANDLE_BLOCK >> 8)
 		stx   	<EXSYS_FpHandles+1
 		ldx	#.loword(HANDLE_BLOCK)
+		stx   	<EXSYS_FpHandles
+
 		lda	#HANDLE_BLOCK_LEN
 		sta  	[<EXSYS_FpHandles]
+
 		tay
 		lda	#$0000
 		dey
