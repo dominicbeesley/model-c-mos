@@ -89,6 +89,10 @@ default_IVIRQ:	rep   #$30
 		pld        				; pop list header address or previous primary block
 @lp:		pei	(b0b_ll_irq_pri::next)		; get address of next item
 		pld        				; into DP
+
+		;NEW: this wasn't in Commy MOS - would crash if no handler found?!
+		beq	@interruptEx2
+
 		lda	[b0b_ll_irq_pri::irqf]		; read hardware test register into A
 		tay        				; into Y
 		and	[b0b_ll_irq_pri::fpand]		; and with pointer AND mask
@@ -116,7 +120,7 @@ default_IVIRQ:	rep   #$30
 
 @interruptEx:	bcs	@lp2 				; if Cy set at handler exit continue with other handlers
 		pld        				; discard stacked block pointer
-		rep	#$30
+@interruptEx2:	rep	#$30
 		.a16
 		.i16
 		ply        			
@@ -403,7 +407,11 @@ COP_30:		jsr	getHandleYtoX			; get block address from handle
 @retsec:	rtl
 
 setupIRQstackandhandlers:
-		wdm 0
+		lda	#$0000
+		sta	f:B0_IRQ_STACK
+		lda	#$0000
+		sta	f:B0LL_IRQ_BLOCKS
+		rts
 ;;		php
 ;;		rep	#$30
 ;;		.a16
