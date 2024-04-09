@@ -207,8 +207,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		jsr	deice_init
 
 		jsr	roms_scanroms	; only on ctrl-break, but always for now...
-		jsr	initHandles
-		jsr	initB0Blocks
 
 		jsr	cfgGetMosBase
 		DEBUG_PRINTF "MOS_BASE =%H%A\n"
@@ -219,6 +217,14 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		rep	#$30
 		.i16
 		.a16
+
+		DEBUG_PRINTF "initHandles\n"
+		jsr	initHandles
+		DEBUG_PRINTF "initB0Blocks\n"
+		jsr	initB0Blocks
+
+
+
 		pea	0
 		plb
 		plb						; bank 0
@@ -242,8 +248,16 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		dex	
 		bne	@lp2	
 
-		jsl	setupIRQstackandhandlers
+		jsr	setupIRQstackandhandlers
+
+		wdm	0
+
 		cli
+
+@tlp:		nop
+		nop
+		nop
+		jmp	@tlp
 		
 		sep	#$30
 		.i8
