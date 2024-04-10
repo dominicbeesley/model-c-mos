@@ -19,32 +19,32 @@
 	; uses the return address here to figure out which vector
 
 tblNatShims:
-		jsr	bbcNatVecEnter			; XUSERV
-		jsr	bbcNatVecEnter			; XBRKV
-		jsr	bbcNatVecEnter			; XIRQ1V
-		jsr	bbcNatVecEnter			; XIRQ2V
-		jsr	bbcNatVecEnter			; XCLIV
-		jsr	bbcNatVecEnter			; XBYTEV
-		jsr	bbcNatVecEnter			; XWORDV
-		jsr	bbcNatVecEnter			; XWRCHV
-		jsr	bbcNatVecEnter			; XRDCHV
-		jsr	bbcNatVecEnter			; XFILEV
-		jsr	bbcNatVecEnter			; XARGSV
-		jsr	bbcNatVecEnter			; XBGETV
-		jsr	bbcNatVecEnter			; XBPUTV
-		jsr	bbcNatVecEnter			; XGBPBV
-		jsr	bbcNatVecEnter			; XFINDV
-		jsr	bbcNatVecEnter			; XFSCV
-		jsr	bbcNatVecEnter			; XEVENTV
-		jsr	bbcNatVecEnter			; XUPTV
-		jsr	bbcNatVecEnter			; XNETV
-		jsr	bbcNatVecEnter			; XVDUV
-		jsr	bbcNatVecEnter			; XKEYV
-		jsr	bbcNatVecEnter			; XINSV
-		jsr	bbcNatVecEnter			; XREMV
-		jsr	bbcNatVecEnter			; XCNPV
-		jsr	bbcNatVecEnter			; XIND1V
-		jsr	bbcNatVecEnter			; XIND2V
-		jsr	bbcNatVecEnter			; XIND3V
+		jsr	bbcEmu2NatVectorEntry		; XUSERV
+		jsr	bbcEmu2NatVectorEntry		; XBRKV
+		jsr	bbcEmu2NatVectorEntry		; XIRQ1V
+		jsr	bbcEmu2NatVectorEntry		; XIRQ2V
+		jsr	bbcEmu2NatVectorEntry		; XCLIV
+		jsr	bbcEmu2NatVectorEntry		; XBYTEV
+		jsr	bbcEmu2NatVectorEntry		; XWORDV
+		jsr	bbcEmu2NatVectorEntry		; XWRCHV
+		jsr	bbcEmu2NatVectorEntry		; XRDCHV
+		jsr	bbcEmu2NatVectorEntry		; XFILEV
+		jsr	bbcEmu2NatVectorEntry		; XARGSV
+		jsr	bbcEmu2NatVectorEntry		; XBGETV
+		jsr	bbcEmu2NatVectorEntry		; XBPUTV
+		jsr	bbcEmu2NatVectorEntry		; XGBPBV
+		jsr	bbcEmu2NatVectorEntry		; XFINDV
+		jsr	bbcEmu2NatVectorEntry		; XFSCV
+		jsr	bbcEmu2NatVectorEntry		; XEVENTV
+		jsr	bbcEmu2NatVectorEntry		; XUPTV
+		jsr	bbcEmu2NatVectorEntry		; XNETV
+		jsr	bbcEmu2NatVectorEntry		; XVDUV
+		jsr	bbcEmu2NatVectorEntry		; XKEYV
+		jsr	bbcEmu2NatVectorEntry		; XINSV
+		jsr	bbcEmu2NatVectorEntry		; XREMV
+		jsr	bbcEmu2NatVectorEntry		; XCNPV
+		jsr	bbcEmu2NatVectorEntry		; XIND1V
+		jsr	bbcEmu2NatVectorEntry		; XIND2V
+		jsr	bbcEmu2NatVectorEntry		; XIND3V
 tblNatShimsEnd:
 

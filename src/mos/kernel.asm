@@ -22,6 +22,7 @@
 		.export emu_handle_res
 
 		.export nat2emu_rtl
+		.export emu2nat_rtl
 
 
 		.export bank0
@@ -64,8 +65,10 @@ emu_handle_cop:	clc
 		jml	cop_handle_emu
 emu_handle_irq:	clc
 		xce
-		jsl	default_IVIRQ_emu
-		sec
+		pea	>@ret			; fake flags and bank 0 (return)
+		pea	4 + (<@ret * 256)
+		jml	default_IVIRQ
+@ret:		sec
 		xce
 		rti
 emu_handle_nmi:	rti
@@ -81,6 +84,14 @@ nat2emu_rtl:	php
 		xce
 		plp
 		rtl
+
+		; enter nat mode from emu
+emu2nat_rtl:	php
+		clc
+		xce
+		plp
+		rtl
+
 
 		.segment "boot_CODE"
 
@@ -260,7 +271,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		lda	#2
 		jsl	VDU_INIT
 
-
+		cli
 		rep	#$30
 		.i16
 		.a16
@@ -329,22 +340,9 @@ here:		lda	#17
 		inx
 		jsr	PrintHexX
 
-		lda	#2
-		ldy	#0
-@l1:		dey
-		bne	@l1
-		dec	A	
-		bne	@l1
-
-
 		txa
 		and	#$ff
 		bne	here
-
-		cli
-kkkk:		nop
-		nop
-		jmp	kkkk
 
 		jmp	here2
 

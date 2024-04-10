@@ -4,7 +4,7 @@
 		.include "cop.inc"
 		.include "vectors.inc"
 
-		.export bbcNatVecEnter
+		.export bbcEmu2NatVectorEntry
 		.export vector_next
 		.export COP_08
 		.export AddToVector
@@ -13,7 +13,7 @@
 
 	; we are still running from the MOS rom in bank 0, we need
 	; to enter native mode 
-bbcNatVecEnter:
+bbcEmu2NatVectorEntry:
 		pld				; DP contains the return address from the entry point
 		php				; save flags
 		xba
@@ -25,11 +25,13 @@ bbcNatVecEnter:
 	;	+3	Flags
 	;	+1..2	A (16 bits)
 
-		clc
-		jml	@bankFF			; we get an extra instruction in boot mode, use it to swap 
-						; to running in bank FF
+		lda	#^bbcEmu2NatVectorEntry_ff
+		pha
+		pea	bbcEmu2NatVectorEntry_ff-1
+		jml	emu2nat_rtl	
+
 		.code
-@bankFF:	xce
+bbcEmu2NatVectorEntry_ff:	
 	; Now we want to execute the right routine
 
 		rep	#$30

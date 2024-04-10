@@ -12,31 +12,31 @@
 		.export		COP_30
 		.export		COP_31
 
-		.export		default_IVIRQ_emu
+;;;		.export		default_IVIRQ_emu
 		.export		default_IVIRQ
 		.export		initIRQdispatcher
 
-;	********************************************************************************
-;	* Main emu interrupt handler                                                   *
-;	*                                                                              *
-;	* The entry shim in bank 0 has already poked us into native mode but we need   *
-;	* to massage the stack for a RTI to take us back from native mode to bank 0    *
-;	* shim                                                                         *
-;	********************************************************************************
-default_IVIRQ_emu:
-
-	; Stack
-	; +5..6	PC  emu mode return address
-	; +4	P   entry flags
-	; +1..3 RTL return address-1 to b0 shim
-		php
-	; Stack
-	; +6..7	PC  emu mode return address
-	; +5	P   entry flags
-	; +2..4 RTL return address-1 to b0 shim
-	; +1	Phoney native mode flags
-		
-	; fall through to native handler
+;;;;	********************************************************************************
+;;;;	* Main emu interrupt handler                                                   *
+;;;;	*                                                                              *
+;;;;	* The entry shim in bank 0 has already poked us into native mode but we need   *
+;;;;	* to massage the stack for a RTI to take us back from native mode to bank 0    *
+;;;;	* shim                                                                         *
+;;;;	********************************************************************************
+;;;default_IVIRQ_emu:
+;;;
+;;;	; Stack
+;;;	; +5..6	PC  emu mode return address
+;;;	; +4	P   entry flags
+;;;	; +1..3 RTL return address-1 to b0 shim
+;;;		php
+;;;	; Stack
+;;;	; +6..7	PC  emu mode return address
+;;;	; +5	P   entry flags
+;;;	; +2..4 RTL return address-1 to b0 shim
+;;;	; +1	Phoney native mode flags
+;;;		
+;;;	; fall through to native handler
 
 ;	********************************************************************************
 ;	* Main native interrupt handler                                                *
