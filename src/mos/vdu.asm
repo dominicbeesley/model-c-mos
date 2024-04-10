@@ -1,5 +1,5 @@
 
-		.include "dp_sys.inc"
+		.include "dp_bbc.inc"
 		.include "sysvars.inc"
 		.include "vduvars.inc"
 		.include "hardware.inc"
@@ -10,6 +10,7 @@
 
 		.export VDU_INIT
 		.export _NVWRCH
+		.export vduSetULACTL
 
 ; This taken from https://github.com/raybellis/mos120/blob/master/mos120.s
 ; and hacked for native mode
@@ -1896,7 +1897,7 @@ _BCB5E:			asl					; A=A*2
 			jsr	AND_VDU_STATUS			; A=A and &D0:&D0=A
 			ldx	vduvar_MODE			; screen mode
 			lda	_ULA_SETTINGS,X			; get video ULA control setting
-			jsr	VID_ULA_SET			; set video ULA using osbyte 154 code
+			jsr	vduSetULACTL			; set video ULA using osbyte 154 code
 			php					; push flags
 			sei					; set interrupts
 			ldx	_TAB_CRTCBYMOSZ,Y			; get cursor end register data from table
@@ -3993,7 +3994,7 @@ _BD93E:			tay					; Pass high byte of address to Y
 _OSBYTE_154:		txa					; osbyte entry! X transferred to A thence to
 
 
-VID_ULA_SET:		php					; save flags
+vduSetULACTL:		php					; save flags
 			sep	#$20
 			.a8
 			sei					; disable interupts

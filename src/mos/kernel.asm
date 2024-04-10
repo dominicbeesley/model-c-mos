@@ -1,5 +1,5 @@
 
-		.include "dp_sys.inc"
+		.include "dp_bbc.inc"
 		.include "hardware.inc"
 		.include "deice.inc"
 		.include "debug.inc"
@@ -26,6 +26,8 @@
 
 		.export bank0
 		.export bankFF
+
+		.export kernelRaiseEvent
 
 		.segment "default_handlers"
 
@@ -79,11 +81,6 @@ nat2emu_rtl:	php
 		xce
 		plp
 		rtl
-
-test_wdm_b0:	sec
-		xce
-		wdm	0
-@l:		jmp	@l
 
 		.segment "boot_CODE"
 
@@ -220,10 +217,9 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		DEBUG_PRINTF "initHandles\n"
 		jsr	initHandles
+
 		DEBUG_PRINTF "initB0Blocks\n"
 		jsr	initB0Blocks
-
-
 
 		pea	0
 		plb
@@ -247,18 +243,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		dex
 		dex	
 		bne	@lp2	
-
-		jsr	setupIRQstackandhandlers
-
-		wdm	0
-
-		cli
-
-@tlp:		nop
-		nop
-		nop
-		jmp	@tlp
-		
+	
 		sep	#$30
 		.i8
 		.a8
@@ -269,7 +254,11 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		lda	#2
 		jsl	VDU_INIT
 
-		jml	test_wdm_b0
+		DEBUG_PRINTF "initIRQdispatcher\n"
+		jsr	initIRQdispatcher
+
+		DEBUG_PRINTF "hardwareInit\n"
+		jsr	hardwareInit
 
 
 
@@ -312,7 +301,7 @@ here2:
 		PLOT	5,800,400
 
 		
-		lda	#10
+		lda	#20
 		ldy	#0
 @l1:		dey
 		bne	@l1
@@ -340,9 +329,22 @@ here:		lda	#17
 		.byte	"Hello",10,13,0	
 		inx
 		jsr	PrintHexX
+
+		lda	#2
+		ldy	#0
+@l1:		dey
+		bne	@l1
+		dec	A	
+		bne	@l1
+
+
 		txa
 		and	#$ff
 		bne	here
+
+		cli
+kkkk:		jmp	kkkk
+
 		jmp	here2
 
 
@@ -613,6 +615,9 @@ tblMosLocs:	.word	$FFC0	; map 0, mosram dis
 		.word	$7D00	; map 1, mosram en
 
 
+	; Move event stuff to a module?
+kernelRaiseEvent:
+		rts
 
 ;;;;;;;;;;;;;;;;;; TODO: split this up into relevant modules?
 
@@ -733,3 +738,6 @@ _BD9B7:			.byte	$ff				; USER 6522 Bit IRQ mask		 &277	*FX231
 			.byte	$00				; unused (memory used for VDU)		 &28A	*FX250
 			.byte	$00				; unused (memory used for display)	 &28B	*FX251
 			.byte	$ff				; Current language ROM number		 &28C	*FX252
+
+
+

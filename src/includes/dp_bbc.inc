@@ -1,5 +1,5 @@
-	.IFNDEF __DP_SYS_INC__
-__DP_SYS_INC__:
+	.IFNDEF __DP_BBC_INC__
+__DP_BBC_INC__:
 
 	; the SYS direct page - this is retained for compatibility with 6502 programs
 	; and will always reside at 00 0000

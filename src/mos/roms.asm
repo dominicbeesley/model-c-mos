@@ -1,4 +1,4 @@
-		.include "dp_sys.inc"
+		.include "dp_bbc.inc"
 		.include "hardware.inc"
 		.include "debug.inc"
 		.include "sysvars.inc"
@@ -38,7 +38,7 @@ scanROMlp:	jsr	isRomValid		; check for valid ROM, rest relies on F4 being set he
 		ldx	z:dp_mos_curROM
 		txy
 nextOtherROM:
-		DEBUG_PRINTF "nextOtherROM X=%X, Y=%Y\n"
+;;		DEBUG_PRINTF "nextOtherROM X=%X, Y=%Y\n"
 		iny                          	;next other ROM
 		cpy	#$10                    ;out of other ROMs?
 		bcs	currentROMValid		;taken if no more other ROMs
@@ -48,7 +48,7 @@ nextOtherROM:
 		lda	#$80
 		sta	z:dp_mos_OS_wksp2+1
 
-		DEBUG_PRINTF "compare X=%X, Y=%Y\n"
+;;		DEBUG_PRINTF "compare X=%X, Y=%Y\n"
 
 compareLoop:
 		sty	sheila_ROMCTL_SWR & $FFFF	;select other ROM
@@ -67,23 +67,23 @@ compareLoop:
 		; is invalid.
 		lda	#1
 		jsr	staRomTableX		; mark bad
-		DEBUG_PRINTF "matched"
+;;		DEBUG_PRINTF "matched"
 currentROMInvalid:
 		ldx	z:dp_mos_curROM
-		DEBUG_PRINTF "invalid X=%X\n"
+;;		DEBUG_PRINTF "invalid X=%X\n"
 		lda	#1			; like MOS 350 blank out bad uns
 		jsr	staRomTableX
 		bra	nextROM
 
 currentROMValid:
 		lda	$8006
-		DEBUG_PRINTF "VAL #%X, type=%A\n"
+;;		DEBUG_PRINTF "VAL #%X, type=%A\n"
 		jsr	staRomTableX
 		and	#$8F
 		bne	nextROM			;taken if any mandatory bits are set
 
 		phb
-		DEBUG_PRINTF "BASIC #%X\n"
+;;		DEBUG_PRINTF "BASIC #%X\n"
 		jsr	bank0
 		stx	sysvar_ROMNO_BASIC
 		plb

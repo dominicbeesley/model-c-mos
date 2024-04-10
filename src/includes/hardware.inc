@@ -2,6 +2,9 @@
 __HARDWARE_INC__:
 
 
+IRQ_PRIOR_T1			:= $F0
+IRQ_PRIOR_VSYNC			:= $E8
+
 
 sheila_MEM_CTL			:= $FFFE31
 BITS_MEM_CTL_SWMOS		:= $01
@@ -320,6 +323,15 @@ VIA_ACR_SHIFTMODE_7			:= $1C
 
 VIA_ACR_T1_MASK				:= $C0
 VIA_ACR_T1_CONT				:= $40
+
+
+;***********************************************************************
+;* ADC                                                                 *
+;***********************************************************************
+
+sheila_ADC_sr				:= $FFFEC0
+sheila_ADC_hi				:= $FFFEC1
+sheila_ADC_lo				:= $FFFEC2
 
 
 ;***********************************************************************

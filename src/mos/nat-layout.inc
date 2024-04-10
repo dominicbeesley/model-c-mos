@@ -3,6 +3,8 @@ __NAT_LAYOUT_INC__:
 
 		.include "vectors.inc"
 		
+DPBBC			:= $0000
+
 HANDLER_TRAMPOLINES	:= $0B00			; set in .cfg file - Repurposes Soft Keys expansion buffer
 
 TEST_AREA		:= $1000

@@ -1,11 +1,12 @@
 
-		.include	"dp_sys.inc"
+		.include	"dp_bbc.inc"
 		.include	"hardware.inc"
 		.include	"vectors.inc"
 		.include	"nat-layout.inc"
 		.include	"oslib.inc"
 		.include	"sysvars.inc"
 		.include	"cop.inc"
+		.include	"debug.inc"
 
 		.export		COP_2F
 		.export		COP_30
@@ -13,7 +14,7 @@
 
 		.export		default_IVIRQ_emu
 		.export		default_IVIRQ
-		.export		setupIRQstackandhandlers
+		.export		initIRQdispatcher
 
 ;	********************************************************************************
 ;	* Main emu interrupt handler                                                   *
@@ -90,8 +91,9 @@ default_IVIRQ:	rep   #$30
 @lp:		pei	(b0b_ll_irq_pri::next)		; get address of next item
 		pld        				; into DP
 
-		;NEW: this wasn't in Commy MOS - would crash if no handler found?!
-		beq	@interruptEx2
+		;NEW: this wasn't in Commy MOS - would crash if no handler found?! - I suspect there's always a catch all handler?
+		;;beq	@interruptEx2
+		beq	@interruptBad
 
 		lda	[b0b_ll_irq_pri::irqf]		; read hardware test register into A
 		tay        				; into Y
@@ -146,6 +148,11 @@ default_IVIRQ:	rep   #$30
 		pla
 		plb
 		rti
+
+@interruptBad:
+		sei
+		DEBUG_PRINTF "Unhandled interrupt"
+here:		jmp	here
 
 ;	********************************************************************************
 ;	* COP 2F - OPIIQ - Add interrupt handler                                       *
@@ -406,98 +413,18 @@ COP_30:		jsr	getHandleYtoX			; get block address from handle
 		sec					; indicate error
 @retsec:	rtl
 
-setupIRQstackandhandlers:
+
+
+initIRQdispatcher:
+		php
+		rep	#$30
+		.a16
+		.i16
+
 		lda	#$0000
 		sta	f:B0_IRQ_STACK
 		lda	#$0000
 		sta	f:B0LL_IRQ_BLOCKS
+
+		plp
 		rts
-;;		php
-;;		rep	#$30
-;;		.a16
-;;		.i16
-;;		phd
-;;		phb
-;;
-;;DPSYS = 0
-;;
-;;;;	TODO: allocate stack for IRQ handlers - for now use $01xx
-;;;;		cop	COP_13_OPAST    ;allocate a stack
-;;;;		.word	$0100			; stack size
-;;;;@lockup:	bcs	@lockup         ;if carry set here lock up the machine !
-;;		lda	#$0000
-;;		sta	f:B0_IRQ_STACK
-;;		lda	#$0000
-;;		sta	f:B0LL_IRQ_BLOCKS
-;;		phk
-;;		plb
-;;		sep	#$30
-;;		.a8
-;;		.i8
-;;		lda	#>irqh_catchall
-;;		xba
-;;		lda	#<irqh_catchall
-;;		ldx	#$ff
-;;		ldy	#$00
-;;		pea	DPSYS
-;;		pld
-;;		cop	COP_2F_OPIIQ    ;set up a catch-all IRQ handler with lowest priority
-;;		.faraddr $00ffff         ;device address
-;;		.byte	$00  			; device eor mask
-;;		lda	#>irqh_ula_rtc
-;;		xba
-;;		lda	#<irqh_ula_rtc
-;;		ldy	#$21 			; rtc priority
-;;		jsr	OPIIQ_ULA_IRQ
-;;		ldx	#$08 			; real time clock interrupt mask
-;;		jsr	OPMIQ_ULA_IRQ   ;also mask with SYSVAR_ELK_ULA_IE
-;;		lda	#>irqh_vsync
-;;		xba
-;;		lda	#<irqh_vsync
-;;		ldy	#$20 			; vsync priority
-;;		jsr	OPIIQ_ULA_IRQ
-;;		ldx	#$04 			; vsync interrupt mask
-;;		jsr	OPMIQ_ULA_IRQ   ;also mask with SYSVAR_ELK_ULA_IE
-;;		lda	#>irqh_via_cb1
-;;		xba
-;;		lda	#<irqh_via_cb1
-;;		phk
-;;		plb
-;;		ldx	#$00
-;;		ldy	#$10 			; priority
-;;		pea	DPSYS
-;;		pld
-;;		cop	COP_2F_OPIIQ
-;;		.faraddr	VIA_IFR
-;;		.byte	$00
-;;		ldx	#$10 			; via_cb1
-;;		pea	$4200			; TODO: set to >VIA base
-;;		plb
-;;		plb
-;;		lda	#>VIA_IER
-;;		xba
-;;		lda	#<VIA_IER
-;;		cop	COP_31_OPMIQ
-;;		plb
-;;		pld
-;;		plp
-;;		rts
-;;
-;;OPMIQ_ULA_IRQ:	pea   $0000
-;;		plb
-;;		plb
-;;		lda	#>SYSVAR_ELK_ULA_IE
-;;		xba
-;;		lda	#<SYSVAR_ELK_ULA_IE
-;;		cop	COP_31_OPMIQ
-;;		rts
-;;
-;;OPIIQ_ULA_IRQ:	phk
-;;		plb
-;;		ldx	#$00
-;;		pea	DPSYS
-;;		pld
-;;		cop	COP_2F_OPIIQ
-;;		.faraddr sheila_ULA_IRQ_CTL
-;;		.byte	$00
-;;		rts
