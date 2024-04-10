@@ -205,12 +205,13 @@ COP_08:
 	;	+2	A (8 bit)
 	;	+1	flags returned from vector
 		
-		clc
-		jml	@c		
-@c:		; TODO: this assumes that no interrupt will occur during xce TODO: test what happens on real CPU
-		xce
 
-		; get back DP cop
+		lda	#^@c
+		pha
+		pea	.loword(@c-1)
+		jml	emu2nat_rtl
+	;;;;;;;;; enter native mode ;;;;;;;;;;;;
+@c:		; get back DP cop
 		tsc
 		tcd
 		pei	(3)

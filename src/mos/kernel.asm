@@ -311,7 +311,7 @@ here2:
 		PLOT	5,800,400
 
 		
-		lda	#20
+		lda	#50
 		ldy	#0
 @l1:		dey
 		bne	@l1
