@@ -250,16 +250,15 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		lda	#$80
 		sta	sysvar_RAM_AVAIL
 
-		DEBUG_PRINTF "VDU_INIT\n"
-		lda	#2
-		jsl	VDU_INIT
-
 		DEBUG_PRINTF "initIRQdispatcher\n"
 		jsr	initIRQdispatcher
 
 		DEBUG_PRINTF "hardwareInit\n"
 		jsr	hardwareInit
 
+		DEBUG_PRINTF "VDU_INIT\n"
+		lda	#2
+		jsl	VDU_INIT
 
 
 		rep	#$30
@@ -343,7 +342,9 @@ here:		lda	#17
 		bne	here
 
 		cli
-kkkk:		jmp	kkkk
+kkkk:		nop
+		nop
+		jmp	kkkk
 
 		jmp	here2
 
