@@ -8,7 +8,7 @@
 	; all entries jump to bbcNatVecEnter which uses the stacked
 	; return address to figure out which vector to call
 
-		.segment "BBC_NAT_VEC_SHIMS"
+		.segment "BBCCODE"
 		.i8
 		.a8
 	

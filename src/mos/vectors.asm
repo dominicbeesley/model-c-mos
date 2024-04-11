@@ -9,7 +9,7 @@
 		.export COP_08
 		.export AddToVector
 
-		.segment "boot_CODE"
+		.segment "BBCCODE"
 
 	; we are still running from the MOS rom in bank 0, we need
 	; to enter native mode 

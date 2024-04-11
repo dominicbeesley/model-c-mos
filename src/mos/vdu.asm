@@ -527,7 +527,7 @@ _LC4BA:			.byte	$04				; &20-&3F - OSHWM+&0400
 ;**************************************************************************
 
 
-_VDUCHR:		sep	#$30
+_VDUCHR_NAT:		sep	#$30
 			.i8
 			.a8
 			ldx	sysvar_VDU_Q_LEN		; get number of items in VDU queue
@@ -3928,7 +3928,7 @@ _BD8F5:			lda	#$bf				; A=&BF
 			jsr	AND_VDU_STATUS				; bit 6 of VDU status =0
 			pla					; Pull A
 			and	#$7f				; clear hi bit (7)
-			jsr	_VDUCHR				; entire VDU routine !!
+			jsr	_VDUCHR_NAT				; entire VDU routine !!
 			lda	#$40				; A=&40
 			jmp	OR_VDU_STATUS				; exit
 
@@ -4059,7 +4059,7 @@ __no_intercept:		clc					; Prepare to not send this to printer
 			bne	_BE0C8				; Yes, skip past VDU driver
 			pla					; Get character back
 			pha					; Resave character
-			jsr	_VDUCHR				; Call VDU driver
+			jsr	_VDUCHR_NAT				; Call VDU driver
 								; On exit, C=1 if character to be sent to printer
 
 _BE0C8:			

@@ -30,6 +30,9 @@
 
 		.export kernelRaiseEvent
 
+		.export default_BBC_vectors
+		.export default_BBC_vectors_len
+
 		.segment "default_handlers"
 
 ; deice - all 65816 entries are initially ABORT
@@ -220,8 +223,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		DEBUG_PRINTF "MOS_BASE =%H%A\n"
 
 		
-; Set up the BBC/emulation mode OS vectors to point at their defaults
-; which are the entry points in bbc-nat-vectors
 		rep	#$30
 		.i16
 		.a16
@@ -231,6 +232,13 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		DEBUG_PRINTF "initB0Blocks\n"
 		jsr	initB0Blocks
+
+; Set up the BBC/emulation mode OS vectors to point at their defaults
+; which are the entry points in bbc-nat-vectors
+		ldx	#.loword(default_BBC_vectors)
+		ldy	#.loword(BBC_USERV)
+		lda	#default_BBC_vectors_len
+		mvn	#^default_BBC_vectors, #^BBC_USERV
 
 		pea	0
 		plb
@@ -620,6 +628,12 @@ kernelRaiseEvent:
 
 ;;;;;;;;;;;;;;;;;; TODO: split this up into relevant modules?
 
+
+default_BBC_vectors:
+		.repeat IX_IND3V+1, ix
+		.addr	tblNatShims+3*ix
+		.endrepeat
+default_BBC_vectors_len := *-default_BBC_vectors
 
 ; -------------------------------------------------------------------------
 ; |									  |
