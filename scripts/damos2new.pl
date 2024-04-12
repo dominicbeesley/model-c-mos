@@ -46,8 +46,8 @@ while (<>) {
 	s/\bRFS_SELECT\b/dp_mos_curPHROM/g;
 	s/\bROM_PTR\b/dp_mos_genPTR/g;
 	s/\bROM_PTR_HI\b/dp_mos_genPTR+1/g;
-	s/\bMOS_WS_0\b/dp_mos_X/g;
-	s/\bMOS_WS_1\b/dp_mos_OS_wksp2/g;
+	s/\bMOS_WS_0\b/dp_mos_OS_wksp2/g;
+	s/\bMOS_WS_1\b/dp_mos_OS_wksp2+1/g;
 	s/\bIRQ_COPY_A\b/dp_mos_INT_A/g;
 	s/\bERR_MSG_PTR\b/dp_mos_error_ptr/g;
 	s/\bERR_MSG_PTR_HI\b/dp_mos_error_ptr+1/g;
