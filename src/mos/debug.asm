@@ -4,6 +4,8 @@
 		.include "deice.inc"
 
 		.export debug_printf
+		.export debug_printHexA
+		.export debug_printA
 		
 		.code
 
@@ -86,9 +88,11 @@ debug_printf:
 	tsc
 	tcd
 
-	pei	(14)	; push K and rubbish on stack
-	plb
-	plb		; caller K
+;	pei	(14)	; push K and rubbish on stack
+;	plb
+;	plb		; caller K
+	phk
+	plb		; Assume strings are in our bank!
 	ldy	#0
 @lp:	lda 	(8),Y
 	beq	@end
@@ -145,7 +149,7 @@ debug_printf:
 	xba
 	tax
 	lda	0,X
-	jsr	debug_printHexA
+	jsl	debug_printHexA
 @cont:	plb
 	bra	@lp	
 @b16:	and	#$0F
@@ -157,7 +161,7 @@ debug_printf:
 	xba
 	lda	0,X
 	tax
-	jsr	debug_printHexX16
+	jsl	debug_printHexX16
 	bra	@cont
 @nope2:	plb
 @nope:	lda 	#'%'
@@ -201,13 +205,14 @@ debug_printHexA:
 	jsr	@nyb
 	pla
 	plp
-	rts
+	rtl
 @nyb:	and	#$F
 	ora	#'0'
 	cmp	#$3A
 	bcc	@s
 	adc	#'A'-$3A-1
-@s:	jmp	deice_printA
+@s:	jsr	deice_printA
+	rts
 
 debug_printHexX16:
 	php
@@ -215,10 +220,14 @@ debug_printHexX16:
 	pha
 	txa
 	xba
-	jsr	debug_printHexA
+	jsl	debug_printHexA
 	xba
-	jsr	debug_printHexA
+	jsl	debug_printHexA
 	pla
 	plp
-	rts
+	rtl
+
+debug_printA:
+	jsr	deice_printA
+	rtl
 
