@@ -389,7 +389,7 @@ _BDD1E:		lda	a:sysvar_FLASH_CTDOWN		; load flash counter
 		ldx	sysvar_FLASH_MARK_PERIOD	; else get space period count in X
 _BDD34:		rol					; restore bit
 		eor	#$01				; and invert it
-		jsr	vduSetULACTL			; then change colour
+		jsl	vduSetULACTL			; then change colour
 
 		stx	sysvar_FLASH_CTDOWN		; &0251=X resetting the counter
 

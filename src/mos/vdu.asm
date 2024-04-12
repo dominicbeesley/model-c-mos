@@ -12,6 +12,22 @@
 		.export _NVWRCH
 		.export vduSetULACTL
 
+		.export _OSBYTE_20
+		.export _OSBYTE_132
+		.export _OSBYTE_133
+		.export _OSBYTE_134
+		.export _OSBYTE_135
+		.export _OSBYTE_154
+		.export _OSBYTE_155
+
+		.export _OSWORD_9
+		.export _OSWORD_10
+		.export _OSWORD_11
+		.export _OSWORD_12
+		.export _OSWORD_13
+
+
+
 ; This taken from https://github.com/raybellis/mos120/blob/master/mos120.s
 ; and hacked for native mode
 
@@ -1060,7 +1076,7 @@ _BC750:			sta	(dp_mos_OSBW_X),Y		; store data
 			cpy	#$04				; to next bytes until Y=4
 			bne	_BC74F				; 
 
-_BC758:			rts					; and exit
+_BC758:			rtl					; and exit
 
 
 ;*************************************************************************
@@ -1337,7 +1353,7 @@ _BC8BA:			plp					; check flags
 			bne	_BC8CC				; and if not 0 C8CC
 
 _BC8CB:			txa					; X=A
-_BC8CC:			jsr	_LEA11				; call Osbyte 155 pass data to pallette register
+_BC8CC:			jsl	_LEA11				; call Osbyte 155 pass data to pallette register
 			tya					; 
 			sec					; 
 			adc	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
@@ -1365,7 +1381,8 @@ _OSWORD_12:		php					; push flags
 			tax					; X=A
 			iny					; Y=Y+1
 			lda	(dp_mos_OSBW_X),Y		; get phsical colour
-			jmp	_LC89E				; do VDU19 with parameters in X and A
+			jsr	_LC89E				; do VDU19 with parameters in X and A
+			rtl
 
 
 ;*************************************************************************
@@ -1801,7 +1818,7 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 			dex					
 			bne	__vdu_mode_init_loop		
 
-			;;jsr	_OSBYTE_20			; Implode character definitions
+			;;jsl	_OSBYTE_20			; Implode character definitions
 			pla					; Get initial MODE back to A
 			ldx	#$7f				; X=&7F
 			stx	vduvar_MO7_CUR_CHAR		; MODE 7 copy cursor character (could have set this at CB1E)
@@ -1897,7 +1914,7 @@ _BCB5E:			asl					; A=A*2
 			jsr	AND_VDU_STATUS			; A=A and &D0:&D0=A
 			ldx	vduvar_MODE			; screen mode
 			lda	_ULA_SETTINGS,X			; get video ULA control setting
-			jsr	vduSetULACTL			; set video ULA using osbyte 154 code
+			jsl	vduSetULACTL			; set video ULA using osbyte 154 code
 			php					; push flags
 			sei					; set interrupts
 			ldx	_TAB_CRTCBYMOSZ,Y			; get cursor end register data from table
@@ -1974,7 +1991,7 @@ _BCBF8:			lda	(dp_mos_vdu_wksp+4),Y			; get first byte
 			sta	(dp_mos_OSBW_X),Y			; store it in YX
 			cpy	#$08				; until Y=8
 			bne	_BCBF8				; 
-			rts					; then exit
+			rtl					; then exit
 
 
 
@@ -2005,7 +2022,7 @@ _BCD06:			rts					; return
 ;*************************************************************************
 
 _OSBYTE_20:		lda	#$0f				; A=15
-			sta	vduvar_EXPLODE_FLAGS			; font flag indicating that page &0C,&C0-&C2 are
+			sta	vduvar_EXPLODE_FLAGS		; font flag indicating that page &0C,&C0-&C2 are
 								; used for user defined characters
 			lda	#$0c				; A=&0C
 			ldy	#$06				; set loop counter
@@ -2017,11 +2034,11 @@ _BCD10:			sta	vduvar_FONT_LOC32_63,Y		; set all font location bytes
 			cpx	#$07				; is X= 7 or greater
 			bcc	_BCD1C				; if not CD1C
 			ldx	#$06				; else X=6
-_BCD1C:			stx	sysvar_EXPLODESTATUS			; character definition explosion switch
-			lda	sysvar_PRI_OSHWM			; A=primary OSHWM
+_BCD1C:			stx	sysvar_EXPLODESTATUS		; character definition explosion switch
+			lda	sysvar_PRI_OSHWM		; A=primary OSHWM
 			ldx	#$00				; X=0
 
-_BCD24:			cpx	sysvar_EXPLODESTATUS			; character definition explosion switch
+_BCD24:			cpx	sysvar_EXPLODESTATUS		; character definition explosion switch
 			bcs	_BCD34				; 
 			ldy	_LC4BA,X			; get soft character  RAM allocation
 			sta	vduvar_FONT_LOC32_63,Y		; font location bytes
@@ -2029,7 +2046,7 @@ _BCD24:			cpx	sysvar_EXPLODESTATUS			; character definition explosion switch
 			inx					; X=X+1
 			bne	_BCD24				; if X<>0 then CD24
 
-_BCD34:			sta	sysvar_CUR_OSHWM			; current value of page (OSHWM)
+_BCD34:			sta	sysvar_CUR_OSHWM		; current value of page (OSHWM)
 			tay					; Y=A
 			beq	_BCD06				; return via CD06 (ERROR?)
 
@@ -2037,7 +2054,7 @@ _BCD34:			sta	sysvar_CUR_OSHWM			; current value of page (OSHWM)
 			lda	#OSBYTE_143_SERVICE_CALL
 			cop	COP_06_OPOSB			; issue paged ROM service call &11
 								; font implosion/explosion warning
-			rts
+			rtl
 
 
 ;******** move text cursor to next line **********************************
@@ -3472,12 +3489,12 @@ _LD5D5:			pha					; Save A
 			ldx	#$03				; X=3
 			pla					; save A
 			tay					; Y=A
-_BD5E0:			lda	vduvar_GRA_CUR_EXT,X			; get graphics coordinate
-			sta	(dp_mos_OSBW_X),Y			; store it in OS buffer
+_BD5E0:			lda	vduvar_GRA_CUR_EXT,X		; get graphics coordinate
+			sta	(dp_mos_OSBW_X),Y		; store it in OS buffer
 			dey					; decrement Y and X
 			dex					; 
 			bpl	_BD5E0				; if +ve do it again
-			rts					; then Exit
+			rtl					; then Exit
 
 
 ;*************************************************************************
@@ -3540,14 +3557,16 @@ _LD636:			lda	vduvar_GRA_WINDOW_BOTTOM,X			;
 ;*									 *
 ;*************************************************************************
 
-_OSBYTE_134:		lda	vduvar_TXT_CUR_X			; read current text cursor (X)
+_OSBYTE_134:		lda	vduvar_TXT_CUR_X		; read current text cursor (X)
 			sec					; set carry
-			sbc	vduvar_TXT_WINDOW_LEFT			; subtract left hand column of current text window
+			sbc	vduvar_TXT_WINDOW_LEFT		; subtract left hand column of current text window
 			tax					; X=A
-			lda	vduvar_TXT_CUR_Y			; get current text cursor (Y)
+			lda	vduvar_TXT_CUR_Y		; get current text cursor (Y)
 			sec					; 
-			sbc	vduvar_TXT_WINDOW_TOP			; suptract top row of current window
+			sbc	vduvar_TXT_WINDOW_TOP		; suptract top row of current window
 			tay					; Y=A
+			rtl
+
 _BD657:			rts					; and exit
 
 				; PLOT routines continue
@@ -3565,13 +3584,13 @@ _LD658:			php					; store flags
 			ldy	#$39				; set 339/C=320/3
 			jsr	_LD0DE				; 
 			sec					; 
-			lda	vduvar_VDU_Q_START+7			; 
-			sbc	vduvar_GRA_CUR_INT+2			; 
-			sta	vduvar_VDU_Q_START			; 
-			lda	vduvar_VDU_Q_START+8			; 
-			sbc	vduvar_GRA_CUR_INT+3			; 
-			sta	vduvar_VDU_Q_START+1			; 
-			ora	vduvar_VDU_Q_START			; check VDU queque
+			lda	vduvar_VDU_Q_START+7		; 
+			sbc	vduvar_GRA_CUR_INT+2		; 
+			sta	vduvar_VDU_Q_START		; 
+			lda	vduvar_VDU_Q_START+8		; 
+			sbc	vduvar_GRA_CUR_INT+3		; 
+			sta	vduvar_VDU_Q_START+1		; 
+			ora	vduvar_VDU_Q_START		; check VDU queque
 			beq	_BD69F				; 
 
 _BD688:			jsr	_LD6A2				; display a line
@@ -3805,7 +3824,7 @@ _BD82E:			ldy	dp_mos_vdu_wksp			; read modified values into Y and A
 			sta	vduvar_TEMP_8,Y		; store copy
 			dey					; and do it again
 			bpl	_BD80A				; until 8 bytes copied
-			rts					; exit
+			rtl					; exit
 
 ;********* pixel reading *************************************************
 
@@ -3937,7 +3956,7 @@ _LD905:			lda	#$20				; A=&20
 			bit	dp_mos_vdu_status			; if bit 6 cursor editing is set
 			bvc	_BD8CB				; 
 			bne	_BD8CB				; or bit 5 is set exit &D8CB
-			jsr	_OSBYTE_135			; read a character from the screen
+			jsl	_OSBYTE_135			; read a character from the screen
 			beq	_BD917				; if A=0 on return exit via D917
 			pha					; else store A
 			jsr	_VDU_9				; perform cursor right
@@ -3971,10 +3990,14 @@ _OSBYTE_132:		ldx	vduvar_MODE			; Get current screen mode
 _OSBYTE_133:		txa					; A=X
 			and	#$07				; Ensure mode 0-7
 			tay					; Pass to Y into index into screen size table
+			phb
+			phk
+			plb
 			ldx	_TAB_MAP_TYPE,Y			; X=screen size type, 0-4
 			lda	_VDU_MEMLOC_TAB,X		; A=high byte of start address for screen type
+			plb
 			ldx	#$00				; Returned address is &xx00
-			bit	sysvar_RAM_AVAIL			; Check available RAM
+			bit	sysvar_RAM_AVAIL		; Check available RAM
 			bmi	_BD93E				; If bit 7 set then 32K RAM, so return address
 			and	#$3f				; 16K RAM, so drop address to bottom 16K
 			cpy	#$04				; Check screen mode
@@ -3982,7 +4005,7 @@ _OSBYTE_133:		txa					; A=X
 			txa					; If mode 0-3, return &0000 as not enough memory
 ; exit
 _BD93E:			tay					; Pass high byte of address to Y
-			rts					; and return address in YX
+			rtl					; and return address in YX
 
 
 ;*************************************************************************
@@ -3995,15 +4018,14 @@ _OSBYTE_154:		txa					; osbyte entry! X transferred to A thence to
 
 
 vduSetULACTL:		php					; save flags
-			sep	#$20
+			sep	#$24				; set 8 bit mode and disable interrupts
 			.a8
-			sei					; disable interupts
 			sta	f:sysvar_VIDPROC_CTL_COPY	; save RAM copy of new parameter
 			sta	f:sheila_VIDULA_ctl		; write to control register
 			lda	f:sysvar_FLASH_MARK_PERIOD	; read	space count
 			sta	f:sysvar_FLASH_CTDOWN		; set flash counter to this value
 			plp					; get back status
-			rts					; and return
+			rtl					; and return
 
 
 
@@ -4020,7 +4042,7 @@ _LEA11:			eor	#$07				; convert to palette format
 			sta	sysvar_VIDPROC_PAL_COPY		; store as current palette setting
 			sta	f:sheila_VIDULA_pal		; store actual colour in register
 			plp					; get back flags
-			rts					; and exit
+			rtl					; and exit
 
 ; WRCH control routine
 ; ====================
@@ -4059,7 +4081,7 @@ __no_intercept:		clc					; Prepare to not send this to printer
 			bne	_BE0C8				; Yes, skip past VDU driver
 			pla					; Get character back
 			pha					; Resave character
-			jsr	_VDUCHR_NAT				; Call VDU driver
+			jsr	_VDUCHR_NAT			; Call VDU driver
 								; On exit, C=1 if character to be sent to printer
 
 _BE0C8:			

@@ -57,7 +57,23 @@ emu_handle_abort:
 
 
 nat_handle_cop:	jml	cop_handle_nat	
-nat_handle_brk:	rti
+nat_handle_brk:	DEBUG_PRINTF "NAT BREAK A=%H%A, X=%X, Y=%Y, F=%F, "
+		rep	#$30
+		.a16
+		.i16
+		lda	2,S
+		sec
+		sbc	#2
+		tax
+		sep	#$20
+		.a8
+		.i16
+		lda	4,S
+		DEBUG_PRINTF "PC=%A%X\n"
+		sei
+@x:		jmp	@x
+
+
 nat_handle_nmi:	rti
 nat_handle_irq:	jml	default_IVIRQ	
 
@@ -66,15 +82,60 @@ nat_handle_irq:	jml	default_IVIRQ
 emu_handle_cop:	clc		
 		xce				; enter native mode 
 		jml	cop_handle_emu
-emu_handle_irq:	clc
+
+emu_handle_irq:	sta	dp_mos_INT_A
+		lda	1,S
+		and	#$10
+		bne	emu_handle_brk
+		clc
 		xce
 		pea	>@ret			; fake flags and bank 0 (return)
 		pea	4 + (<@ret * 256)
 		jml	default_IVIRQ
 @ret:		sec
 		xce
+		lda	dp_mos_INT_A
 		rti
+
+;;	; TODO: Move this lot to ROM and call entry/exit shims
+;;emu_handle_irq:	sta	dp_mos_INT_A
+;;		lda	1,S
+;;		and	#$10
+;;		bne	emu_handle_brk
+;;		clc
+;;		xce
+;;		pea	>@ret			; fake flags and bank 0 (return)
+;;		pea	4 + (<@ret * 256)
+;;		jml	default_IVIRQ
+;;@ret:		pea	0
+;;		pld
+;;		phd
+;;		plb
+;;		plb
+;;		sec
+;;		xce
+;;		lda	dp_mos_INT_A
+;;		rti
+
 emu_handle_nmi:	rti
+
+emu_handle_brk:
+		clc
+		xce
+		DEBUG_PRINTF "EMU BREAK A=%H%A, X=%X, Y=%Y, F=%F, PC="
+		pla
+		pla
+		sec
+		sbc	#2
+		tay
+		pla
+		jsl	debug_printHexA
+		tya
+		sbc	#0
+		jsl	debug_printHexA
+		lda	#13
+		jsl	debug_printA
+@x:		jmp	@x
 
 		; enter emu mode and set DP/B to 0
 nat2emu_rtl:	php
@@ -262,6 +323,24 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		dex
 		dex	
 		bne	@lp2	
+
+		; set up OSBYTE/WORD native vector handlers
+		pea	DPBBC
+		pld
+		ldx	#IX_BYTEV
+		phk
+		plb
+		lda	#.loword(doOSBYTE)
+		jsl	AddToVector
+
+		pea	DPBBC
+		pld
+		ldx	#IX_WORDV
+		phk
+		plb
+		lda	#.loword(doOSWORD)
+		jsl	AddToVector
+
 	
 		sep	#$30
 		.i8
@@ -353,6 +432,27 @@ here:		lda	#17
 		bne	here
 
 		jmp	here2
+
+enter_basic:	
+		sep	#$30
+		.a8
+		.i8	
+
+		; MODE 0
+		lda	#22
+		cop	COP_00_OPWRC
+		lda	#0
+		cop	COP_00_OPWRC
+
+
+		lda	sysvar_ROMNO_BASIC
+		sta	f:dp_mos_curROM
+		sta	f:sheila_ROMCTL_SWR
+		lda	#0
+		pha
+		inc	A
+		pea	$8000-1
+		jml	nat2emu_rtl
 
 
 
