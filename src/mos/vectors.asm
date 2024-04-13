@@ -57,6 +57,9 @@ bbcEmu2NatVectorEntry_ff:
 		;	+3..4   Vector callers rts address
 		;	+1..2	return address to entry shim+-1
 		php
+		rep	#$30
+		.a16
+		.i16
 		pha
 		tsc
 		tcd
