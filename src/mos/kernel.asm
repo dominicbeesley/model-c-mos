@@ -319,10 +319,11 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 ; zeroes to the native OS Vecs
 		lda	#0
 		ldx	#NAT_OS_VECS_COUNT*3
-@lp2:		sta	a:NAT_OS_VECS-3,X
-		dex
+		sep	#$20
+@lp2:		sta	a:NAT_OS_VECS-1,X
 		dex	
-		bne	@lp2	
+		bne	@lp2
+		rep	#$20	
 
 		; set up OSBYTE/WORD native vector handlers
 		pea	DPBBC

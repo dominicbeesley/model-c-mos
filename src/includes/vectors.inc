@@ -39,7 +39,11 @@ IX_IND1V				:= $18
 IX_IND2V				:= $19
 IX_IND3V				:= $1A
 
+IX_VEC_BBC_MAX				:= $1A
 
+IX_N_P100V				:= $1B
+
+IX_VEC_MAX				:= $1B
 
 ;------------------------------- BBC Vectors --------------------------------
 ; These are to be used by emulation mode programs only

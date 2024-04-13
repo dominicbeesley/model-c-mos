@@ -3,6 +3,7 @@
 		.include "hardware.inc"
 		.include "cop.inc"
 		.include "vectors.inc"
+		.include "debug.inc"
 
 		.export bbcEmu2NatVectorEntry
 		.export vector_next
@@ -34,12 +35,42 @@ bbcEmu2NatVectorEntry:
 bbcEmu2NatVectorEntry_ff:	
 	; Now we want to execute the right routine
 
-		rep	#$30
+		rep	#$38
 		.a16
 		.i16
 		tdc				; return address as pushed by entry point
+		sec
+		sbc	#.loword(tblNatShims+2)
+		; A now contains IX*3
+		tcd
+		pla
+		plp
+		jsr	callNativeVectorChain
+
+	; now to figure out how to return to caller - always emu/boot
+	; this exit only works for RTS exiting routines
+
+		sep	#$30
+		.a8
+		; switch to emu mode, we're running FFxxxx so safe to switch
+		; to switch as MOS is mapped at same addr in both modes
+		php
+		sec
+		xce					; emu mode
+		jml	.loword(@ret)
+@ret:		plp
+		rts
+
+		.i16
+		.a16
+	; DP contains index *3, A,X,Y as per vector call
+callNativeVectorChain:
+		php
+		rep	#$38			; ensure 16 bit registers, decimal off
+		pha
+		tdc				; get index into A
 		clc
-		adc	#.loword(.loword(NAT_OS_VECS)-.loword(tblNatShims)-2)		
+		adc	#.loword(NAT_OS_VECS)		
 		tcd
 vector_loop:	
 		pei	(0)			; move to next (or first) item in linked-list
@@ -51,7 +82,7 @@ vector_loop:
 		
 		pla
 		plp
-		rep	#$30			; ensure 16 bit registers
+		rep	#$38			; ensure 16 bit registers, decimal off
 		phd				; save LL pointer
 
 		pei	(b0b_ll_nat_vec::return + 1); construct stack 
@@ -68,7 +99,7 @@ vector_loop:
 		pld				; setup routine's DP
 		rti				; branch to routine
 
-vector_next:	rep	#$30			; ensure 16 bit regs
+vector_next:	rep	#$38			; ensure 16 bit regs and no decimal
 		php
 		pha
 	; stack
@@ -96,21 +127,7 @@ vector_next:	rep	#$30			; ensure 16 bit regs
 
 		bra	vector_loop
 
-vec_done:		
-	; now to figure out how to return to caller - always emu/boot
-	; this exit only works for RTS exiting routines
-
-		sep	#$30
-		.a8
-		; switch to emu mode, we're running FFxxxx so safe to switch
-		; to switch as MOS is mapped at same addr in both modes
-		sec
-		xce					; emu mode
-		jml	.loword(@ret)
-@ret:		pla
-		xba
-		pla
-		xba
+vec_done:	pla
 		plp
 		rts
 
@@ -135,14 +152,26 @@ vec_done:
 ;		*                                                                              *
 ;		*         8 bit vectors are those with IX<=$1A even where they are handled by  *
 ;		*         a native mode handler.                                               *
+;		*                                                                              *
+;		*         Bad vector indices will return V=C=1                                 *
+;		*                                                                              *
 ;		********************************************************************************
 COP_08:
+		phd					; save COP DP
+		; set entry registers for the vector
+		ldx	DPCOP_X
+		ldy	DPCOP_Y
+
 
 		lda	DPCOP_DP			; vector index
+
+		cmp	#IX_VEC_MAX+1
+		bcs	@badIx
+		cmp	#IX_VEC_BBC_MAX+1
+		bcs	@natOnly
 		asl	A				; vector index * 2
 		adc	#BBC_USERV			; turn to BBC vector address				
 
-		phd					; save COP DP
 		tcd					; DP = vector address
 		lda	z:0				; A = vector contents
 		dec	A				; decrement - suitable for an RTL
@@ -153,10 +182,6 @@ COP_08:
 		pea	0
 		plb					; bank = 0 / ignored, stack a 0
 		pha					; stack vector address
-
-		; set entry registers for the vector
-		ldx	DPCOP_X
-		ldy	DPCOP_Y
 
 	; Stack
 	;	+6	COP_DP
@@ -238,6 +263,59 @@ COP_08:
 		; BANK/DP in COP DP left as on entry for 8 bit vectors
 
 		rtl
+
+@badIx:		pld
+		lda	DPCOP_P
+		ora	#$41			; set V/C
+		sec
+		rtl
+
+
+	; Entered here when this is a native-only vector
+
+@natOnly:	php
+	; Stack	
+	;	+2..3	DP
+	;	+1	P - spare
+		lda	DPCOP_P-1
+		sta	0,S			; put caller's P on stack in P
+	; Stack	
+	;	+2..3	DP
+	;	+1	COP caller's P
+		phx
+	; Stack	
+	;	+4..5	DP
+	;	+3	COP caller's P
+	;	+1..2	COP caller's X
+		lda	DPCOP_DP
+		asl	A
+		adc	DPCOP_DP		; A = IX*3
+		ldx	DPCOP_AH
+		tcd				; DP = IX*3
+		txa				; A = entry A	
+		plx			
+		plp
+		jsr	callNativeVectorChain
+		php
+		rep	#$38
+		pha
+		tsc
+		tcd
+		pei	(4)			; get back DP
+		pld
+		pla
+		stx	DPCOP_X
+		sty	DPCOP_Y
+		sta	DPCOP_AH
+		sep	#$20
+		pla
+		sta	DPCOP_P
+		rep	#$38
+		pld				; get back pushed DP
+		clc
+		rtl
+
+
 
 	;BHA contains vector handler address
 	;X   contains vector index

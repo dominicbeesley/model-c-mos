@@ -314,7 +314,15 @@ _BDDED:		inc	oswksp_OSWORD3_CTDOWN-1,X	; increment byte and if
 		ldy	#EVENT_05_INTERVAL		; process EVENT 5 interval timer
 		jsr	kernelRaiseEvent		; 
 
-_BDDFA:
+_BDDFA:	
+		; call the 100Hz poll vectors
+		phb
+		phd
+		pea	IX_N_P100V
+		pld
+		cop	COP_08_OPCAV			
+		pld
+		plb
 
 ; TODO: Keyboard
 ;;;			lda	INKEY_TIMER			; get byte of inkey countdown timer
