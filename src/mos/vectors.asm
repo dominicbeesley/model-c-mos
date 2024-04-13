@@ -15,21 +15,15 @@
 	; we are still running from the MOS rom in bank 0, we need
 	; to enter native mode 
 bbcEmu2NatVectorEntry:
-		pld				; DP contains the return address from the entry point
-		php				; save flags
-		xba
-		pha				; save B
-		xba
-		pha				; save A
-
-	; stack
-	;	+3	Flags
-	;	+1..2	A (16 bits)
-
-		lda	#^bbcEmu2NatVectorEntry_ff
-		pha
+		php
+		pea	^bbcEmu2NatVectorEntry_ff
 		pea	bbcEmu2NatVectorEntry_ff-1
 		jml	emu2nat_rtl	
+
+		;stack
+		;	+3..4	return address to entry shim+-1
+		;	+2	P
+		;	+1	"0"
 
 		.code
 bbcEmu2NatVectorEntry_ff:	
@@ -38,28 +32,53 @@ bbcEmu2NatVectorEntry_ff:
 		rep	#$38
 		.a16
 		.i16
-		tdc				; return address as pushed by entry point
+
+		pha
+
+		;stack
+		;	+5..6	return address to entry shim+-1
+		;	+4	P
+		;	+3	"0"
+		;	+1..2	A
+
+
+		lda	5,S
 		sec
 		sbc	#.loword(tblNatShims+2)
 		; A now contains IX*3
 		tcd
 		pla
+		plb
 		plp
 		jsr	callNativeVectorChain
 
-	; now to figure out how to return to caller - always emu/boot
-	; this exit only works for RTS exiting routines
 
-		sep	#$30
-		.a8
-		; switch to emu mode, we're running FFxxxx so safe to switch
-		; to switch as MOS is mapped at same addr in both modes
+		;stack
+		;	+3..4   Vector callers rts address
+		;	+1..2	return address to entry shim+-1
 		php
-		sec
-		xce					; emu mode
-		jml	.loword(@ret)
-@ret:		plp
-		rts
+		pha
+		tsc
+		tcd
+
+		;stack
+		;	+6..7   Vector callers rts address
+		;	+4..5	return address to entry shim+-1
+		;	+3	P
+		;	+1..2	A
+		lda	6
+		stz	6
+		sta	5
+		;stack
+		;	+5..7	vectors caller's rtl address (bank 0)
+		;	+4	- junk -
+		;	+3	P
+		;	+1..2	A
+		pla
+		plp
+		plb				; remove junk - will reset to 0 in nat2emu anyway
+		jml	nat2emu_rtl
+
 
 		.i16
 		.a16
@@ -189,10 +208,7 @@ COP_08:
 	;	+3	0
 	;	+1..2   vector contents / handler address
 
-		; switch to emu mode, we're running FFxxxx so safe to switch
-		; to switch as MOS is mapped at same addr in both modes
-		sec
-		xce
+		sep	#$30
 		.a8
 		.i8
 
