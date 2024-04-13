@@ -73,8 +73,8 @@
 .exportzp dp_mos_curPHROM		:= $f5
 .exportzp dp_mos_genPTR		:= $f6
 .exportzp dp_mos_genPTR+1		:= $f7
-.exportzp dp_mos_X		:= $fa
-.exportzp dp_mos_OS_wksp2		:= $fb
+.exportzp dp_mos_OS_wksp2		:= $fa
+.exportzp dp_mos_OS_wksp2+1		:= $fb
 .exportzp dp_mos_INT_A		:= $fc
 .exportzp dp_mos_error_ptr		:= $fd
 .exportzp dp_mos_error_ptr+1	:= $fe
@@ -235,35 +235,35 @@
 .export KEY_ROLLOVER_2		:= $02cd
 .export SOUND_SEMAPHORE		:= $02ce
 
-.export BUFFER_0_BUSY		:= $02cf
-.export BUFFER_1_BUSY		:= $02d0
-.export BUFFER_2_BUSY		:= $02d1
-.export BUFFER_3_BUSY		:= $02d2
-.export BUFFER_4_BUSY		:= $02d3
-.export BUFFER_5_BUSY		:= $02d4
-.export BUFFER_6_BUSY		:= $02d5
-.export BUFFER_7_BUSY		:= $02d6
-.export BUFFER_8_BUSY		:= $02d7
+.export mosbuf_buf_busy		:= $02cf
+.export mosbuf_buf_busy+1		:= $02d0
+.export mosbuf_buf_busy+2		:= $02d1
+.export mosbuf_buf_busy+3		:= $02d2
+.export mosbuf_buf_busy+4		:= $02d3
+.export mosbuf_buf_busy+5		:= $02d4
+.export mosbuf_buf_busy+6		:= $02d5
+.export mosbuf_buf_busy+7		:= $02d6
+.export mosbuf_buf_busy+8		:= $02d7
 
-.export BUFFER_0_OUT		:= $02d8
-.export BUFFER_1_OUT		:= $02d9
-.export BUFFER_2_OUT		:= $02da
-.export BUFFER_3_OUT		:= $02db
-.export BUFFER_4_OUT		:= $02dc
-.export BUFFER_5_OUT		:= $02dd
-.export BUFFER_6_OUT		:= $02de
-.export BUFFER_7_OUT		:= $02df
-.export BUFFER_8_OUT		:= $02e0
+.export mosbuf_buf_start		:= $02d8
+.export mosbuf_buf_start+1		:= $02d9
+.export mosbuf_buf_start+2		:= $02da
+.export mosbuf_buf_start+3		:= $02db
+.export mosbuf_buf_start+4		:= $02dc
+.export mosbuf_buf_start+5		:= $02dd
+.export mosbuf_buf_start+6		:= $02de
+.export mosbuf_buf_start+7		:= $02df
+.export mosbuf_buf_start+8		:= $02e0
 
-.export BUFFER_0_IN 		:= $02e1
-.export BUFFER_1_IN 		:= $02e2
-.export BUFFER_2_IN 		:= $02e3
-.export BUFFER_3_IN 		:= $02e4
-.export BUFFER_4_IN 		:= $02e5
-.export BUFFER_5_IN 		:= $02e6
-.export BUFFER_6_IN 		:= $02e7
-.export BUFFER_7_IN 		:= $02e8
-.export BUFFER_8_IN 		:= $02e9
+.export mosbuf_buf_end 		:= $02e1
+.export mosbuf_buf_end+1 		:= $02e2
+.export mosbuf_buf_end+2 		:= $02e3
+.export mosbuf_buf_end+3 		:= $02e4
+.export mosbuf_buf_end+4 		:= $02e5
+.export mosbuf_buf_end+5 		:= $02e6
+.export mosbuf_buf_end+6 		:= $02e7
+.export mosbuf_buf_end+7 		:= $02e8
+.export mosbuf_buf_end+8 		:= $02e9
 
 .export CFS_BLOCK_SZ		:= $02ea
 .export CFS_BLOCK_SZ_HI		:= $02eb
@@ -2941,16 +2941,16 @@ _LC89E:			and	#$0f				; make legal
 			sta	vduvar_PALLETTE,X			; colour pallette
 			tay					; Y=A
 			lda	vduvar_COL_COUNT_MINUS1			; number of logical colours less 1
-			sta	dp_mos_X			; store it
+			sta	dp_mos_OS_wksp2			; store it
 			cmp	#$03				; is it 4 colour mode??
 			php					; save flags
 			txa					; A=X
 _BC8AD:			ror					; rotate A into &FA
-			ror	dp_mos_X			; 
+			ror	dp_mos_OS_wksp2			; 
 			bcs	_BC8AD				; 
-			asl	dp_mos_X			; 
+			asl	dp_mos_OS_wksp2			; 
 			tya					; A=Y
-			ora	dp_mos_X			; 
+			ora	dp_mos_OS_wksp2			; 
 			tax					; 
 			ldy	#$00				; Y=0
 _BC8BA:			plp					; check flags
@@ -6035,20 +6035,20 @@ _BDAD5:			iny					; increment Y to check
 								; to store catalogue byte
 			tya					; else put Y in A
 			eor	#$ff				; invert it
-			sta	dp_mos_X			; and store at &FA
+			sta	dp_mos_OS_wksp2			; and store at &FA
 			lda	#$7f				; store &7F at
-			sta	dp_mos_OS_wksp2			; &FB to get address &7FFF-Y
+			sta	dp_mos_OS_wksp2+1			; &FB to get address &7FFF-Y
 
 _BDAE3:			sty	ROM_LATCH			; set new ROM
-			lda	(dp_mos_X),Y			; Get byte
+			lda	(dp_mos_OS_wksp2),Y			; Get byte
 			stx	ROM_LATCH			; switch back to previous ROM
-			cmp	(dp_mos_X),Y			; and compare with previous byte called
+			cmp	(dp_mos_OS_wksp2),Y			; and compare with previous byte called
 			bne	_BDAD5				; if not the same then go back and do it again
 								; with next rom up
-			inc	dp_mos_X			; else increment &FA to point to new location
+			inc	dp_mos_OS_wksp2			; else increment &FA to point to new location
 			bne	_BDAE3				; if &FA<>0 then check next byte
-			inc	dp_mos_OS_wksp2			; else inc &FB
-			lda	dp_mos_OS_wksp2			; and check that it doesn't exceed
+			inc	dp_mos_OS_wksp2+1			; else inc &FB
+			lda	dp_mos_OS_wksp2+1			; and check that it doesn't exceed
 			cmp	#$84				; &84 (1k checked)
 			bcc	_BDAE3				; then check next byte(s)
 
@@ -6417,7 +6417,7 @@ _BDCBF:			ldx	#$02
 			bne	_BDC68				; Serial buffer empty, not Serial printer, jump to ... DC68
 			inx					; X=3 for Printer buffer
 			jsr	_OSBYTE_145			; Read from Printer buffer
-			ror	BUFFER_3_BUSY			; Copy Byte Fetched/Not fetched into Printer Buffer full flag
+			ror	mosbuf_buf_busy+3			; Copy Byte Fetched/Not fetched into Printer Buffer full flag
 			bmi	_BDC68				; Printer buffer was empty, so jump to ... DC68
 
 _BDCD6:			sta	ACIA_TXRX			; Send byte to ACIA
@@ -6561,10 +6561,10 @@ _POLL_TIMER2_IRQ:	rol					; Rotate bit 5 into bit 7
 			sta	SYS_VIA_IFR			; Clear VIA interupt
 			stx	SYS_VIA_T2C_H			; Zero high byte of T2 Timer
 _LDD79:			ldx	#$08				; X=8 for Speech buffer
-			stx	dp_mos_OS_wksp2			; Prepare to loop up to four times for Speak from RAM
+			stx	dp_mos_OS_wksp2+1			; Prepare to loop up to four times for Speak from RAM
 
 _BDD7D:			jsr	_OSBYTE_152			; Examine Speech buffer
-			ror	BUFFER_8_BUSY			; Shift carry into bit 7
+			ror	mosbuf_buf_busy+8			; Shift carry into bit 7
 			bmi	_BDDC9				; Buffer empty, so exit
 			tay					; Buffer not empty, A=first byte waiting
 			beq	_BDD8D				; Waiting byte=&00 (Speak, no reset), skip past
@@ -6616,7 +6616,7 @@ _BDDBB:			ldy	dp_mos_genPTR
 			jsr	_OSBYTE_159			; Send Speech data low byte
 			ldy	dp_mos_genPTR+1			
 			jsr	_OSBYTE_159			; Send Speech data high byte
-			lsr	dp_mos_OS_wksp2			; Shift loop counter
+			lsr	dp_mos_OS_wksp2+1			; Shift loop counter
 			bne	_BDD7D				; Loop to send up to four byte-pairs
 _BDDC9:			rts					
 
@@ -6679,7 +6679,7 @@ _BDE0A:			bit	SOUND_SEMAPHORE			; read bit 7 of envelope processing byte
 			sei					; bar interrupts
 			dec	SOUND_SEMAPHORE			; DEC envelope processing byte back to 0
 
-_BDE1A:			bit	BUFFER_8_BUSY			; read speech buffer busy flag
+_BDE1A:			bit	mosbuf_buf_busy+8			; read speech buffer busy flag
 			bmi	_BDE2B				; if set speech buffer is empty, skip routine
 			jsr	_OSBYTE_158			; update speech system variables
 			eor	#$a0				; 
@@ -7192,7 +7192,7 @@ _PRINTER_OUT_ALWAYS:	php					; else save flags
 			jsr	_BUFFER_SAVE			; and put character in printer buffer
 			bcs	__printer_out_done_plp		; if carry set on return exit, buffer not full (empty?)
 
-			bit	BUFFER_3_BUSY			; else check buffer busy flag if 0
+			bit	mosbuf_buf_busy+3			; else check buffer busy flag if 0
 			bpl	__printer_out_done_plp		; then E138 to exit
 			jsr	_LE13A				; else E13A to open printer cahnnel
 
@@ -7204,7 +7204,7 @@ _LE13A:			lda	sysvar_PRINT_DEST			; check printer destination
 			cmp	#$01				; if parallel printer not selected
 			bne	_BE164				; E164
 			jsr	_OSBYTE_145			; else read a byte from the printer buffer
-			ror	BUFFER_3_BUSY			; if carry is set then 2d2 is -ve
+			ror	mosbuf_buf_busy+3			; if carry is set then 2d2 is -ve
 			bmi	_BE190				; so return via E190
 			ldy	#$82				; else enable interrupt 1 of the external VIA
 			sty	USR_VIA_IER			; 
@@ -7225,7 +7225,7 @@ _BE164:			cmp	#$02				; is it Serial printer??
 			dey					; 
 			bpl	_LE1AD				; if so E1AD to flush buffer
 
-			lsr	BUFFER_3_BUSY			; else clear buffer busy flag
+			lsr	mosbuf_buf_busy+3			; else clear buffer busy flag
 _LE170:			lsr	sysvar_RS423_USEFLAG			; and RS423 busy flag
 _LE173:			jsr	_LE741				; count buffer if C is clear on return
 			bcc	_BE190				; no room in buffer so exit
@@ -7243,9 +7243,9 @@ _LE17A:			ldy	#$9f				;
 _OSBYTE_156:		php					; push flags
 			sei					; bar interrupts
 			tya					; A=Y
-			stx	dp_mos_X			; &FA=X
+			stx	dp_mos_OS_wksp2			; &FA=X
 			and	sysvar_RS423_CTL_COPY			; A=old value AND Y EOR X
-			eor	dp_mos_X			; 
+			eor	dp_mos_OS_wksp2			; 
 			ldx	sysvar_RS423_CTL_COPY			; get old value in X
 _LE189:			sta	sysvar_RS423_CTL_COPY			; put new value in
 			sta	ACIA_CSR			; and store to ACIA control register
@@ -7265,10 +7265,10 @@ _BE191:			clc					; clear carry
 ;*									 *
 ;*************************************************************************
 
-_OSBYTE_123:		ror	BUFFER_3_BUSY			; mark printer buffer empty for osbyte
+_OSBYTE_123:		ror	mosbuf_buf_busy+3			; mark printer buffer empty for osbyte
 _BE19A:			rts					; and exit
 
-_LE19B:			bit	BUFFER_3_BUSY			; if bit 7 is set buffer is empty
+_LE19B:			bit	mosbuf_buf_busy+3			; if bit 7 is set buffer is empty
 			bmi	_BE19A				; so exit
 
 			lda	#$00				; else A=0
@@ -7301,7 +7301,7 @@ _LE1AE:			pha					; save A
 			jsr	_LECA2				; else clear sound data
 
 _BE1BB:			sec					; set carry
-			ror	BUFFER_0_BUSY,X			; rotate buffer flag to show buffer empty
+			ror	mosbuf_buf_busy,X			; rotate buffer flag to show buffer empty
 			cpx	#$02				; if X>1 then its not an input buffer
 			bcs	_BE1CB				; so E1CB
 
@@ -7324,16 +7324,16 @@ _BE1CB:			jsr	_LE73B				; then enter via count purge vector any user routines
 ;	  else get bytes used
 
 _CNPV:			bvc	_BE1DA				; if bit 6 is set then E1DA
-			lda	BUFFER_0_OUT,X			; else start of buffer=end of buffer
-			sta	BUFFER_0_IN,X			; 
+			lda	mosbuf_buf_start,X			; else start of buffer=end of buffer
+			sta	mosbuf_buf_end,X			; 
 			rts					; and exit
 
 _BE1DA:			php					; push flags
 			sei					; bar interrupts
 			php					; push flags
 			sec					; set carry
-			lda	BUFFER_0_IN,X			; get end of buffer
-			sbc	BUFFER_0_OUT,X			; subtract start of buffer
+			lda	mosbuf_buf_end,X			; get end of buffer
+			sbc	mosbuf_buf_start,X			; subtract start of buffer
 			bcs	_BE1EA				; if carry caused E1EA
 			sec					; set carry
 			sbc	_BUFFER_OFFSET_TABLE,X		; subtract buffer start offset (i.e. add buffer length)
@@ -7675,7 +7675,7 @@ _LE3A8:			php					; push flags
 			sec					; 
 			sbc	SOFTKEYS,Y			; subtract to get the number of bytes in strings
 								; above end of string Y
-			sta	dp_mos_OS_wksp2			; store this
+			sta	dp_mos_OS_wksp2+1			; store this
 			txa					; save X
 			pha					; 
 			ldx	#$10				; and X=16
@@ -7685,16 +7685,16 @@ _BE3B7:			lda	SOFTKEYS,X			; get start offset (from B00) of key string X
 			sbc	SOFTKEYS,Y			; subtract offset of string we are working on
 			bcc	_BE3C8				; if carry clear (B00+Y>B00+X) or
 			beq	_BE3C8				; result (in A)=0
-			cmp	dp_mos_OS_wksp2			; or greater or equal to number of bytes above
+			cmp	dp_mos_OS_wksp2+1			; or greater or equal to number of bytes above
 								; string we are working on
 			bcs	_BE3C8				; then E3C8
-			sta	dp_mos_OS_wksp2			; else store A in &FB
+			sta	dp_mos_OS_wksp2+1			; else store A in &FB
 
 _BE3C8:			dex					; point to next lower key offset
 			bpl	_BE3B7				; and if 0 or +ve go back and do it again
 			pla					; else get back value of X
 			tax					; 
-			lda	dp_mos_OS_wksp2			; get back latest value of A
+			lda	dp_mos_OS_wksp2+1			; get back latest value of A
 			plp					; pull flags
 			rts					; and return
 
@@ -7710,9 +7710,9 @@ _LE3D1:			php					; push P
 			lda	SOFTKEYS,Y			; get start of string
 			tay					; put it in Y
 			clc					; clear carry
-			adc	dp_mos_OS_wksp2			; add number of bytes above string
+			adc	dp_mos_OS_wksp2+1			; add number of bytes above string
 			tax					; put this in X
-			sta	dp_mos_X			; and store it
+			sta	dp_mos_OS_wksp2			; and store it
 			lda	sysvar_KEYB_SOFTKEY_LENGTH			; check number of bytes left to remove from key buffer
 								; if not 0 key is being used (definition expanded so
 								; error.  This stops *KEY 1 "*key1 FRED" etc.
@@ -7727,15 +7727,15 @@ _BE3F6:			dec	sysvar_KEYB_SOFT_CONSISTANCY			; decrement consistence flag to &FF
 								; definitions are being changed
 			pla					; pull A
 			sec					; 
-			sbc	dp_mos_X			; subtract &FA
-			sta	dp_mos_X			; and re store it
+			sbc	dp_mos_OS_wksp2			; subtract &FA
+			sta	dp_mos_OS_wksp2			; and re store it
 			beq	_BE40D				; if 0 then E40D
 
 _BE401:			lda	$0b01,X				; else move string
 			sta	$0b01,Y				; from X to Y
 			iny					; 
 			inx					; 
-			dec	dp_mos_X			; for length of string
+			dec	dp_mos_OS_wksp2			; for length of string
 			bne	_BE401				; 
 
 _BE40D:			tya					; store end of moved string(s)
@@ -7747,7 +7747,7 @@ _BE413:			lda	SOFTKEYS,X			; get this value
 			cmp	SOFTKEYS,Y			; compare it with start of new or re defined key
 			bcc	_BE422				; if less then E422
 			beq	_BE422				; if = then E422
-			sbc	dp_mos_OS_wksp2			; shift key definitions accordingly
+			sbc	dp_mos_OS_wksp2+1			; shift key definitions accordingly
 			sta	SOFTKEYS,X			; 
 _BE422:			dex					; point to next lowest string def
 			bpl	_BE413				; and if =>0 then loop and do it again
@@ -7811,9 +7811,9 @@ _BUFFER_OFFSET_TABLE:	.byte	$e0
 				; 8=speech	 8C0-8FF	 2D7	 2E0		 2E9
 
 _GET_BUFFER_ADDRESS:	lda	_BUFFER_LO_TABLE,X		; get buffer base address lo
-			sta	dp_mos_X			; store it
-			lda	_BUFFER_HI_TABLE,X		; get buffer base address hi
 			sta	dp_mos_OS_wksp2			; store it
+			lda	_BUFFER_HI_TABLE,X		; get buffer base address hi
+			sta	dp_mos_OS_wksp2+1			; store it
 			rts					; exit
 
 
@@ -7854,12 +7854,12 @@ _BE461:			jmp	(VEC_REMV)			; Jump via REMV
 
 _REMVB:			php					; push flags
 			sei					; bar interrupts
-			lda	BUFFER_0_OUT,X			; get output pointer for buffer X
-			cmp	BUFFER_0_IN,X			; compare to input pointer
+			lda	mosbuf_buf_start,X			; get output pointer for buffer X
+			cmp	mosbuf_buf_end,X			; compare to input pointer
 			beq	_BE4E0				; if equal buffer is empty so E4E0 to exit
 			tay					; else Y=A
 			jsr	_GET_BUFFER_ADDRESS		; and get buffer pointer into FA/B
-			lda	(dp_mos_X),Y			; read byte from buffer
+			lda	(dp_mos_OS_wksp2),Y			; read byte from buffer
 			bvs	_BE491				; if V is set (on input) exit with CARRY clear
 								; Osbyte 152 has been done
 			pha					; else must be osbyte 145 so save byte
@@ -7869,11 +7869,11 @@ _REMVB:			php					; push flags
 
 			lda	_BUFFER_OFFSET_TABLE,X		; get pointer start from offset table
 
-_BE47E:			sta	BUFFER_0_OUT,X			; set buffer output pointer
+_BE47E:			sta	mosbuf_buf_start,X			; set buffer output pointer
 			cpx	#$02				; if buffer is input (0 or 1)
 			bcc	_BE48F				; then E48F
 
-			cmp	BUFFER_0_IN,X			; else for output buffers compare with buffer start
+			cmp	mosbuf_buf_end,X			; else for output buffers compare with buffer start
 			bne	_BE48F				; if not the same buffer is not empty so E48F
 
 			ldy	#$00				; buffer is empty so Y=0
@@ -7901,11 +7901,11 @@ _BE491:			plp					; get back flags
 _OSEVEN:		php					; push flags
 			sei					; bar interrupts
 			pha					; push A
-			sta	dp_mos_X			; &FA=A
+			sta	dp_mos_OS_wksp2			; &FA=A
 			lda	EVENT_ENABLE,Y			; get enable event flag
 			beq	_BE4DF				; if 0 event is not enabled so exit
 			tya					; else A=Y
-			ldy	dp_mos_X			; Y=A
+			ldy	dp_mos_OS_wksp2			; Y=A
 			jsr	_LF0A5				; vector through &220
 			pla					; get back A
 			plp					; get back flags
@@ -7942,19 +7942,19 @@ _INSV:			jmp	(VEC_INSV)			; jump to INSBV
 _INSBV:			php					; save flags
 			sei					; bar interrupts
 			pha					; save A
-			ldy	BUFFER_0_IN,X			; get buffer input pointer
+			ldy	mosbuf_buf_end,X			; get buffer input pointer
 			iny					; increment Y
 			bne	_BE4BF				; if Y=0 then buffer is full else E4BF
 			ldy	_BUFFER_OFFSET_TABLE,X		; get default buffer start
 
 _BE4BF:			tya					; put it in A
-			cmp	BUFFER_0_OUT,X			; compare it with input pointer
+			cmp	mosbuf_buf_start,X			; compare it with input pointer
 			beq	_BE4D4				; if equal buffer is full so E4D4
-			ldy	BUFFER_0_IN,X			; else get buffer end in Y
-			sta	BUFFER_0_IN,X			; and set it from A
+			ldy	mosbuf_buf_end,X			; else get buffer end in Y
+			sta	mosbuf_buf_end,X			; and set it from A
 			jsr	_GET_BUFFER_ADDRESS		; and point &FA/B at it
 			pla					; get back byte
-			sta	(dp_mos_X),Y			; store it in buffer
+			sta	(dp_mos_OS_wksp2),Y			; store it in buffer
 			plp					; pull flags
 			clc					; clear carry for success
 			rts					; and exit
@@ -8367,16 +8367,16 @@ _OSBYTE_8:		lda	#$38				; A=ASCII 8
 ;	     A=7 receive
 
 _OSBYTE_7:		eor	#$3f				; converts ASCII 8 to 7 binary and ASCII 7 to 8 binary
-			sta	dp_mos_X			; store result
+			sta	dp_mos_OS_wksp2			; store result
 			ldy	sysvar_SERPROC_CTL_CPY			; get serial ULA control register setting
 			cpx	#$09				; is it 9 or more?
 			bcs	_BE6AD				; if so exit
 			and	_BAUD_TABLE,X			; and with byte from look up table
-			sta	dp_mos_OS_wksp2			; store it
+			sta	dp_mos_OS_wksp2+1			; store it
 			tya					; put Y in A
-			ora	dp_mos_X			; and or with Accumulator
-			eor	dp_mos_X			; zero the three bits set true
-			ora	dp_mos_OS_wksp2			; set up data read from look up table + bit 6
+			ora	dp_mos_OS_wksp2			; and or with Accumulator
+			eor	dp_mos_OS_wksp2			; zero the three bits set true
+			ora	dp_mos_OS_wksp2+1			; set up data read from look up table + bit 6
 			ora	#$40				; 
 			eor	sysvar_RS423CASS_SELECT			; write cassette/RS423 flag
 
@@ -8654,9 +8654,9 @@ _BE793:			sty	dp_mos_OSBW_Y				; store Y
 			bvs	_LE7BC				; if return with V set E7BC
 
 _BE7A2:			lda	_OSBYTE_TABLE + 1,Y		; get address from table
-			sta	dp_mos_OS_wksp2			; store it as hi byte
+			sta	dp_mos_OS_wksp2+1			; store it as hi byte
 			lda	_OSBYTE_TABLE,Y			; repeat for lo byte
-			sta	dp_mos_X			; 
+			sta	dp_mos_OS_wksp2			; 
 			lda	dp_mos_OSBW_A				; restore A
 			ldy	dp_mos_OSBW_Y				; Y
 			bcs	_BE7B6				; if carry is set E7B6
@@ -8748,7 +8748,7 @@ _WORDV:			pha					; Push A
 ;   +4	on exit byte read
 
 _OSWORD_5:		jsr	_LE815				; set up address of data block
-			lda	(dp_mos_X-1,X)			; get byte
+			lda	(dp_mos_OS_wksp2-1,X)			; get byte
 			sta	(dp_mos_OSBW_X),Y			; store it
 			rts					; exit
 
@@ -8766,16 +8766,16 @@ _OSWORD_5:		jsr	_LE815				; set up address of data block
 
 _OSWORD_6:		jsr	_LE815				; set up address
 			lda	(dp_mos_OSBW_X),Y			; get byte
-			sta	(dp_mos_X-1,X)			; store it
+			sta	(dp_mos_OS_wksp2-1,X)			; store it
 _BE812:			lda	#$00				; a=0
 			rts					; exit
 
 ;********************: set up data block *********************************
 
-_LE815:			sta	dp_mos_X			; &FA=A
+_LE815:			sta	dp_mos_OS_wksp2			; &FA=A
 			iny					; Y=1
 			lda	(dp_mos_OSBW_X),Y			; get byte from block
-			sta	dp_mos_OS_wksp2			; store it
+			sta	dp_mos_OS_wksp2+1			; store it
 			ldy	#$04				; Y=4
 _BE81E:			ldx	#$01				; X=1
 			rts					; and exit
@@ -8834,7 +8834,7 @@ _OSWORD_7:		iny
 			ldy	#$01				; Point back to channel high byte
 
 _BE848:			jsr	_LE8C9				; Get Sync 0-3, and Cy if >=&10 for Hold
-			sta	dp_mos_X			; Save Sync in &FA
+			sta	dp_mos_OS_wksp2			; Save Sync in &FA
 			php					; Stack flags
 			ldy	#$06				
 			lda	(dp_mos_OSBW_X),Y			; Get Duration byte
@@ -8849,7 +8849,7 @@ _BE848:			jsr	_LE8C9				; Get Sync 0-3, and Cy if >=&10 for Hold
 			sbc	#$02				; subract 2
 			asl					; multiply by 4
 			asl					; 
-			ora	dp_mos_X			; add S byte (0-3)
+			ora	dp_mos_OS_wksp2			; add S byte (0-3)
 
 				; At this point,
 				; b7,	0=envelope, 1=volume
@@ -8918,7 +8918,7 @@ _SOUND_FF:		php					; Save flags
 			ldx	#$08				; X=8 for Speech buffer
 			jsr	_BUFFER_SAVE			; Insert speech command into speech buffer
 			bcs	_BE869				; Buffer full, drop stack and abandon
-			ror	BUFFER_8_BUSY			; Clear bit 7 of speech buffer busy flag
+			ror	mosbuf_buf_busy+8			; Clear bit 7 of speech buffer busy flag
 
 ; Insert two bytes into buffer
 
@@ -9152,7 +9152,7 @@ _OSBYTE_5:		cli					; allow interrupts briefly
 			sei					; bar interrupts
 			bit	dp_mos_ESC_flag			; check if ESCAPE is pending
 			bmi	_BE9AC				; if it is E9AC
-			bit	BUFFER_3_BUSY			; else check bit 7 buffer 3 (printer)
+			bit	mosbuf_buf_busy+3			; else check bit 7 buffer 3 (printer)
 			bpl	_OSBYTE_5			; if not empty bit 7=0 E976
 
 			jsr	_LE1A4				; check for user defined routine
@@ -9675,7 +9675,7 @@ _BEB57:			ldx	#$08				; set loop counter
 _LEB59:			dex					; loop
 			lda	SOUND_QUEUE_OCC,X		; get value of &800 +offset (sound queue occupancy)
 			beq	_BEB44				; if 0 goto EC59 no sound this channel
-			lda	BUFFER_0_BUSY,X			; else get buffer busy flag
+			lda	mosbuf_buf_busy,X			; else get buffer busy flag
 			bmi	_BEB69				; if negative (buffer empty) goto EB69
 			lda	SOUND_DURATION,X			; else if duration count not zer0
 			bne	_BEB6C				; goto EB6C
@@ -9808,10 +9808,10 @@ _LEC6B:			lda	SOUND_AMP_PHASE_CUR,X		; check for last amplitude phase
 			beq	_BEC77				; if so EC77
 			lda	#$03				; else mark release in progress
 			sta	SOUND_AMP_PHASE_CUR,X		; and store it
-_BEC77:			lda	BUFFER_0_BUSY,X			; is buffer not empty
+_BEC77:			lda	mosbuf_buf_busy,X			; is buffer not empty
 			beq	_BEC90				; if so EC90
 			lda	#$00				; else mark buffer not empty
-			sta	BUFFER_0_BUSY,X			; an store it
+			sta	mosbuf_buf_busy,X			; an store it
 
 			ldy	#$04				; loop counter
 _BEC83:			sta	SOUND_SYNC_HOLD_PARAM-1,Y	; zero sync bytes
@@ -9832,7 +9832,7 @@ _BEC9F:			jmp	_LED98				; and goto ED98
 _LECA2:			jsr	_LEB03				; silence the channel
 			tya					; Y=0 A=Y
 			sta	SOUND_DURATION,X			; zero main count
-			sta	BUFFER_0_BUSY,X			; mark buffer not empty
+			sta	mosbuf_buf_busy,X			; mark buffer not empty
 			sta	SOUND_QUEUE_OCC,X		; mark channel dormant
 			ldy	#$03				; loop counter
 _BECB1:			sta	SOUND_SYNC_HOLD_PARAM,Y		; zero sync flags
@@ -10176,16 +10176,16 @@ _LEEBB:			php					; else push processor
 			lda	dp_mos_genPTR				; get lo displacement
 			jsr	_LEE71				; pass two nyblles to speech proc.
 			lda	dp_mos_curPHROM			; &FA=&F5
-			sta	dp_mos_X			; 
+			sta	dp_mos_OS_wksp2			; 
 			lda	dp_mos_genPTR+1			; get hi displacement value
 			rol					; replace two most significant bits of A
 			rol					; by 2 LSBs of &FA
-			lsr	dp_mos_X			; 
+			lsr	dp_mos_OS_wksp2			; 
 			ror					; 
-			lsr	dp_mos_X			; 
+			lsr	dp_mos_OS_wksp2			; 
 			ror					; 
 			jsr	_LEE71				; pass two nybbles to speech processor
-			lda	dp_mos_X			; FA has now been divided by 4 so pass
+			lda	dp_mos_OS_wksp2			; FA has now been divided by 4 so pass
 			jsr	_LEE7A				; lower nybble to speech proc.
 			plp					; get back flags
 _BEED9:			rts					; and Return
@@ -10273,7 +10273,7 @@ _BEF16:			lda	sysvar_KEYB_STATUS			; read keyboard status;
 			ldx	#$00				; zero X to test for shift key press
 			jsr	_KEYBOARD_SCAN			; interrogate keyboard X=&80 if key determined by
 								; X on entry is pressed
-			stx	dp_mos_X			; save X
+			stx	dp_mos_OS_wksp2			; save X
 			clv					; clear V
 			bpl	_BEF2A				; if no key press (X=0) then EF2A else
 			bit	_BD9B7				; set M and V
@@ -10325,7 +10325,7 @@ _BEF7B:			jmp	_LEFE9				;
 _BEF7E:			cpx	#$c0				; if not CAPS LOCK
 			bne	_BEF91				; goto EF91
 			ora	#$a0				; sets shift enabled and disables SHIFT LOCK
-			bit	dp_mos_X			; if bit 7 not set by (EF20) shift NOT pressed
+			bit	dp_mos_OS_wksp2			; if bit 7 not set by (EF20) shift NOT pressed
 			bpl	_BEF8C				; goto EF8C
 			ora	#$10				; else set CAPS LOCK not enabled
 			eor	#$80				; reverse SHIFT enabled
@@ -10341,22 +10341,22 @@ _BEF91:			lda	_LEFAB,X			; get code from look up table
 			lda	sysvar_KEYB_TAB_CHAR				; get TAB character
 
 _BEF99:			ldx	sysvar_KEYB_STATUS			; get keyboard status
-			stx	dp_mos_X			; store it in &FA
-			rol	dp_mos_X			; rotate to get CTRL pressed into bit 7
+			stx	dp_mos_OS_wksp2			; store it in &FA
+			rol	dp_mos_OS_wksp2			; rotate to get CTRL pressed into bit 7
 			bpl	_BEFA9				; if CTRL NOT pressed EFA9
 
 			ldx	dp_mos_keynumfirst			; get no. of previously pressed key
 _BEFA4:			bne	_BEF4A				; if not 0 goto EF4A to reset repeat system etc.
 			jsr	_LEABF				; else perform code changes for CTRL
 
-_BEFA9:			rol	dp_mos_X			; move shift lock into bit 7
+_BEFA9:			rol	dp_mos_OS_wksp2			; move shift lock into bit 7
 _LEFAB:			bmi	_BEFB5				; if not effective goto EFB5 else
 			jsr	_LEA9C				; make code changes for SHIFT
 
-			rol	dp_mos_X			; move CAPS LOCK into bit 7
+			rol	dp_mos_OS_wksp2			; move CAPS LOCK into bit 7
 			jmp	_LEFC1				; and Jump to EFC1
 
-_BEFB5:			rol	dp_mos_X			; move CAPS LOCK into bit 7
+_BEFB5:			rol	dp_mos_OS_wksp2			; move CAPS LOCK into bit 7
 			bmi	_BEFC6				; if not effective goto EFC6
 			jsr	_LE4E3				; else make changes for CAPS LOCK on, return with
 								; C clear for Alphabetic codes
@@ -10365,7 +10365,7 @@ _BEFB5:			rol	dp_mos_X			; move CAPS LOCK into bit 7
 
 _LEFC1:			ldx	sysvar_KEYB_STATUS			; if shift enabled bit is clear
 			bpl	_BEFD1				; goto EFD1
-_BEFC6:			rol	dp_mos_X			; else get shift bit into 7
+_BEFC6:			rol	dp_mos_OS_wksp2			; else get shift bit into 7
 			bpl	_BEFD1				; if not set goto EFD1
 			ldx	dp_mos_keynumfirst			; get previous key press
 			bne	_BEFA4				; if not 0 reset repeat system etc. via EFA4
@@ -10466,7 +10466,7 @@ _KEY_TRANS_TABLE_2:	.byte	$80,$77,$65,$74,$37,$69,$39,$30,$5f,$8e
 								; f0,w ,e ,t ,7 ,i ,9 ,0 ,_ ,lft
 
 _LF055:			jmp	($fdfe)				; Jim paged entry vector
-_LF058:			jmp	(dp_mos_X)			; 
+_LF058:			jmp	(dp_mos_OS_wksp2)			; 
 
 ; key data block 3
 

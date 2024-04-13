@@ -241,6 +241,36 @@ while (<>) {
 	s/\bVDU_ADJUST\b/oswksp_VDU_VERTADJ/g;
 	s/\bVDU_INTERLACE\b/oswksp_VDU_INTERLACE/g;
 
+	s/\bBUFFER_0_BUSY\b/mosbuf_buf_busy/g;
+	s/\bBUFFER_1_BUSY\b/mosbuf_buf_busy+1/g;
+	s/\bBUFFER_2_BUSY\b/mosbuf_buf_busy+2/g;
+	s/\bBUFFER_3_BUSY\b/mosbuf_buf_busy+3/g;
+	s/\bBUFFER_4_BUSY\b/mosbuf_buf_busy+4/g;
+	s/\bBUFFER_5_BUSY\b/mosbuf_buf_busy+5/g;
+	s/\bBUFFER_6_BUSY\b/mosbuf_buf_busy+6/g;
+	s/\bBUFFER_7_BUSY\b/mosbuf_buf_busy+7/g;
+	s/\bBUFFER_8_BUSY\b/mosbuf_buf_busy+8/g;
+
+	s/\bBUFFER_0_OUT\b/mosbuf_buf_start/g;
+	s/\bBUFFER_1_OUT\b/mosbuf_buf_start+1/g;
+	s/\bBUFFER_2_OUT\b/mosbuf_buf_start+2/g;
+	s/\bBUFFER_3_OUT\b/mosbuf_buf_start+3/g;
+	s/\bBUFFER_4_OUT\b/mosbuf_buf_start+4/g;
+	s/\bBUFFER_5_OUT\b/mosbuf_buf_start+5/g;
+	s/\bBUFFER_6_OUT\b/mosbuf_buf_start+6/g;
+	s/\bBUFFER_7_OUT\b/mosbuf_buf_start+7/g;
+	s/\bBUFFER_8_OUT\b/mosbuf_buf_start+8/g;
+
+	s/\bBUFFER_0_IN\b/mosbuf_buf_end/g;
+	s/\bBUFFER_1_IN\b/mosbuf_buf_end+1/g;
+	s/\bBUFFER_2_IN\b/mosbuf_buf_end+2/g;
+	s/\bBUFFER_3_IN\b/mosbuf_buf_end+3/g;
+	s/\bBUFFER_4_IN\b/mosbuf_buf_end+4/g;
+	s/\bBUFFER_5_IN\b/mosbuf_buf_end+5/g;
+	s/\bBUFFER_6_IN\b/mosbuf_buf_end+6/g;
+	s/\bBUFFER_7_IN\b/mosbuf_buf_end+7/g;
+	s/\bBUFFER_8_IN\b/mosbuf_buf_end+8/g;
+
 
 # Hardware
 	s/\bCRTC_ADDRESS\b/sheila_CRTC_reg/g;
