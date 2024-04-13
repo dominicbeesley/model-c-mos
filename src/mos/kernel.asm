@@ -369,9 +369,32 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		DEBUG_PRINTF "initBuffers\n"
 		jsr	initBuffers
 
-;;
-;;		cli
 
+		cli
+
+		DEBUG_PRINTF "TEST INSV\n"
+
+		lda	#65
+		ldx	#0
+		pea	IX_INSV
+		pld
+		cop	COP_08_OPCAV
+		
+		lda	#66
+		ldx	#0
+		pea	IX_INSV
+		pld
+		cop	COP_08_OPCAV
+
+		lda	#67
+		ldx	#0
+		pea	IX_INSV
+		pld
+		cop	COP_08_OPCAV
+
+		wdm 0
+
+loop:		jmp loop
 
 		ldx	#0
 here2:

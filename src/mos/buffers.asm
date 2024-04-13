@@ -79,7 +79,7 @@ tblBufferStarts:
 ;on entry X is buffer number, A is character to be written
 ; API CHANGE: V is set if X is out of range
 
-;ASSUME bank = 0, DP = 0
+;ASSUME DP = 0
 
 _INSBV:			php					; save flags
 			; bar interrupts, set small registers and reset decimal
@@ -87,6 +87,10 @@ _INSBV:			php					; save flags
 			rep	#$08
 			.a8
 			.i8
+			phd
+			plb
+			plb
+
 			pha					; save A - character to insert
 			cpx	#MOSBUF_COUNT
 			bcs	@retSecSev
@@ -104,7 +108,7 @@ _INSBV:			php					; save flags
 			sta	(dp_mos_OS_wksp2),Y			; store it in buffer
 			plp					; pull flags
 			clc					; clear carry for success
-			rts					; and exit
+			rtl					; and exit
 
 @full:			pla					; get back byte
 			cpx	#$02				; if we are working on input buffer
@@ -116,12 +120,12 @@ _INSBV:			php					; save flags
 @retsec:		pla
 			plp					; restore flags
 			sec					; set carry
-			rts					; and exit
+			rtl					; and exit
 
 @retSecSev:		pla
 			plp
 			sep	#$41
-			rts
+			rtl
 
 
 				; ON ENTRY X=buffer number
@@ -138,8 +142,8 @@ _INSBV:			php					; save flags
 
 _GET_BUFFER_ADDRESS:	.a8
 			.i8
-			lda	tblBufferLO,X			; get buffer base address lo
+			lda	f:tblBufferLO,X			; get buffer base address lo
 			sta	dp_mos_OS_wksp2			; store it
-			lda	tblBufferHI,X			; get buffer base address hi
+			lda	f:tblBufferHI,X			; get buffer base address hi
 			sta	dp_mos_OS_wksp2+1		; store it
 			rts					; exit
