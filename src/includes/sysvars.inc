@@ -116,13 +116,47 @@ mosvar_SOFTKEY_PTR			:= $02C9	; Soft key expansion pointer
 mosvar_KEYB_AUTOREPEAT_COUNT		:= $02CA	; First auto repeat count
 mosvar_KEYB_TWOKEY_ROLLOVER		:= $02CB	; Two key rollover workspace
 mosvar_SOUND_SEMAPHORE			:= $02CE	; Sound semaphore
+
+MOSBUF_COUNT				:= 9		; number of buffers defined just here - more may be added to model c mos later but will live elsewhere
 mosbuf_buf_busy				:= $02CF	; Buffer busy flags	      
 mosbuf_buf_start			:= $02D8	; Buffer start indexes	      
 mosbuf_buf_end				:= $02E1	; Buffer end indexes	      
+
 cfsrfs_BLK_SIZE				:= $02EA	; Block size
 cfsrfs_BLK_FLAG				:= $02EC	; Block flag
 cfsrfs_LAST_CHA				:= $02ED	; Last input character
 osfile_ctlblk				:= $02EE	; OSFILE control blocks for *LOAD, *SAVE, *CREATE and *DELETE.
 
+
+; ********************************************************
+; *           B U F F E R   A D D R E S S E S            *
+; ********************************************************
+
+BUFFER_KEYB_START			:= $03E0
+BUFFER_KEYB_SIZE			:= $0020
+
+BUFFER_SERI_START			:= $0A00
+BUFFER_SERI_SIZE			:= $0100
+
+BUFFER_SERO_START			:= $0900
+BUFFER_SERO_SIZE			:= $00C0
+
+BUFFER_LPT_START			:= $0880
+BUFFER_LPT_SIZE				:= $0040
+
+BUFFER_SND0_START			:= $0840
+BUFFER_SND0_SIZE			:= $0010
+
+BUFFER_SND1_START			:= $0850
+BUFFER_SND1_SIZE			:= $0010
+
+BUFFER_SND2_START			:= $0860
+BUFFER_SND2_SIZE			:= $0010
+
+BUFFER_SND3_START			:= $0870
+BUFFER_SND3_SIZE			:= $0010
+
+BUFFER_SPCH_START			:= $09C0
+BUFFER_SPCH_SIZE			:= $0040
 
 .endif

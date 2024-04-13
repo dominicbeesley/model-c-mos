@@ -139,6 +139,8 @@ emu_handle_brk:
 
 		; enter emu mode and set DP/B to 0
 nat2emu_rtl:	php
+		; must switch to DP=B=0 before switching to emu mode
+		; as interrupts etc in emu mode may assume them
 		pea	0
 		pld
 		phd
@@ -355,14 +357,21 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		DEBUG_PRINTF "hardwareInit\n"
 		jsr	hardwareInit
 
+
 		DEBUG_PRINTF "VDU_INIT\n"
 		lda	#2
 		jsl	VDU_INIT
 
-		cli
 		rep	#$30
 		.i16
 		.a16
+
+		DEBUG_PRINTF "initBuffers\n"
+		jsr	initBuffers
+
+;;
+;;		cli
+
 
 		ldx	#0
 here2:

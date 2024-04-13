@@ -6,7 +6,9 @@ LD=ld65
 INCS=$(wildcard $(TOP)/includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) 
 TARGETS=boot.mos
-OBJS_boot.mos=kernel deice boot-vecs font roms debug vectors bbc-ext-vectors bbc-nat-vectors b0blocks vdu cop irqs hardware bbcmosapi osbyte_word
+OBJS_boot.mos=	kernel deice boot-vecs font roms debug vectors bbc-ext-vectors \
+				bbc-nat-vectors b0blocks vdu cop irqs hardware bbcmosapi osbyte_word \
+				buffers
 SSD_EXTRAS=_21BOOT.txt.inf
 SSD=$(SSDS)/model-c-mos.ssd
 DEPLOY=$(DEPLOY_TOP)/model-c-mos
