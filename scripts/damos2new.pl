@@ -271,6 +271,16 @@ while (<>) {
 	s/\bBUFFER_7_IN\b/mosbuf_buf_end+7/g;
 	s/\bBUFFER_8_IN\b/mosbuf_buf_end+8/g;
 
+	s/\bCOUNTER_MSB\b/oswksp_OSWORD3_CTDOWN/g;
+	s/\bCOUNTER_LSB\b/oswksp_OSWORD3_CTDOWN+3/g;
+	s/\bROM_TABLE\b/oswksp_ROMTYPE_TAB/g;
+	s/\bINKEY_TIMER\b/oswksp_INKEY_CTDOWN/g;
+	s/\bINKEY_TIMER_HI\b/oswksp_INKEY_CTDOWN+1/g;
+	s/\bOSW0_MAX_LINE\b/oswksp_OSWORD0_LINE_LEN/g;
+	s/\bOSW0_MIN_CHAR\b/oswksp_OSWORD0_MIN_CH/g;
+	s/\bOSW0_MAX_CHAR\b/oswksp_OSWORD0_MAX_CH/g;
+
+
 
 # Hardware
 	s/\bCRTC_ADDRESS\b/sheila_CRTC_reg/g;

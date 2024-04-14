@@ -205,16 +205,16 @@
 .export TIME_VAL1_LSB		:= $0296
 .export TIME_VAL2_MSB		:= $0297
 .export TIME_VAL2_LSB		:= $029b
-.export COUNTER_MSB		:= $029c
-.export COUNTER_LSB		:= $029f
+.export oswksp_OSWORD3_CTDOWN		:= $029c
+.export oswksp_OSWORD3_CTDOWN+3		:= $029f
 
-.export ROM_TABLE		:= $02a1
+.export oswksp_ROMTYPE_TAB		:= $02a1
 
-.export INKEY_TIMER		:= $02b1
-.export INKEY_TIMER_HI		:= $02b2
-.export OSW0_MAX_LINE		:= $02b3
-.export OSW0_MIN_CHAR		:= $02b4
-.export OSW0_MAX_CHAR		:= $02b5
+.export oswksp_INKEY_CTDOWN		:= $02b1
+.export oswksp_INKEY_CTDOWN+1		:= $02b2
+.export oswksp_OSWORD0_LINE_LEN		:= $02b3
+.export oswksp_OSWORD0_MIN_CH		:= $02b4
+.export oswksp_OSWORD0_MAX_CH		:= $02b5
 
 .export ADC_CHAN1_LO		:= $02b6
 .export ADC_CHAN2_LO		:= $02b7
@@ -5656,7 +5656,7 @@ _VECTOR_TABLE:		.addr	_USERV				; USERV				&200
 			.addr	$0190				; OSBYTE variables base address		 &236	*FX166/7
 								; (address to add to osbyte number)
 			.addr	$0d9f				; Address of extended vectors		 &238	*FX168/9
-			.addr	ROM_TABLE			; Address of ROM information table	 &23A	*FX170/1
+			.addr	oswksp_ROMTYPE_TAB			; Address of ROM information table	 &23A	*FX170/1
 			.addr	_KEY_TRANS_TABLE_1 - $10	; Address of key translation table	 &23C	*FX172/3
 			.word	vduvar_GRA_WINDOW_LEFT			; Address of VDU variables		 &23E	*FX174/5
 
@@ -6056,7 +6056,7 @@ _BDAFB:			ldx	dp_mos_curROM			; X=(&F4)
 			bpl	_BDB0C				; if +ve then &DB0C
 
 _BDAFF:			lda	ROM_TYPE			; get rom type
-			sta	ROM_TABLE,X			; store it in catalogue
+			sta	oswksp_ROMTYPE_TAB,X			; store it in catalogue
 			and	#$8f				; check for BASIC (bit 7 not set)
 			bne	_BDB0C				; if not BASIC the DB0C
 			stx	sysvar_ROMNO_BASIC			; else store X at BASIC pointer
@@ -6188,7 +6188,7 @@ _BDBBE:			lda	sysvar_BREAK_LAST_TYPE			; get last RESET Type
 
 _BDBC8:			ldx	#$0f				; set pointer to highest available rom
 
-_BDBCA:			lda	ROM_TABLE,X			; get rom type from map
+_BDBCA:			lda	oswksp_ROMTYPE_TAB,X			; get rom type from map
 			rol					; put hi-bit into carry, bit 6 into bit 7
 			bmi	_BDBE6				; if bit 7 set then ROM has a language entry so DBE6
 
@@ -6657,19 +6657,19 @@ _BDDE7:			pla					; get back A
 			sta	sysvar_TIMER_SWITCH			; and store back in clock pointer (i.e. inverse previous
 								; contents)
 			ldx	#$05				; set loop pointer for countdown timer
-_BDDED:			inc	COUNTER_MSB-1,X			; increment byte and if
+_BDDED:			inc	oswksp_OSWORD3_CTDOWN-1,X			; increment byte and if
 			bne	_BDDFA				; not 0 then DDFA
 			dex					; else decrement pointer
 			bne	_BDDED				; and if not 0 do it again
 			ldy	#$05				; process EVENT 5 interval timer
 			jsr	_OSEVEN				; 
 
-_BDDFA:			lda	INKEY_TIMER			; get byte of inkey countdown timer
+_BDDFA:			lda	oswksp_INKEY_CTDOWN			; get byte of inkey countdown timer
 			bne	_BDE07				; if not 0 then DE07
-			lda	INKEY_TIMER_HI			; else get next byte
+			lda	oswksp_INKEY_CTDOWN+1			; else get next byte
 			beq	_BDE0A				; if 0 DE0A
-			dec	INKEY_TIMER_HI			; decrement 2B2
-_BDE07:			dec	INKEY_TIMER			; and 2B1
+			dec	oswksp_INKEY_CTDOWN+1			; decrement 2B2
+_BDE07:			dec	oswksp_INKEY_CTDOWN			; and 2B1
 
 _BDE0A:			bit	SOUND_SEMAPHORE			; read bit 7 of envelope processing byte
 			bpl	_BDE1A				; if 0 then DE1A
@@ -6713,7 +6713,7 @@ _POLL_ADC_IRQ:		rol					; put original bit 4 from FE4D into bit 7 of A
 _BDE4A:			ldx	sysvar_ADC_CUR			; else get current ADC channel
 			beq	_BDE6C				; if 0 DE6C
 			lda	ADC_LO				; read low data byte
-			sta	OSW0_MAX_CHAR,X			; store it in &2B6,7,8 or 9
+			sta	oswksp_OSWORD0_MAX_CH,X			; store it in &2B6,7,8 or 9
 			lda	ADC_HI				; get high data byte
 			sta	ADC_CHAN4_LO,X			; and store it in hi byte
 			stx	ADC_CHAN_FLAG			; store in Analogue system flag marking last channel
@@ -6803,8 +6803,8 @@ _LDEB1:			iny					; print character in string
 ;*********** OSBYTE 129 TIMED ROUTINE ******************************
 ;ON ENTRY TIME IS IN X,Y
 
-_LDEBB:			stx	INKEY_TIMER			; store time in INKEY countdown timer
-			sty	INKEY_TIMER_HI			; which is decremented every 10ms
+_LDEBB:			stx	oswksp_INKEY_CTDOWN			; store time in INKEY countdown timer
+			sty	oswksp_INKEY_CTDOWN+1			; which is decremented every 10ms
 			lda	#$ff				; A=&FF to flag timed wait
 			bne	_BDEC7				; goto DEC7
 
@@ -6848,8 +6848,8 @@ _BDEE6:			bit	dp_mos_ESC_flag			; check ESCAPE flag, if bit 7 set Escape pressed
 			bit	dp_mos_OS_wksp				; (E6=0 or FF)
 			bvc	_BDEE6				; if entry was OSRDCH not timed keypress, so go back and
 								; do it again i.e. perform GET function
-			lda	INKEY_TIMER			; else check timers
-			ora	INKEY_TIMER_HI			; 
+			lda	oswksp_INKEY_CTDOWN			; else check timers
+			ora	oswksp_INKEY_CTDOWN+1			; 
 			bne	_BDEE6				; and if not zero go round again
 			bcs	_BDF05				; else exit
 
@@ -8590,7 +8590,7 @@ _OSBYTE_128:		bmi	_BE732				; if X is -ve then E732 count spaces
 			cpx	#$05				; else check for Valid channel
 			bcs	_OSBYTE_130			; if not E729 set X & Y to 0 and exit
 			ldy	ADC_CHAN4_LO,X			; get conversion values for channel of interest Hi &
-			lda	OSW0_MAX_CHAR,X			; lo byte
+			lda	oswksp_OSWORD0_MAX_CH,X			; lo byte
 			tax					; X=lo byte
 			rts					; and exit
 
@@ -9070,7 +9070,7 @@ _BE8F2:			lda	(dp_mos_OSBW_X),Y			; and transfer all 5 bytes
 _OSWORD_0:		ldy	#$04				; Y=4
 
 _BE904:			lda	(dp_mos_OSBW_X),Y			; transfer bytes 4,3,2 to 2B3-2B5
-			sta	INKEY_TIMER,Y			; 
+			sta	oswksp_INKEY_CTDOWN,Y			; 
 			dey					; decrement Y
 			cpy	#$02				; until Y=1
 			bcs	_BE904				; 
@@ -9123,11 +9123,11 @@ _BE94B:			jsr	OSWRCH				; until Y=0
 _BE953:			sta	(dp_mos_input_buf),Y			; store character in designated buffer
 			cmp	#$0d				; is it CR?
 			beq	_BE96C				; if so E96C
-			cpy	OSW0_MAX_LINE			; else check the line length
+			cpy	oswksp_OSWORD0_LINE_LEN			; else check the line length
 			bcs	_BE91D				; if = or greater loop to ring bell
-			cmp	OSW0_MIN_CHAR			; check minimum character
+			cmp	oswksp_OSWORD0_MIN_CH			; check minimum character
 			bcc	_BE91F				; if less than minimum backspace
-			cmp	OSW0_MAX_CHAR			; check maximum character
+			cmp	oswksp_OSWORD0_MAX_CH			; check maximum character
 			beq	_BE920				; if equal E920
 			bcc	_BE920				; or less E920
 			bcs	_BE91F				; then JUMP E91F
@@ -10737,8 +10737,8 @@ _OSBYTE_143:		lda	dp_mos_curROM			; Get current ROM number
 			ldx	#$0f				; Start at ROM 15
 
 				; Issue service call loop
-_BF16E:			inc	ROM_TABLE,X			; Read bit 7 on ROM type table (no ROM has type 254 &FE)
-			dec	ROM_TABLE,X			; 
+_BF16E:			inc	oswksp_ROMTYPE_TAB,X			; Read bit 7 on ROM type table (no ROM has type 254 &FE)
+			dec	oswksp_ROMTYPE_TAB,X			; 
 			bpl	_BF183				; If not set (+ve result), step to next ROM down
 			stx	dp_mos_curROM			; Otherwise, select this ROM, &F4 RAM copy
 			stx	ROM_LATCH			; Page in selected ROM
