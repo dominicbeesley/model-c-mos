@@ -4044,6 +4044,9 @@ _LEA11:			eor	#$07				; convert to palette format
 			plp					; get back flags
 			rtl					; and exit
 
+	;TODO: move this and vector setup elsewhere
+	;TODO: make _VDUCHR_NAT a native vector?
+
 ; WRCH control routine
 ; ====================
 		; Enter her from main NATIVE vector as a FAR call
@@ -4096,7 +4099,7 @@ _BE0C8:
 ;;			pha					; Resave character
 ;;			jsr	_PRINTER_OUT			; Call printer driver
 ;;
-;;_BE0D6:			lda	sysvar_OUTSTREAM_DEST		; Check output destination
+;;_BE0D6:		lda	sysvar_OUTSTREAM_DEST		; Check output destination
 ;;			ror	A				; Is serial output enabled?
 ;;			bcc	_BE0F7				; No, skip past serial output
 ;;			ldy	RS423_TIMEOUT			; Get serial timout counter
