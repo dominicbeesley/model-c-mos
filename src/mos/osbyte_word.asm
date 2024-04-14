@@ -358,7 +358,6 @@ _BE924:			cop	COP_04_OPRDC			; else read character  from input stream
 		DEBUG_PRINTF "OSW0 RDCH A=%A F=%F\n"
 			bcs	_BE972				; if carry set then illegal character or other error
 								; exit via E972
-			wdm	0
 			tax					; X=A
 			lda	sysvar_OUTSTREAM_DEST		; A=&27C get character destination status
 			ror					; put VDU driver bit in carry
@@ -400,9 +399,11 @@ _BE953:			sta	(dp_mos_input_buf),Y		; store character in designated buffer
 			bcs	_BE91F				; then JUMP E91F
 
 _BE96C:			cop	COP_03_OPNLI			; output CR/LF
+			phd
 			pea	IX_NETV
 			pld
 			cop	COP_08_OPCAV			; call Econet vector
+			pld
 
 _BE972:			lda	dp_mos_ESC_flag			; A=ESCAPE FLAG
 			rol					; put bit 7 into carry
