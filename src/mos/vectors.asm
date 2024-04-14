@@ -10,6 +10,9 @@
 		.export COP_08
 		.export AddToVector
 
+;TODO: how should a vector signal "claimed" and not pass on to next?
+
+
 		.segment "BBCCODE"
 
 	; we are still running from the MOS rom in bank 0, we need
