@@ -226,14 +226,14 @@
 .export ADC_CHAN4_HI		:= $02bd
 .export ADC_CHAN_FLAG		:= $02be
 
-.export EVENT_ENABLE		:= $02bf
+.export mosvar_EVENT_ENABLE		:= $02bf
 
-.export SOFTKEY_EX_PTR		:= $02c9
+.export mosvar_SOFTKEY_PTR		:= $02c9
 
-.export KEY_REPEAT_CNT		:= $02ca
-.export KEY_ROLLOVER_1		:= $02cb
-.export KEY_ROLLOVER_2		:= $02cd
-.export SOUND_SEMAPHORE		:= $02ce
+.export mosvar_KEYB_AUTOREPEAT_COUNT		:= $02ca
+.export mosvar_KEYB_TWOKEY_ROLLOVER		:= $02cb
+.export mosvar_KEYB_TWOKEY_ROLLOVER+1		:= $02cd
+.export mosvar_SOUND_SEMAPHORE		:= $02ce
 
 .export mosbuf_buf_busy		:= $02cf
 .export mosbuf_buf_busy+1		:= $02d0
@@ -6671,13 +6671,13 @@ _BDDFA:			lda	oswksp_INKEY_CTDOWN			; get byte of inkey countdown timer
 			dec	oswksp_INKEY_CTDOWN+1			; decrement 2B2
 _BDE07:			dec	oswksp_INKEY_CTDOWN			; and 2B1
 
-_BDE0A:			bit	SOUND_SEMAPHORE			; read bit 7 of envelope processing byte
+_BDE0A:			bit	mosvar_SOUND_SEMAPHORE			; read bit 7 of envelope processing byte
 			bpl	_BDE1A				; if 0 then DE1A
-			inc	SOUND_SEMAPHORE			; else increment to 0
+			inc	mosvar_SOUND_SEMAPHORE			; else increment to 0
 			cli					; allow interrupts
 			jsr	_SOUND_IRQ			; and do routine sound processes
 			sei					; bar interrupts
-			dec	SOUND_SEMAPHORE			; DEC envelope processing byte back to 0
+			dec	mosvar_SOUND_SEMAPHORE			; DEC envelope processing byte back to 0
 
 _BDE1A:			bit	mosbuf_buf_busy+8			; read speech buffer busy flag
 			bmi	_BDE2B				; if set speech buffer is empty, skip routine
@@ -7902,7 +7902,7 @@ _OSEVEN:		php					; push flags
 			sei					; bar interrupts
 			pha					; push A
 			sta	dp_mos_OS_wksp2			; &FA=A
-			lda	EVENT_ENABLE,Y			; get enable event flag
+			lda	mosvar_EVENT_ENABLE,Y			; get enable event flag
 			beq	_BE4DF				; if 0 event is not enabled so exit
 			tya					; else A=Y
 			ldy	dp_mos_OS_wksp2			; Y=A
@@ -8138,9 +8138,9 @@ _NETV:			jmp	(VEC_NETV)			; to the Econet vector
 
 _BE581:			lda	sysvar_KEYB_SOFTKEY_LENGTH			; get length of keystring
 			beq	_BE539				; if 0 E539 get a character from the buffer
-			ldy	SOFTKEY_EX_PTR			; get soft key expansion pointer
+			ldy	mosvar_SOFTKEY_PTR			; get soft key expansion pointer
 			lda	SOFTKEYS+1,Y			; get character from string
-			inc	SOFTKEY_EX_PTR			; increment pointer
+			inc	mosvar_SOFTKEY_PTR			; increment pointer
 			dec	sysvar_KEYB_SOFTKEY_LENGTH			; decrement length
 
 ;************** exit with carry clear ************************************
@@ -8157,7 +8157,7 @@ _BE594:			pla					; restore original code
 			jsr	_LE3A8				; get string length in A
 			sta	sysvar_KEYB_SOFTKEY_LENGTH			; and store it
 			lda	SOFTKEYS,Y			; get start point
-			sta	SOFTKEY_EX_PTR			; and store it
+			sta	mosvar_SOFTKEY_PTR			; and store it
 			bne	_LE577				; if not 0 then get byte via E577 and exit
 
 ;*********** deal with COPY key ******************************************
@@ -8479,8 +8479,8 @@ _OSBYTE_13:		tya					; Y=0 A=0
 
 _OSBYTE_14:		cpx	#$0a				; if X>9
 			bcs	_BE6AE				; goto E6AE for exit
-			ldy	EVENT_ENABLE,X			; else get event enable flag
-			sta	EVENT_ENABLE,X			; store new value in flag
+			ldy	mosvar_EVENT_ENABLE,X			; else get event enable flag
+			sta	mosvar_EVENT_ENABLE,X			; store new value in flag
 			bvc	_BE6AD				; and exit via E6AD
 
 
@@ -10307,10 +10307,10 @@ _BEF50:			cpx	dp_mos_keynumlast			; if X<>than last key pressed
 			bne	_BEF7B				; and if not 0 goto EF7B
 								; this means that either the repeat system is dormant
 								; or it is not at the end of its count
-			lda	KEY_REPEAT_CNT			; next value for countdown timer
+			lda	mosvar_KEYB_AUTOREPEAT_COUNT			; next value for countdown timer
 			sta	dp_mos_autorep_countdown		; store it
 			lda	sysvar_KEYB_AUTOREP_PERIOD			; get auto repeat rate from 0255
-			sta	KEY_REPEAT_CNT			; store it as next value for Countdown timer
+			sta	mosvar_KEYB_AUTOREPEAT_COUNT			; store it as next value for Countdown timer
 			lda	sysvar_KEYB_STATUS			; get keyboard status
 			ldx	dp_mos_keynumlast			; get last key pressed
 			cpx	#$d0				; if not SHIFT LOCK key (&D0) goto
@@ -10421,7 +10421,7 @@ _BF012:			lda	dp_mos_keynumlast			; get previous key press
 _LF01F:			ldx	#$01				; set timer to 1
 			stx	dp_mos_autorep_countdown		; 
 			ldx	sysvar_KEYB_AUTOREP_DELAY			; get next timer value
-			stx	KEY_REPEAT_CNT			; and store it
+			stx	mosvar_KEYB_AUTOREPEAT_COUNT			; and store it
 			rts					; 
 
 ;*************** Interrogate Keyboard routine ***********************

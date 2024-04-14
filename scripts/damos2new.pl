@@ -241,6 +241,25 @@ while (<>) {
 	s/\bVDU_ADJUST\b/oswksp_VDU_VERTADJ/g;
 	s/\bVDU_INTERLACE\b/oswksp_VDU_INTERLACE/g;
 
+
+	s/\bCOUNTER_MSB\b/oswksp_OSWORD3_CTDOWN/g;
+	s/\bCOUNTER_LSB\b/oswksp_OSWORD3_CTDOWN+3/g;
+	s/\bROM_TABLE\b/oswksp_ROMTYPE_TAB/g;
+	s/\bINKEY_TIMER\b/oswksp_INKEY_CTDOWN/g;
+	s/\bINKEY_TIMER_HI\b/oswksp_INKEY_CTDOWN+1/g;
+	s/\bOSW0_MAX_LINE\b/oswksp_OSWORD0_LINE_LEN/g;
+	s/\bOSW0_MIN_CHAR\b/oswksp_OSWORD0_MIN_CH/g;
+	s/\bOSW0_MAX_CHAR\b/oswksp_OSWORD0_MAX_CH/g;
+
+	s/\bEVENT_ENABLE\b/mosvar_EVENT_ENABLE/g;
+	s/\bSOFTKEY_EX_PTR\b/mosvar_SOFTKEY_PTR/g;
+
+	s/\bKEY_REPEAT_CNT\b/mosvar_KEYB_AUTOREPEAT_COUNT/g;
+	s/\bKEY_ROLLOVER_1\b/mosvar_KEYB_TWOKEY_ROLLOVER/g;
+	s/\bKEY_ROLLOVER_2\b/mosvar_KEYB_TWOKEY_ROLLOVER+1/g;
+	s/\bSOUND_SEMAPHORE\b/mosvar_SOUND_SEMAPHORE/g;
+
+
 	s/\bBUFFER_0_BUSY\b/mosbuf_buf_busy/g;
 	s/\bBUFFER_1_BUSY\b/mosbuf_buf_busy+1/g;
 	s/\bBUFFER_2_BUSY\b/mosbuf_buf_busy+2/g;
@@ -270,15 +289,6 @@ while (<>) {
 	s/\bBUFFER_6_IN\b/mosbuf_buf_end+6/g;
 	s/\bBUFFER_7_IN\b/mosbuf_buf_end+7/g;
 	s/\bBUFFER_8_IN\b/mosbuf_buf_end+8/g;
-
-	s/\bCOUNTER_MSB\b/oswksp_OSWORD3_CTDOWN/g;
-	s/\bCOUNTER_LSB\b/oswksp_OSWORD3_CTDOWN+3/g;
-	s/\bROM_TABLE\b/oswksp_ROMTYPE_TAB/g;
-	s/\bINKEY_TIMER\b/oswksp_INKEY_CTDOWN/g;
-	s/\bINKEY_TIMER_HI\b/oswksp_INKEY_CTDOWN+1/g;
-	s/\bOSW0_MAX_LINE\b/oswksp_OSWORD0_LINE_LEN/g;
-	s/\bOSW0_MIN_CHAR\b/oswksp_OSWORD0_MIN_CH/g;
-	s/\bOSW0_MAX_CHAR\b/oswksp_OSWORD0_MAX_CH/g;
 
 
 
