@@ -248,7 +248,6 @@ _OSBYTE_TABLE:	.addr	_OSBYTE_0			; OSBYTE   0  (&E821)
 		.addr	_OSWORD_13			; OSWORD  13  (&D5CE)
 
 
-_OSWORD_0:
 _OSWORD_1:
 _OSWORD_2:
 _OSWORD_3:
@@ -322,3 +321,92 @@ _OSCLI_USERV:
 
 
 
+
+
+
+;*************************************************************************
+;*									 *
+;*	 OSWORD	 00   ENTRY POINT					 *
+;*									 *
+;*	 read line from current input to memory				 *
+;*									 *
+;*************************************************************************
+;F0/1 points to parameter block
+;	+0/1 Buffer address for input
+;	+2   Maximum line length
+;	+3   minimum acceptable ASCII value
+;	+4   maximum acceptable ASCII value
+
+_OSWORD_0:		ldy	#$04				; Y=4
+
+_BE904:			lda	(dp_mos_OSBW_X),Y		; transfer bytes 4,3,2 to 2B3-2B5
+			sta	oswksp_INKEY_CTDOWN,Y		; 
+			dey					; decrement Y
+			cpy	#$02				; until Y=1
+			bcs	_BE904				; 
+
+			lda	(dp_mos_OSBW_X),Y		; get address of input buffer
+			sta	dp_mos_input_buf+1		; store it in &E9 as temporary buffer
+			dey					; decrement Y
+			sty	sysvar_SCREENLINES_SINCE_PAGE	; Y=0 store in print line counter for paged mode
+			lda	(dp_mos_OSBW_X),Y		; get lo byte of address
+			sta	dp_mos_input_buf		; and store in &E8
+			cli					; allow interrupts
+			bcc	_BE924				; Jump to E924
+
+_BE91D:			lda	#$07				; A=7
+_BE91F:			dey					; decrement Y
+_BE920:			iny					; increment Y
+_BE921:			cop	COP_00_OPWRC			; and call OSWRCH
+
+_BE924:			cop	COP_04_OPRDC			; else read character  from input stream
+			bcs	_BE972				; if carry set then illegal character or other error
+								; exit via E972
+			tax					; X=A
+			lda	sysvar_OUTSTREAM_DEST		; A=&27C get character destination status
+			ror					; put VDU driver bit in carry
+			ror					; if this is 1 VDU driver is disabled
+			txa					; X=A
+			bcs	_BE937				; if Carry set E937
+			ldx	sysvar_VDU_Q_LEN		; get number of items in VDU queque
+			bne	_BE921				; if not 0 output character and loop round again
+
+_BE937:			cmp	#$7f				; if character is not delete
+			bne	_BE942				; goto E942
+			cpy	#$00				; else is Y=0
+			beq	_BE924				; and goto E924
+			dey					; decrement Y
+			bcs	_BE921				; and if carry set E921 to output it
+_BE942:			cmp	#$15				; is it delete line &21
+			bne	_BE953				; if not E953
+			tya					; else Y=A, if its 0 we are still reading first
+								; character
+			beq	_BE924				; so E924
+			lda	#$7f				; else output DELETES
+
+_BE94B:			cop	COP_00_OPWRC			; until Y=0
+			dey					; 
+			bne	_BE94B				; 
+
+			beq	_BE924				; then read character again
+
+_BE953:			sta	(dp_mos_input_buf),Y		; store character in designated buffer
+			cmp	#$0d				; is it CR?
+			beq	_BE96C				; if so E96C
+			cpy	oswksp_OSWORD0_LINE_LEN		; else check the line length
+			bcs	_BE91D				; if = or greater loop to ring bell
+			cmp	oswksp_OSWORD0_MIN_CH		; check minimum character
+			bcc	_BE91F				; if less than minimum backspace
+			cmp	oswksp_OSWORD0_MAX_CH		; check maximum character
+			beq	_BE920				; if equal E920
+			bcc	_BE920				; or less E920
+			bcs	_BE91F				; then JUMP E91F
+
+_BE96C:			cop	COP_03_OPNLI			; output CR/LF
+			pea	IX_NETV
+			pld
+			cop	COP_08_OPCAV			; call Econet vector
+
+_BE972:			lda	dp_mos_ESC_flag			; A=ESCAPE FLAG
+			rol					; put bit 7 into carry
+			rtl					; and exit routine
