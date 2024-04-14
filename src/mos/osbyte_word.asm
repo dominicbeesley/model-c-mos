@@ -282,8 +282,6 @@ _OSBYTE_120:
 _OSBYTE_121:
 _OSBYTE_122:
 _OSBYTE_123:
-_OSBYTE_124:
-_OSBYTE_125:
 _OSBYTE_126:
 _OSBYTE_127:
 _OSBYTE_128:
@@ -292,13 +290,11 @@ _OSBYTE_130:
 _OSBYTE_131:
 _OSBYTE_136:
 _OSBYTE_137:
-_OSBYTE_138:
 _OSBYTE_139:
 _OSBYTE_140_141:
 _OSBYTE_142:
 _OSBYTE_143:
 _OSBYTE_144:
-_OSBYTE_145:
 _OSBYTE_146:
 _OSBYTE_147:
 _OSBYTE_148:
@@ -306,7 +302,6 @@ _OSBYTE_149:
 _OSBYTE_150:
 _OSBYTE_151:
 _OSBYTE_152:
-_OSBYTE_153:
 _OSBYTE_156:
 _OSBYTE_157:
 _OSBYTE_158:
@@ -340,7 +335,7 @@ _OSCLI_USERV:
 _OSWORD_0:		ldy	#$04				; Y=4
 
 _BE904:			lda	(dp_mos_OSBW_X),Y		; transfer bytes 4,3,2 to 2B3-2B5
-			sta	oswksp_INKEY_CTDOWN,Y		; 
+			sta	oswksp_OSWORD0_LINE_LEN-2,Y	; 
 			dey					; decrement Y
 			cpy	#$02				; until Y=1
 			bcs	_BE904				; 
@@ -360,8 +355,10 @@ _BE920:			iny					; increment Y
 _BE921:			cop	COP_00_OPWRC			; and call OSWRCH
 
 _BE924:			cop	COP_04_OPRDC			; else read character  from input stream
+		DEBUG_PRINTF "OSW0 RDCH A=%A F=%F\n"
 			bcs	_BE972				; if carry set then illegal character or other error
 								; exit via E972
+			wdm	0
 			tax					; X=A
 			lda	sysvar_OUTSTREAM_DEST		; A=&27C get character destination status
 			ror					; put VDU driver bit in carry

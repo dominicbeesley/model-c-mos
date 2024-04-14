@@ -9,6 +9,8 @@ HANDLER_TRAMPOLINES	:= $0B00			; set in .cfg file - Repurposes Soft Keys expansi
 
 TEST_AREA		:= $1000
 
+SOFTKEYS		:= $2000			; moved WRT to BBC mos was 0B00
+
 NAT_OS_VECS 		:= $8000
 NAT_OS_VECS_COUNT 	:= IX_VEC_MAX+1
 

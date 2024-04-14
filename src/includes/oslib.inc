@@ -1,7 +1,7 @@
 .ifndef __OSLIB_INC__
 __OSLIB_INC__:
 
-EVENT_01_INPUT_BUF_EMPTY		:=	0
+EVENT_00_INPUT_BUF_EMPTY		:=	0
 EVENT_01_INPUT_BUF_FULL			:=	1
 EVENT_02_INPUT_BUF_ENTER		:=	2
 EVENT_03_ADC_READY			:=	3
@@ -27,6 +27,7 @@ OSBYTE_119_CLOSE_SPOOL_AND_EXEC		:=	119
 OSBYTE_126_ESCAPE_ACK			:=	126
 OSBYTE_129_INKEY			:=	129
 OSBYTE_135_GET_MODE			:=	135
+OSBYTE_138_PLACE_CHAR_IN_BUFFER		:=	138
 OSBYTE_143_SERVICE_CALL			:=	143
 OSBYTE_156_SERIAL_STATE			:=	156
 OSBYTE_160_READ_VDU_VARIABLE		:=	160
@@ -42,10 +43,14 @@ COP_00_OPWRC				:=	$00		; WRCH
 COP_01_OPWRS				:=	$01		; Write string immediate
 COP_02_OPWRA				:=	$02		; Write string BHA
 COP_03_OPNLI				:=	$03		; Write LF/CR
-
+COP_04_OPRDC				:=	$04		; Wait for and read a char from input stream
 COP_06_OPOSB				:=	$06		; OBYTE
 
 COP_08_OPCAV				:=	$08		; Call A Vector - !*bad call on Communicator
+
+COP_0A_OPBGT				:=	$0A		; OSBGET
+
+COP_0D_OPFND				:=	$0D		; OSFIND - deprecated on Commy - not sure need to work out for MOS/16 bit handles?
 
 COP_2F_OPIIQ				:=	$2F		; Add an IRQ handler
 COP_30_OPRIQ				:=	$30		; Remove and IRQ handler
