@@ -280,7 +280,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		jsr	deice_init
 
-		jsr	roms_scanroms	; only on ctrl-break, but always for now...
 
 		jsr	cfgGetMosBase
 		DEBUG_PRINTF "MOS_BASE =%H%A\n"
@@ -289,6 +288,10 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		rep	#$30
 		.i16
 		.a16
+
+		DEBUG_PRINTF "scan BBC ROMs\n"
+		jsr	roms_scanroms	; only on ctrl-break, but always for now...
+
 
 		DEBUG_PRINTF "initHandles\n"
 		jsr	initHandles
@@ -374,23 +377,24 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		DEBUG_PRINTF "TEST INSV\n"
 
-		lda	#65
+		ldy	#0
+@inslp:		lda	str_basprog,Y
+		beq	@don
+
+		phy
+		phd
+
 		ldx	#0
 		pea	IX_INSV
 		pld
 		cop	COP_08_OPCAV
 		
-		lda	#66
-		ldx	#0
-		pea	IX_INSV
 		pld
-		cop	COP_08_OPCAV
+		ply
 
-		lda	#67
-		ldx	#0
-		pea	IX_INSV
-		pld
-		cop	COP_08_OPCAV
+		iny
+		bra	@inslp
+@don:		
 
 		wdm 0
 
@@ -465,6 +469,8 @@ here:		lda	#17
 		bne	here
 
 		jmp	here2
+
+str_basprog:	.byte "P.\"!\"",13,0
 
 enter_basic:	
 		sep	#$30
