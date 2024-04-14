@@ -2,6 +2,7 @@
 		.include "cop.inc"
 		.include "oslib.inc"
 		.include "vectors.inc"
+		.include "debug.inc"
 
 		.export cop_handle_emu
 		.export cop_handle_nat
@@ -86,8 +87,8 @@ cop_handle_emu: plp
 
 		jml	nat2emu_rtl		; native mode to emu mode exit shim
 
-cop_handle_nat: plp
-		php                   ;Not sure what this sequence is for, reestablish caller's SEI or SED flags - seems dodgy
+cop_handle_nat: ;plp
+		;php                   ;Not sure what this sequence is for, reestablish caller's SEI or SED flags - seems dodgy
 		rep   #$38
 		.a16
 		.i16
@@ -170,24 +171,26 @@ cop_dispatch_int:
 		inc	A
 		inc	A
 		tcd				; point DP at Stacked registers
-		php
-		ror	DPCOP_P
-		plp
-		rol	DPCOP_P			; get returned Cy into flags
+	; internal API Change cop handlers must set DPCOP_P explicitly
+;;		php
+;;		ror	DPCOP_P
+;;		plp
+;;		rol	DPCOP_P			; get returned Cy into flags
 		rts
 
 		.a16
 		.i16
 @ret_unimplemented:
 		stz	DPCOP_X			;clear saved X
-		sec				;return error
+		lda	#$41
+		tsb	DPCOP_P			;return error/V/Cy
 		bra   @ret
 
 tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
 		.word	.loword(COP_01)		;OPWRS 01 = Write String Immediate
 		.word	.loword(COP_02)		;OPWRA 02 = Write string at BHA
 		.word	.loword(COP_03)		;OPNLI 03 = OSNEWL - write CR/LF
-		.word   .loword(COP_NotImpl)	;4
+		.word   .loword(COP_04)		;OPRDC 04 = OSRDCH - read a char
 		.word   .loword(COP_NotImpl)	;5
 		.word   .loword(COP_NotImpl)	;6
 		.word   .loword(COP_NotImpl)	;7
@@ -289,9 +292,10 @@ COP_03:		lda   #$000a
 ;		* On exit:  DBAXY preserved                                                    *
 ;		*                                                                              *
 ;		********************************************************************************
-COP_00:		lda	#IX_WRCHV
-		sta	DPCOP_DP
-		jmp	COP_08
+COP_00:		pea	IX_WRCHV
+		pld
+		cop	COP_08_OPCAV
+		rtl
 
 
 ;		********************************************************************************
@@ -356,3 +360,29 @@ COP_NotImpl:	sec
 		stz	DPCOP_X
 		rtl
 
+
+;	********************************************************************************
+;	* COP 04 - OPRDC - read a character from input                                 *
+;	*                                                                              *
+;	* No conditions                                                                *
+;	*                                                                              *
+;	* On exit:                                                                     *
+;	* if C = 0 then A contains the ASCII value of the character.                   *
+;	* if C = 1 then                                                                *
+;	*   if HA = $1B (@SCESC) then the ESCAPE key was pressed                       *
+;	*   if HA = $00 (@SCPRE) then the current task was pre-empted.                 *
+;	*                                                                              *
+;	* DBXY preserved                                                               *
+;	********************************************************************************
+
+COP_04:         phd
+		pea	IX_RDCHV
+		pld
+		cop	COP_08_OPCAV
+		pld
+		php
+		ror	DPCOP_P
+		plp
+		rol 	DPCOP_P
+		sta	DPCOP_AH
+		rtl
