@@ -225,7 +225,7 @@ _BE47E:		sta	mosbuf_buf_start,X		; set buffer output pointer
 		cmp	mosbuf_buf_end,X		; else for output buffers compare with buffer start
 		bne	_BE48F				; if not the same buffer is not empty so E48F
 
-		ldy	#EVENT_00_INPUT_BUF_EMPTY	; buffer is empty so Y=0
+		ldy	#EVENT_00_OUTPUT_BUF_EMPTY	; buffer is empty so Y=0
 		jsr	kernelRaiseEvent		; and enter EVENT routine to signal EVENT 0 buffer
 							; becoming empty
 
