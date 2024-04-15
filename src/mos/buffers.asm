@@ -307,10 +307,11 @@ _INSBV:			php					; save flags
 
 @full:			pla					; get back byte
 			cpx	#$02				; if we are working on input buffer
-			bcs	plaPlpSecRtl				; then E4E0
+			bcs	plpSecRtl				; then E4E0
 
 			ldy	#$01				; else Y=1
 			jsr	kernelRaiseEvent		; to service input buffer full event
+			pha
 
 plaPlpSecRtl:		pla
 plpSecRtl:		plp					; restore flags
