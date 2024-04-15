@@ -22,6 +22,7 @@
 		.export emu_handle_res
 
 		.export nat2emu_rtl
+		.export nat2emu_rti
 		.export emu2nat_rtl
 
 
@@ -51,10 +52,15 @@ nat_handle_abort:
 emu_handle_abort:
 		pha
 		lda	#DEICE_STATE_ABORT
+		clc
+		xce				; switch to native mode
 		jml	deice_enter_emu
 		rti
 
 
+nat2emu_rti:	sec
+		xce
+		rti
 
 nat_handle_cop:	jml	cop_handle_nat	
 nat_handle_brk:	DEBUG_PRINTF "NAT BREAK A=%H%A, X=%X, Y=%Y, F=%F, "
@@ -377,8 +383,10 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		DEBUG_PRINTF "TEST INSV\n"
 
+
 		ldy	#0
 @inslp:		lda	str_basprog,Y
+		and	#$00FF
 		beq	@don
 
 		phy
@@ -396,6 +404,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		bra	@inslp
 @don:		
 
+		DEBUG_PRINTF "POP\n"
 		wdm 0
 
 loop:		jmp loop
@@ -470,8 +479,6 @@ here:		lda	#17
 
 		jmp	here2
 
-str_basprog:	.byte "P.\"!\"",13,0
-
 enter_basic:	
 		sep	#$30
 		.a8
@@ -492,6 +499,9 @@ enter_basic:
 		inc	A
 		pea	$8000-1
 		jml	nat2emu_rtl
+
+str_basprog:	.byte "OLD",13,"RUN",13,0
+		;;.byte "P.\"DOMISH\"",13,0
 
 
 
