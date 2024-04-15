@@ -287,7 +287,6 @@ _OSBYTE_127:
 _OSBYTE_128:
 _OSBYTE_129:
 _OSBYTE_130:
-_OSBYTE_131:
 _OSBYTE_136:
 _OSBYTE_137:
 _OSBYTE_139:
@@ -408,3 +407,16 @@ _BE96C:			cop	COP_03_OPNLI			; output CR/LF
 _BE972:			lda	dp_mos_ESC_flag			; A=ESCAPE FLAG
 			rol					; put bit 7 into carry
 			rtl					; and exit routine
+
+
+;*************************************************************************
+;*									 *
+;*	 OSBYTE 131  READ OSHWM	 (PAGE in BASIC)			 *
+;*									 *
+;*************************************************************************
+
+			.a8
+			.i8
+_OSBYTE_131:		ldy	sysvar_CUR_OSHWM			; read current OSHWM
+			ldx	#$00				; 
+			rtl					; 
