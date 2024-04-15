@@ -292,9 +292,11 @@ COP_03:		lda   #$000a
 ;		* On exit:  DBAXY preserved                                                    *
 ;		*                                                                              *
 ;		********************************************************************************
-COP_00:		pea	IX_WRCHV
+COP_00:		phd
+		pea	IX_WRCHV
 		pld
 		cop	COP_08_OPCAV
+		pld
 		rtl
 
 
