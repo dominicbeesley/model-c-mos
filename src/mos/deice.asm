@@ -149,6 +149,7 @@ deice_printStrzX:
 ;		
 ; Note: this shim attempts to only re-use the stack that is already used
 ; for pushing the interrupt return
+; Note: this shim expects the native to emu switch to already have occurred!
 deice_enter_emu:
 		.a8
 		.i8
@@ -166,10 +167,6 @@ deice_enter_emu:
 		lda	#$80
 		tsb	deice_run_flag
 		bne	deice_emu_already_running
-
-		; enter native mode for rest of handler
-		clc
-		xce				; enter native mode
 
 		rep	#$10
 		.i16
@@ -202,7 +199,7 @@ deice_emu_already_running:
 		pha
 		plb
 		lda	f:deice_reg_A
-		rti		
+		jml	nat2emu_rti
 
 		.a16
 		.i16
