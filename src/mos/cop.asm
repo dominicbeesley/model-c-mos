@@ -292,11 +292,8 @@ COP_03:		lda   #$000a
 ;		* On exit:  DBAXY preserved                                                    *
 ;		*                                                                              *
 ;		********************************************************************************
-COP_00:		phd
-		pea	IX_WRCHV
-		pld
-		cop	COP_08_OPCAV
-		pld
+COP_00:		cop	COP_08_OPCAV
+		.byte   IX_WRCHV
 		rtl
 
 
@@ -377,11 +374,8 @@ COP_NotImpl:	sec
 ;	* DBXY preserved                                                               *
 ;	********************************************************************************
 
-COP_04:         phd
-		pea	IX_RDCHV
-		pld
-		cop	COP_08_OPCAV
-		pld
+COP_04:         cop	COP_08_OPCAV
+		.byte   IX_RDCHV
 		php
 		ror	DPCOP_P
 		plp

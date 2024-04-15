@@ -171,11 +171,8 @@ _BDF05:			pla
 		.i8
 _OSBYTE_145:	clv					; clear V
 
-_BE461:		phd
-		pea	IX_REMV
-		pld
-		cop	COP_08_OPCAV			; Jump via REMV
-		pld
+_BE461:		cop	COP_08_OPCAV			; Jump via REMV
+		.byte	IX_REMV
 		rtl
 
 
@@ -256,11 +253,8 @@ _BE4A8:		tya					; A=Y
 ;*************************************************************************
 ;on entry X is buffer number, Y is character to be written
 _OSBYTE_138:	tya					; A=Y
-		phd
-		pea	IX_INSV
-		pld
 		cop	COP_08_OPCAV
-		pld
+		.byte   IX_INSV
 		rtl
 
 		.a16
@@ -490,11 +484,8 @@ _BE551:			tay					; Y=A
 _LE577:			bit	sysvar_ECO_OSRDCH_INTERCEPT	; check econet RDCH flag
 			bpl	_BE581				; if not set goto E581
 			lda	#$06				; else Econet function 6
-_NETV:			phd
-			pea	IX_NETV
-			pld
-			cop	COP_08_OPCAV			; to the Econet vector
-			pld
+_NETV:			cop	COP_08_OPCAV			; to the Econet vector
+			.byte	IX_NETV
 			rts
 
 ;********* get byte from key string **************************************

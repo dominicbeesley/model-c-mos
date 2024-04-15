@@ -166,11 +166,9 @@ vec_done:	pla
 ;		* Calls the vector whose index is in DP                                        *
 ;		*                                                                              *
 ;		* Entry                                                                        *
-;		*    DP   The INDEX of the vector to be called.                                *
-;		*         Other registers as per vector API.                                   *
+;		*         one byte following cop is the vector index                           *
 ;		*                                                                              *
 ;		* Exit                                                                         *
-;		*    DP   Corrupted                                                            *
 ;		*         Other registers updated as per vector API.                           *
 ;		*         8 bit vectors will not alter the high bytes of A,X,Y registers and   *
 ;		*         B/DP are not altered updated for 8 bit vectors.                      *
@@ -187,8 +185,9 @@ COP_08:
 		ldx	DPCOP_X
 		ldy	DPCOP_Y
 
-
-		lda	DPCOP_DP			; vector index
+		inc	DPCOP_PC			; increment PC to skip index byte
+		lda	[DPCOP_PC]			; vector index
+		and	#$00FF				; mask low byte
 
 		cmp	#IX_VEC_MAX+1
 		bcs	@badIx
@@ -289,6 +288,7 @@ COP_08:
 @badIx:		pld
 		lda	DPCOP_P
 		ora	#$41			; set V/C
+		sta	DPCOP_P
 		sec
 		rtl
 
@@ -309,9 +309,11 @@ COP_08:
 	;	+4..5	DP
 	;	+3	COP caller's P
 	;	+1..2	COP caller's X
-		lda	DPCOP_DP
+		lda	[DPCOP_PC]
+		and	#$00FF
 		asl	A
-		adc	DPCOP_DP		; A = IX*3
+		adc	[DPCOP_PC]		; A = IX*3
+		and	#$00FF
 		ldx	DPCOP_AH
 		tcd				; DP = IX*3
 		txa				; A = entry A	

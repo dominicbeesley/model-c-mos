@@ -56,11 +56,8 @@ _BE793:		sty	dp_mos_OSBW_Y			; store Y
 		txa					; else A=X
 		clv					; V=0
 		php					; preserve Cy (OSBYTE/OSWORD)
-		phd
-		pea	IX_NETV
-		pld
 		cop	COP_08_OPCAV			; to JMP via ECONET vector
-		pld
+		.byte   IX_NETV
 		plp
 		bvs	_LE7BC				; if return with V set E7BC
 
@@ -398,11 +395,8 @@ _BE953:			sta	(dp_mos_input_buf),Y		; store character in designated buffer
 			bcs	_BE91F				; then JUMP E91F
 
 _BE96C:			cop	COP_03_OPNLI			; output CR/LF
-			phd
-			pea	IX_NETV
-			pld
 			cop	COP_08_OPCAV			; call Econet vector
-			pld
+			.byte   IX_NETV
 
 _BE972:			lda	dp_mos_ESC_flag			; A=ESCAPE FLAG
 			rol					; put bit 7 into carry

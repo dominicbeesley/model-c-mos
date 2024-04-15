@@ -379,10 +379,11 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		jsr	initBuffers
 
 
-		cli
+		;;cli
 
 		DEBUG_PRINTF "TEST INSV\n"
 
+		wdm 0
 
 		ldy	#0
 @inslp:		lda	str_basprog,Y
@@ -391,11 +392,9 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		phy
 		phd
-
 		ldx	#0
-		pea	IX_INSV
-		pld
 		cop	COP_08_OPCAV
+		.byte	IX_INSV
 		
 		pld
 		ply

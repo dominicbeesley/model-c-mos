@@ -1458,9 +1458,8 @@ _BC937:			rts					; and exit
 
 _LC938:			lda	vduvar_VDU_Q_START+4		; A=fifth VDU parameter
 			clc					; clear carry
-__vdu_23_vduv:		pea	IX_VDUV
-			pld
-			cop	COP_08_OPCAV
+__vdu_23_vduv:		cop	COP_08_OPCAV
+			.byte   IX_VDUV
 			rts
 
 ;********** VDU control commands *****************************************
@@ -4073,10 +4072,9 @@ _NVWRCH:		pha					; Save all registers
 			bit	sysvar_ECO_OSWRCH_INTERCEPT	; Check OSWRCH interception flag
 			bpl	__no_intercept			; Not set, skip interception call
 			tay					; Pass character to Y
-			lda	#$04				; A=4 for OSWRCH call
-			pea	IX_NETV
-			pld
+			lda	#$04				; A=4 for OSWRCH call			
 			cop	COP_08_OPCAV
+			.byte   IX_NETV
 			bcs	_BE10D				; If claimed, jump past to exit
 __no_intercept:		clc					; Prepare to not send this to printer
 			lda	#$02				; Check output destination

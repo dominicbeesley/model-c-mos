@@ -315,14 +315,13 @@ _BDDED:		inc	oswksp_OSWORD3_CTDOWN-1,X	; increment byte and if
 		jsr	kernelRaiseEvent		; 
 
 _BDDFA:	
-		; call the 100Hz poll vectors
+		; TODO: get rid of phb/plb?
 		phb
-		phd
-		pea	IX_N_P100V
-		pld
+		; call the 100Hz poll vectors
 		cop	COP_08_OPCAV			
-		pld
+		.byte   IX_N_P100V
 		plb
+		
 
 ; TODO: Keyboard
 ;;;			lda	INKEY_TIMER			; get byte of inkey countdown timer
