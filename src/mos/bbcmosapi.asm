@@ -4,13 +4,13 @@
 		
 		.segment "BBCCODE"
 
-_OSRDRM: rts
-_VDUCHR: rts
-_OSEVEN: rts
-_GSINIT: rts
-_GSREAD: rts
-_NVRDCH: rts
-_NVWRCH: rts
+bbc_OSRDRM: rts
+bbc_VDUCHR: rts
+bbc_OSEVEN: rts
+bbc_GSINIT: rts
+bbc_GSREAD: rts
+bbc_NVRDCH: rts
+bbc_NVWRCH: rts
 
 
 		.segment "BBC_MOS_OSAPI"
@@ -29,13 +29,13 @@ _NVWRCH: rts
 ;**************************************************************************
 
 
-OSRDRM:			jmp	_OSRDRM				; OSRDRM get a byte from sideways ROM
-VDUCHR:			jmp	_VDUCHR				; VDUCHR VDU character output
-OSEVEN:			jmp	_OSEVEN				; OSEVEN generate an EVENT
-GSINIT:			jmp	_GSINIT				; GSINIT initialise OS string
-GSREAD:			jmp	_GSREAD				; GSREAD read character from input stream
-NVRDCH:			jmp	_NVRDCH				; NVRDCH non vectored OSRDCH
-NVWRCH:			jmp	_NVWRCH				; NVWRCH non vectored OSWRCH
+OSRDRM:			jmp	bbc_OSRDRM			; OSRDRM get a byte from sideways ROM
+VDUCHR:			jmp	bbc_VDUCHR			; VDUCHR VDU character output
+OSEVEN:			jmp	bbc_OSEVEN			; OSEVEN generate an EVENT
+GSINIT:			jmp	bbc_GSINIT			; GSINIT initialise OS string
+GSREAD:			jmp	bbc_GSREAD			; GSREAD read character from input stream
+NVRDCH:			jmp	bbc_NVRDCH			; NVRDCH non vectored OSRDCH
+NVWRCH:			jmp	bbc_NVWRCH			; NVWRCH non vectored OSWRCH
 OSFIND:			jmp	(BBC_FINDV)			; OSFIND open or close a file
 			jmp	(BBC_GBPBV)			; OSGBPB transfer block to or from a file
 OSBPUT:			jmp	(BBC_BPUTV)			; OSBPUT save a byte to file
