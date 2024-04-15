@@ -93,6 +93,12 @@ nextROM:
 		cpx	#$10
 		bcc	scanROMlp
 
+		;TODO: Call service calls for OSHWM, Hazel etc
+
+		lda	#$0E	; force PAGE to E
+		sta	sysvar_PRI_OSHWM
+		sta	sysvar_CUR_OSHWM
+
 		plp
 		rts
 
