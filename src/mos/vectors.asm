@@ -178,6 +178,10 @@ vec_done:	pla
 ;		*                                                                              *
 ;		*         Bad vector indices will return V=C=1                                 *
 ;		*                                                                              *
+;		*         Flags are returned as per vector but E/M/X are preserved from        *
+;		*         caller                                                               *
+;		*                                                                              *
+;		*         TODO: update DP/B or disallow as part of API                         *
 ;		********************************************************************************
 COP_08:
 		phd					; save COP DP
