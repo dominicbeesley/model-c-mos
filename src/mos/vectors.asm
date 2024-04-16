@@ -332,8 +332,12 @@ COP_08:
 		sty	DPCOP_Y
 		sta	DPCOP_AH
 		sep	#$20
+		.a8
 		pla
-		sta	DPCOP_P
+		eor	DPCOP_P
+		and	#$CF			; mask out original flags
+		eor	DPCOP_P			; get back Caller's flags and nothing else
+		sta	DPCOP_P			; set flags but keep M/X from caller
 		rep	#$38
 		pld				; get back pushed DP
 		clc
@@ -351,6 +355,8 @@ AddToVector:	php
 		.i16
 		phy
 		phx
+		cpx	#IX_VEC_MAX+1
+		beq	@retsec
 		pha
 		lda	#B0B_TYPE_LL_NATVEC
 		jsr	allocB0Block
@@ -387,6 +393,9 @@ AddToVector:	php
 		adc	#NAT_OS_VECS
 		tax
 
+		; Y points at newly allocated block
+		; X pointer at native vector head
+
 		; turn off interrupts whilst messing with vector
 		php
 		sei
@@ -399,12 +408,14 @@ AddToVector:	php
 		tax					; X points at our block again
 		pla
 		sta	f:b0b_ll_nat_vec::next,X	; store old pointer in our block
-		plp
+		plp					; interrupts back on
+
 		plx
 		ply
 		plp
 		clc
 		rtl
+
 @retsec:	plx
 		ply
 		plp

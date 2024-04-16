@@ -210,6 +210,10 @@ enter_FF:	xce
 		lda	#$01
 		sta	sheila_MEM_LOMEMTURBO
 
+		lda	#BITS_MEM_TURBO2_THROTTLE	; throttle for ease of debug
+		sta	sheila_MEM_TURBO2
+
+
 ;TODO:::::::::::::::: ZERO DPSYS :::::::::: This should depend on break type -see original MOS
 
 		lda	#0
@@ -378,12 +382,13 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		DEBUG_PRINTF "initBuffers\n"
 		jsr	initBuffers
 
+		DEBUG_PRINTF "initKeyboard\n"
+		jsr	initKeyboard
 
-		;;cli
+
+		cli
 
 		DEBUG_PRINTF "TEST INSV\n"
-
-		wdm 0
 
 		ldy	#0
 @inslp:		lda	str_basprog,Y

@@ -15,6 +15,7 @@
 
 		.export	hardwareDetectHardReset
 		.export	hardwareInit
+		.export OPIIQ_SYSVIA_IRQ	; used in Keyboard - duplicate?
 
 
 ;	********************************************************************************
