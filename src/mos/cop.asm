@@ -12,7 +12,7 @@
 		.a8
 		.i8
 cop_handle_emu: plp
-		php                   		; Get back P as stacked on entry
+		php                   		; Get back P as stacked on entry and resestablish interrupts
 		rep   #$38			; turn of decimal mode, turn on big regs
 		.a16
 		.i16
@@ -87,8 +87,8 @@ cop_handle_emu: plp
 
 		jml	nat2emu_rtl		; native mode to emu mode exit shim
 
-cop_handle_nat: ;plp
-		;php                   ;Not sure what this sequence is for, reestablish caller's SEI or SED flags - seems dodgy
+cop_handle_nat: plp
+		php                   ;reestablish interrupts
 		rep   #$38
 		.a16
 		.i16
