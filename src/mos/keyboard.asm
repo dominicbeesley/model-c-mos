@@ -285,7 +285,7 @@ _BEF8C:		eor	#$90				; reverse both SHIFT enabled and CAPs Lock
 				; on entry X=key pressed internal number
 
 	;TODO: reloc
-_BEF91:		lda	f:_LEFAB,X			; get code from look up table
+_BEF91:		lda	f:_KEY_TRANS_TABLE_1-$90,X		; get code from look up table
 		bne	_BEF99				; if not zero goto EF99 else TAB pressed
 		lda	sysvar_KEYB_TAB_CHAR		; get TAB character
 
