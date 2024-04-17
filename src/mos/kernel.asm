@@ -92,8 +92,9 @@ emu_handle_cop:	clc
 emu_handle_irq:	sta	dp_mos_INT_A
 		lda	1,S
 		and	#$10
-		bne	emu_handle_brk
-		clc
+		beq	@sl
+		jmp	emu_handle_brk
+@sl:		clc
 		xce
 		pea	>@ret			; fake flags and bank 0 (return)
 		pea	4 + (<@ret * 256)
@@ -125,24 +126,6 @@ emu_handle_irq:	sta	dp_mos_INT_A
 
 emu_handle_nmi:	rti
 
-emu_handle_brk:
-		clc
-		xce
-		DEBUG_PRINTF "EMU BREAK A=%H%A, X=%X, Y=%Y, F=%F, PC="
-		pla
-		pla
-		sec
-		sbc	#2
-		tay
-		pla
-		jsl	debug_printHexA
-		tya
-		sbc	#0
-		jsl	debug_printHexA
-		lda	#13
-		jsl	debug_printA
-@x:		jmp	@x
-
 		; enter emu mode and set DP/B to 0
 nat2emu_rtl:	php
 		; must switch to DP=B=0 before switching to emu mode
@@ -166,6 +149,63 @@ emu2nat_rtl:	php
 
 
 		.segment "boot_CODE"
+
+emu_handle_brk:
+		; mos BRK handler - TODO: what to do for native BRKs passing back up to emu?
+
+		txa					; save X on stack
+		pha					; 
+		tsx					; get status pointer
+		lda	$0103,X				; get Program Counter lo
+		cld					; 
+		sec					; set carry
+		sbc	#$01				; subtract 2 (1+carry)
+		sta	dp_mos_error_ptr		; and store it in &FD
+		lda	$0104,X				; get hi byte
+		sbc	#$00				; subtract 1 if necessary
+		sta	dp_mos_error_ptr+1		; and store in &FE
+		lda	dp_mos_curROM			; get currently active ROM
+		sta	sysvar_ROMNO_ATBREAK		; and store it in &24A
+		stx	dp_mos_OSBW_X			; store stack pointer in &F0
+
+	; TODO: OSBYTE 143
+	;	ldx	#$06				; and issue ROM service call 6
+	;	jsr	_OSBYTE_143			; (User BRK) to ROMs
+							; at this point &FD/E point to byte after BRK
+							; ROMS may use BRK for their own purposes
+
+		ldx	sysvar_CUR_LANG			; get current language
+		jsr	_LDC16				; and activate it
+		pla					; get back original value of X
+		tax					; 
+		lda	dp_mos_INT_A			; get back original value of A
+		cli					; allow interrupts
+		jmp	(BBC_BRKV)			; and JUMP via BRKV (normally into current language)
+
+default_emu_brkv:
+		DEBUG_PRINTF "EMU BREAK A=%H%A, X=%X, Y=%Y, F=%F, PC="
+		pla
+		pla
+		sec
+		sbc	#2
+		tay
+		pla
+		jsl	debug_printHexA
+		tya
+		sbc	#0
+		jsl	debug_printHexA
+		lda	#13
+		jsl	debug_printA
+@x:		jmp	@x
+
+
+_LDC16:		stx	dp_mos_curROM			; RAM copy of rom latch
+		stx	.loword(sheila_ROMCTL_SWR)	; write to rom latch
+		rts					; and return
+
+emu_default_irq1v:
+emu_default_irq2v:
+		rti
 
 ; The reset handler will always enter here direct to the boot ROM
 ; reset will have re-enabled boot mode (bank 00 maps to bank FF)
@@ -494,10 +534,19 @@ enter_basic:
 		lda	#0
 		cop	COP_00_OPWRC
 
+		pea	DPBBC
+		pld
+		phd
+		plb
+		plb
 
+		; TODO: OSBYTE 142
 		lda	sysvar_ROMNO_BASIC
-		sta	f:dp_mos_curROM
+		sta	dp_mos_curROM
 		sta	f:sheila_ROMCTL_SWR
+		sta	sysvar_CUR_LANG
+
+
 		lda	#0
 		pha
 		inc	A
@@ -782,9 +831,16 @@ kernelRaiseEvent:
 ;;;;;;;;;;;;;;;;;; TODO: split this up into relevant modules?
 
 
+
+
 default_BBC_vectors:
-		.repeat IX_IND3V+1, ix
-		.addr	tblNatShims+3*ix
+		.addr	tblNatShims+0*3			; USERV
+		.addr	default_emu_brkv		; BRKV
+		.addr	emu_default_irq1v		; IRQ1V
+		.addr	emu_default_irq2v		; IRQ2V
+
+		.repeat IX_VEC_BBC_MAX+1-4, ix
+		.addr	tblNatShims+3*(ix+4)
 		.endrepeat
 default_BBC_vectors_len := *-default_BBC_vectors
 

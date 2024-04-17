@@ -287,6 +287,10 @@ hardwareIrqHandleSysVia_T1:
 		plb
 		plb
 
+		lda	#VIA_IFR_BIT_T1
+		sta	f:sheila_SYSVIA_ifr
+
+
 	; This needs to do more, there needs to be a 100Hz poll sent to keyboard/vdu
 
 		lda	sysvar_TIMER_SWITCH		; get current system clock store pointer (5,or 10)
@@ -367,8 +371,8 @@ _BDDFA:
 ;;			bit	ADC_SR				; if ADC bit 6 is set ADC is not busy
 ;;			bvs	_BDE4A				; so DE4A
 ;;			rts					; else return
-		lda	#VIA_IFR_BIT_T1
-		jmp	_LDE6E
+
+		rtl
 
 	
 hardwareIrqHandleSysVia_Vsync:

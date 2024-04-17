@@ -8,6 +8,8 @@
 		.include "hardware.inc"
 
 		.export _OSBYTE_120
+		.export _OSBYTE_121
+		.export _OSBYTE_122
 		.export initKeyboard
 
 		
@@ -16,6 +18,16 @@ initKeyboard:	php
 		.a16
 		.i16
 
+		sei
+
+		phk
+		plb
+		lda	#.loword(_KEYV)		; Main keyboard vector
+		pea	DPBBC
+		pld
+		ldx	#IX_KEYV			; KEYB
+		jsl	AddToVector
+
 		phk
 		plb
 		lda	#.loword(keyPoll100)		; keyboard poll 100Hz
@@ -23,15 +35,19 @@ initKeyboard:	php
 		pld
 		ldx	#IX_N_P100V			; 100Hz poll vector
 		jsl	AddToVector
-;
-;		lda	#.loword(keyScanIRQ_CA2)
-;		sep	#$30
-;		.a8
-;		.i8
-;		ldy	#IRQ_PRIOR_VSYNC
-;		ldx	#VIA_IFR_BIT_CA2
-;		jsr	OPIIQ_SYSVIA_IRQ
+
+		lda	#.loword(keyScanIRQ_CA2)
+		sep	#$30
+		.a8
+		.i8
+		ldy	#IRQ_PRIOR_KEYB
+		ldx	#VIA_IFR_BIT_CA2
+		jsr	OPIIQ_SYSVIA_IRQ
 		
+		; prime keyboard to scan - TODO: this should occur naturally somewhere, not sure where though
+		lda	#$81
+		sta	sheila_SYSVIA_ier
+
 		plp
 		rts
 
@@ -51,7 +67,7 @@ keyPoll100:	.i16
 		and	sysvar_KEYB_SEMAPHORE		; (this is 0 if keyboard is to be ignored, else &FF)
 		beq	@sk				; if 0 ignore keyboard
 		sec					; else set carry
-;		jsr	_LF065				; and call keyboard
+		jsr	_LF065				; and call keyboard
 @sk:		clc
 		rtl
 
@@ -59,11 +75,12 @@ keyPoll100:	.i16
 keyScanIRQ_CA2:	.i8					; interrupt handlers entered in .a8/.i8
 		.a8
 
+		lda	#VIA_IFR_BIT_CA2
+		sta	f:sheila_SYSVIA_ifr		; clear interrupt
+
 		clc
 		jsr	_LF065
 
-		lda	#VIA_IFR_BIT_CA2
-		sta	f:sheila_SYSVIA_ifr		; clear interrupt
 
 		clc
 		rtl
@@ -167,7 +184,10 @@ _SET_LEDS:	php					; save flags
 ;*									 *
 ;*************************************************************************
 
-_KEYV:		sep	#$30
+_KEYV:		jsr	@go			; TODO: remove this but need to chase out all exit/entry points!
+		rtl
+
+@go:		sep	#$30
 		phd
 		plb
 		plb	
@@ -264,7 +284,8 @@ _BEF8C:		eor	#$90				; reverse both SHIFT enabled and CAPs Lock
 ;*********** get ASCII code *********************************************
 				; on entry X=key pressed internal number
 
-_BEF91:		lda	_LEFAB,X			; get code from look up table
+	;TODO: reloc
+_BEF91:		lda	f:_LEFAB,X			; get code from look up table
 		bne	_BEF99				; if not zero goto EF99 else TAB pressed
 		lda	sysvar_KEYB_TAB_CHAR		; get TAB character
 
@@ -372,6 +393,8 @@ _KEYBOARD_SCAN:		pha
 			lda	f:sheila_SYSVIA_ora_nh		; read back &80 if key pressed (M set)
 			tax
 			pla
+			phx					; set flags based on X! TODO: improve
+			plx
 			rts					; and return
 
 
@@ -453,7 +476,6 @@ _KEY_TRANS_TABLE_8:	.byte	$1b,$81,$82,$83,$85,$86,$88,$89,$5c,$8d
 								; ESC,f1,f2,f3,f5,f6,f8,f9,\ ,
 
 
-_LF0CC:			; drop through - bypass OSBYTE but still vectored?!
 
 
 ;*************************************************************************
@@ -471,9 +493,15 @@ _OSBYTE_122:		ldx	#$10				; set X to 10
 ;*									 *
 ;*************************************************************************
 
-_OSBYTE_121:		cop	COP_08_OPCAV
+_OSBYTE_121:	sec
+		rep	#$40
+			cop	COP_08_OPCAV
 			.byte	IX_KEYV
 			rtl
+
+
+_LF0CC:		; drop through - bypass OSBYTE but still vectored?!
+		ldx	#$10
 
 
 ;*************************************************************************

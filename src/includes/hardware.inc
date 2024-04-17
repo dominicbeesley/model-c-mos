@@ -4,7 +4,7 @@ __HARDWARE_INC__:
 
 IRQ_PRIOR_T1			:= $F0
 IRQ_PRIOR_VSYNC			:= $E8
-
+IRQ_PRIOR_KEYB			:= $20
 
 sheila_MEM_CTL			:= $FFFE31
 BITS_MEM_CTL_SWMOS		:= $01

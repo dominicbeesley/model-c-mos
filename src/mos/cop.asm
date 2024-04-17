@@ -192,8 +192,8 @@ tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
 		.word	.loword(COP_03)		;OPNLI 03 = OSNEWL - write CR/LF
 		.word   .loword(COP_04)		;OPRDC 04 = OSRDCH - read a char
 		.word   .loword(COP_NotImpl)	;5
-		.word   .loword(COP_NotImpl)	;6
-		.word   .loword(COP_NotImpl)	;7
+		.word   .loword(COP_06)		;OPOSB 06 = OSBYTE
+		.word   .loword(COP_07)		;OPOSW 07 = OSWORD
 		.word   .loword(COP_08)		;OPCAV 08 = Call A Vector **NEW**
 		.word   .loword(COP_NotImpl)	;9
 		.word   .loword(COP_NotImpl)	;A
@@ -381,4 +381,54 @@ COP_04:         cop	COP_08_OPCAV
 		plp
 		rol 	DPCOP_P
 		sta	DPCOP_AH
+		rtl
+
+
+
+;	********************************************************************************
+;	* COP 06 - OPOSB = OSBYTE                                                      *
+;	*                                                                              *
+;	* This call caries out various operations, the specific operation depending on *
+;	* the contents of A on entry. Other data can be passed in X and Y. If results  *
+;	* are generated, these are returned in X and Y.                                *
+;	*                                                                              *
+;	* On entry: A contains the reason code. The reason code determines the         *
+;	* function of the call.                                                        *
+;	*                                                                              *
+;	* On exit: X and Y will contain results if the call produces them.             *
+;	*                                                                              *
+;	* D preserved                                                                  *
+;	********************************************************************************
+COP_06:		ldx	DPCOP_X
+		ldy	DPCOP_Y
+		cop	COP_08_OPCAV
+		.byte	IX_BYTEV
+		stx	DPCOP_X
+		sty	DPCOP_Y
+		rtl
+
+
+; TODO: - this must depend on whether called from EMU or NAT mode as b0 is 
+;	  different!
+;	********************************************************************************
+;	* COP 07 - OPOSW = OSWORD                                                      *
+;	*                                                                              *
+;	* Action: This call caries out various operations, the specific operation      *
+;	* depending on the contents of A on entry. 0YX points to a control block in    *
+;	* memory, and this block contains data for the call, and will contain results  *
+;	* from the call.                                                               *
+;	* On entry:                                                                    *
+;	* EITHER: 0YX points to a control block in memory                              *
+;	* OR: Y = 0 and X contains an offset from the direct page register D. The      *
+;	* start of the control block is in the direct page at address D+X.             *
+;	* A contains the reason code. The reason code determines the function of the   *
+;	* call.                                                                        *
+;	* On exit: D preserved                                                         *
+;	*                                                                              *
+;	* For OPOSW with A = 0 (read line from input)                                  *
+;	* Y = line length (including CR if applicable).                                *
+;	* If C = 0 then CR termimated input.                                           *
+;	* If C = 1 then ESCAPE terminated input                                        *
+;	********************************************************************************
+COP_07:		;TODO
 		rtl
