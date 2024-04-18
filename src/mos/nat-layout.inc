@@ -4,6 +4,9 @@ __NAT_LAYOUT_INC__:
 		.include "vectors.inc"
 		
 DPBBC			:= $0000
+STACKBBC		:= $0100
+STACKBBC_TOP		:= $01FF
+
 
 HANDLER_TRAMPOLINES	:= $0B00			; set in .cfg file - Repurposes Soft Keys expansion buffer
 
@@ -11,7 +14,8 @@ TEST_AREA		:= $1000
 
 SOFTKEYS		:= $2000			; moved WRT to BBC mos was 0B00
 DEICEBSS		:= $2100
-
+STACKNAT		:= $2600
+STACKNAT_TOP		:= $2A00
 NAT_OS_VECS 		:= $8000
 NAT_OS_VECS_COUNT 	:= IX_VEC_MAX+1
 
@@ -22,6 +26,8 @@ B0LL_FREE_BLOCKS	:= $00FE00
 B0LL_FREE_BLOCKS_END	:= $00FE02
 B0LL_IRQ_BLOCKS		:= $00FE06
 B0_IRQ_STACK		:= $00FE10
+B0_EMU_STACK		:= $00FE12
+B0_NAT_STACK		:= $00FE14
 
 EXSYS			:= $00FF00
 EXSYS_FpHandles		:= $00FF02

@@ -65,14 +65,20 @@ cop_handle_emu: plp
 	;	+3..4	X
 	;	+1..2	Y
 
-		lda	11,S
-		and	#$00FF
-		sta	11,S
+
+	lda	11,S
+	inc	A
+	sta	12,S
+	lda	10
+	xba
+	and	#$FF0
+	sta	10,S
+
 
 	; Stack
-	; 	+13	PBR=0
-	;	+11..12	PC-1	(dispatch code makes PC ready for an RTL instead of RTI!)
-	;	+10	P
+	; 	+12..13	PC
+	;	+11	P	(dispatch code makes PC ready for an RTL instead of RTI!)
+	;	+10	"0"
 	;	+8..9	DP
 	;	+7	B
 	;	+5..6	A
@@ -85,7 +91,7 @@ cop_handle_emu: plp
 		plb				; NOTE: this gets set back to 0
 		pld				; NOTE: this gets set back to 0
 
-		jml	nat2emu_rtl		; native mode to emu mode exit shim
+		jml	nat2emu_rti		; native mode to emu mode exit shim
 
 cop_handle_nat: plp
 		php                   ;reestablish interrupts

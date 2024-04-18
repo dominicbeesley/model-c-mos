@@ -21,9 +21,9 @@
 		.export emu_handle_nmi
 		.export emu_handle_res
 
-		.export nat2emu_rtl
 		.export nat2emu_rti
-		.export emu2nat_rtl
+		.export deice_nat2emu_rti
+		.export emu2nat_rti
 
 
 		.export bank0
@@ -58,9 +58,12 @@ emu_handle_abort:
 		rti
 
 
-nat2emu_rti:	sec
+deice_nat2emu_rti:
+		sec
 		xce
 		rti
+
+
 
 nat_handle_cop:	jml	cop_handle_nat	
 nat_handle_brk:	DEBUG_PRINTF "NAT BREAK A=%H%A, X=%X, Y=%Y, F=%F, "
@@ -127,25 +130,23 @@ emu_handle_irq:	sta	dp_mos_INT_A
 emu_handle_nmi:	rti
 
 		; enter emu mode and set DP/B to 0
-nat2emu_rtl:	php
-		; must switch to DP=B=0 before switching to emu mode
+		; stacked should be:
+		; +3..4	Addr	Address to continue at in bank 0
+		; +2	P	Flags to pass to caller
+		; +1	"0"
+nat2emu_rti:	; must switch to DP=B=0 before switching to emu mode
 		; as interrupts etc in emu mode may assume them
 		pea	0
 		pld
-		phd
-		plb
 		plb
 		sec
 		xce
-		plp
-		rtl
+		rti
 
 		; enter nat mode from emu
-emu2nat_rtl:	php
-		clc
+emu2nat_rti:	clc
 		xce
-		plp
-		rtl
+		rti
 
 
 		.segment "boot_CODE"
@@ -239,6 +240,21 @@ enter_FF:	xce
 		pld			; direct page is at 0		
 		phk
 		plb			; ensure bank FF
+
+		rep	#$30
+		.a16
+		.i16
+
+		; set up stacks
+		lda	#0
+		sta	f:B0_EMU_STACK	; indicate EMU_STACK in use
+		lda	#STACKNAT_TOP
+		sta	f:B0_NAT_STACK	; top of NAT stack
+
+		sep	#$30
+		.a8
+		.i8
+
 
 		; enable JIM interface
 		lda	#JIM_DEVNO_BLITTER
@@ -428,7 +444,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		cli
 
-		wdm	0
 
 		DEBUG_PRINTF "TEST INSV\n"
 
@@ -551,9 +566,10 @@ enter_basic:
 
 		lda	#0
 		pha
-		inc	A
-		pea	$8000-1
-		jml	nat2emu_rtl
+		inc	A		
+		pea	$8000			; address
+		pea	$0000			; flags
+		jml	nat2emu_rti
 
 str_basprog:	.byte "OLD",13,"RUN",13,0
 		;;.byte "P.\"DOMISH\"",13,0

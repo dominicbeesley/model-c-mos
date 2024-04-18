@@ -199,7 +199,7 @@ deice_emu_already_running:
 		pha
 		plb
 		lda	f:deice_reg_A
-		jml	nat2emu_rti
+		jml	deice_nat2emu_rti
 
 		.a16
 		.i16
@@ -600,7 +600,7 @@ emu_exit:	; we need to push PCH,PCL,P - this assumes that DeIce is in bank 0, ne
 		stz	z:<deice_run_flag
 		pld
 		sec
-		xce				; back to native mode
+		xce				; back to emu mode
 		rti
 
 

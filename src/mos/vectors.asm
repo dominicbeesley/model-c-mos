@@ -17,41 +17,48 @@
 
 	; we are still running from the MOS rom in bank 0, we need
 	; to enter native mode 
+	; we've got here via an entry shim the stack will be
+	;	
+	; 	Stack
+	;	+3....	depends on which vector, usually ready for an RTS (for IRQ1/2/BRK ready for an RTI)
+	; 	+1..2	shim "return" address+2 (used to calculate index of vector*3)
+
+	; TODO: This doesn't work for IRQ1/2/BRK!
+
+		; enter here in emu mode
+		.a8
+		.i8
 bbcEmu2NatVectorEntry:
-		php
-		pea	^bbcEmu2NatVectorEntry_ff
-		pea	bbcEmu2NatVectorEntry_ff-1
-		jml	emu2nat_rtl	
+		php							; caller's flags
+		pea	bbcEmu2NatVectorEntry_ff >> 8
+		pea	$04 + ((<bbcEmu2NatVectorEntry_ff) << 8) 	; flags, all off except I
+		jml	emu2nat_rti
 
 		;stack
-		;	+3..4	return address to entry shim+-1
-		;	+2	P
-		;	+1	"0"
+		;	+2..3	return address to entry shim+2
+		;	+1	P
 
 		.code
 bbcEmu2NatVectorEntry_ff:	
 	; Now we want to execute the right routine
 
-		rep	#$38
-		.a16
+		.a16			; these set in code above
 		.i16
 
 		pha
 
 		;stack
-		;	+5..6	return address to entry shim+-1
-		;	+4	P
-		;	+3	"0"
+		;	+4..5	return address to entry shim+2
+		;	+3	P
 		;	+1..2	A
 
 
-		lda	5,S
+		lda	4,S
 		sec
 		sbc	#.loword(tblNatShims+2)
 		; A now contains IX*3
 		tcd
 		pla
-		plb
 		plp
 		jsr	callNativeVectorChain
 
@@ -67,23 +74,37 @@ bbcEmu2NatVectorEntry_ff:
 		tsc
 		tcd
 
-		;stack
+		;stack/DP
 		;	+6..7   Vector callers rts address
 		;	+4..5	return address to entry shim+-1
 		;	+3	P
 		;	+1..2	A
-		lda	6
-		stz	6
-		sta	5
+
+		inc	6	; make return address suitable for rti
+		lda	2
+		and	#$FF00
+		sta	4
+		lda	1
+		sta	2
+
+
+		;stack/DP
+		;	+6..7   Vector callers rts address
+		;	+5	P
+		;	+4	0
+		;	+2..3	A
+		;	+1	spare
+	
+		plb
+
 		;stack
-		;	+5..7	vectors caller's rtl address (bank 0)
-		;	+4	- junk -
-		;	+3	P
+		;	+5..7	vectors caller's rti address (bank 0)
+		;	+4	P
+		;	+3	0
 		;	+1..2	A
 		pla
-		plp
-		plb				; remove junk - will reset to 0 in nat2emu anyway
-		jml	nat2emu_rtl
+
+		jml	nat2emu_rti
 
 
 		.i16
@@ -202,41 +223,39 @@ COP_08:
 
 		tcd					; DP = vector address
 		lda	z:0				; A = vector contents
-		dec	A				; decrement - suitable for an RTL
 		pld					; get back COP DP
 
 		phd					; save COP DP
 		per	@ret-1				; 16 bit emu/boot mode return address - TODO: IRQ1/IRQ2/BRKV need to be made suitable for RTI instead of RTS
-		pea	0
-		plb					; bank = 0 / ignored, stack a 0
 		pha					; stack vector address
-
-	; Stack
-	;	+6	COP_DP
-	;	+4..5	return address from vector
-	;	+3	0
-	;	+1..2   vector contents / handler address
 
 		sep	#$30
 		.a8
 		.i8
 
+	; Stack
+	;	+5..6	COP_DP
+	;	+3..4	return address from vector
+	;	+1..2	Vector address
+
+
 		lda	DPCOP_P
 		pha					; Caller's flags	
+		lda	#0
+		pha
 
 	; Stack
 	;	+7	COP_DP
 	;	+5..6	return address from vector
-	;	+4	0 program bank address
-	;	+2..3   vector contents / handler address
-	;	+1	caller's flags
+	;	+3..4	Vector address
+	;	+2	P
+	;	+1	"0"
 
 		lda	DPCOP_AH+1
 		xba
 		lda	DPCOP_AH
 		
-		plp					; pop caller's flags
-		jml	nat2emu_rtl			; enter emu mode and set DP/B to 0
+		jml	nat2emu_rti			; enter emu mode and set DP/B to 0
 	; The vector handler will be entered with stack:
 	; Stack
 	;	+3..4	COP_DP
@@ -255,11 +274,11 @@ COP_08:
 	;	+2	A (8 bit)
 	;	+1	flags returned from vector
 		
+		
+		pea	@c>>8
+		pea	$34 + ((<@c)<<8)
+		jml	emu2nat_rti
 
-		lda	#^@c
-		pha
-		pea	.loword(@c-1)
-		jml	emu2nat_rtl
 	;;;;;;;;; enter native mode ;;;;;;;;;;;;
 @c:		; get back DP cop
 		tsc
