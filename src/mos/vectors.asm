@@ -180,7 +180,7 @@ vec_done:	pla
 ;		*                                                                              *
 ;		*         Flags are returned as per vector but E/M/X are preserved from        *
 ;		*         caller                                                               *
-;		*                                                                              *
+;		*                                                                              *12331
 ;		*         TODO: update DP/B or disallow as part of API                         *
 ;		********************************************************************************
 COP_08:

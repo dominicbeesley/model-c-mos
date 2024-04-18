@@ -280,6 +280,18 @@ OPIIQ_SYSVIA_IRQ:
 ; TODO: check/change API to set bank 0 in dispatcher?
 
 hardwareIrqHandleSysVia_T1:
+		
+		;TODO: REMOVE - this to periodically do something with the stack to make Hoglet's decoder find it
+		rep	#$10
+		phx
+		tsx
+		phx
+		plx
+		txs
+		plx
+
+		sep	#$10
+
 		.a8
 		.i8
 

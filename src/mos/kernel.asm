@@ -428,6 +428,8 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		cli
 
+		wdm	0
+
 		DEBUG_PRINTF "TEST INSV\n"
 
 		ldy	#0
