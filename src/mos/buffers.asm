@@ -7,8 +7,11 @@
 
 
 		.export initBuffers
+		.export _OSBYTE_15
+		.export _OSBYTE_21
 		.export _OSBYTE_124
 		.export _OSBYTE_125
+		.export _OSBYTE_126
 		.export _OSBYTE_138
 		.export _OSBYTE_145
 		.export _OSBYTE_153
@@ -31,6 +34,14 @@ initBuffers:
 		phk
 		plb
 		lda	#.loword(_REMVB)
+		jsl	AddToVector
+
+		pea	DPBBC
+		pld
+		ldx	#IX_CNPV
+		phk
+		plb
+		lda	#.loword(_CNPV)
 		jsl	AddToVector
 
 
@@ -375,6 +386,99 @@ _OSBYTE_153:		txa					; A=buffer number
 @clcrtl:		clc					; clear carry
 			rtl					; and exit
 
+
+;*************** Buffer handling *****************************************
+				; X=buffer number
+				; Buffer number	 Address	 Flag	 Out pointer	 In pointer
+				; 0=Keyboard	 3E0-3FF	 2CF	 2D8		 2E1
+				; 1=RS423 Input	 A00-AFF	 2D0	 2D9		 2E2
+				; 2=RS423 output 900-9BF	 2D1	 2DA		 2E3
+				; 3=printer	 880-8BF	 2D2	 2DB		 2E4
+				; 4=sound0	 840-84F	 2D3	 2DC		 2E5
+				; 5=sound1	 850-85F	 2D4	 2DD		 2E6
+				; 6=sound2	 860-86F	 2D5	 2DE		 2E7
+				; 7=sound3	 870-87F	 2D6	 2DF		 2E8
+				; 8=speech	 8C0-8FF	 2D7	 2E0		 2E9
+
+	; NOTE: RTL!
+			.a8
+			.i8
+_LE1AD:			clc					; clear carry
+_LE1AE:			pha					; save A
+			php					; save flags
+			sei					; set interrupts
+			bcs	@BE1BB				; if carry set on entry then E1BB
+; TODO: SOUND
+;;			lda	_BAUD_TABLE,X			; else get byte from baud rate/sound data table
+;;			bpl	@BE1BB				; if +ve the E1BB
+;;			jsr	_LECA2				; else clear sound data
+
+@BE1BB:			sec					; set carry
+			ror	mosbuf_buf_busy,X		; rotate buffer flag to show buffer empty
+			cpx	#$02				; if X>1 then its not an input buffer
+			bcs	@BE1CB				; so E1CB
+
+			lda	#$00				; else Input buffer so A=0
+			sta	sysvar_KEYB_SOFTKEY_LENGTH	; store as length of key string
+			sta	sysvar_VDU_Q_LEN		; and length of VDU queque
+@BE1CB:			sep	#$40				; set V
+			cop	COP_08_OPCAV			; then enter via count purge vector any user routines
+			.byte	IX_CNPV
+			plp					; restore flags
+			pla					; restore A
+			rtl					; and exit
+
+
+;*************************************************************************
+;*									 *
+;*	 COUNT PURGE VECTOR	 DEFAULT ENTRY				 *
+;*									 *
+;*************************************************************************
+;on entry if V set clear buffer
+;	  if C set get space left
+;	  else get bytes used
+
+_CNPV:			php
+			; bar interrupts, set small registers and reset decimal
+			sep	#$34
+			rep	#$08
+			.a8
+			.i8
+			php
+			cpx	#MOSBUF_COUNT
+			bcs	@ex
+			plp
+			bvc	@BE1DA				; if bit 6 is set then E1DA
+			lda	mosbuf_buf_start,X		; else start of buffer=end of buffer
+			sta	mosbuf_buf_end,X		; 
+			plp
+			rtl					; and exit
+
+@ex:			plp
+			plp
+			rtl
+
+@BE1DA:			php					; push flags
+			sei					; bar interrupts
+			php					; push flags
+			sec					; set carry
+			lda	mosbuf_buf_end,X		; get end of buffer
+			sbc	mosbuf_buf_start,X		; subtract start of buffer
+			bcs	@BE1EA				; if carry caused E1EA
+			sec					; set carry
+			sbc	tblBufferStarts,X		; subtract buffer start offset (i.e. add buffer length)
+@BE1EA:			plp					; pull flags
+			bcc	@BE1F3				; if carry clear E1F3 to exit
+			clc					; clear carry
+			adc	tblBufferStarts,X		; adc to get bytes used
+			eor	#$ff				; and invert to get space left
+@BE1F3:			ldy	#$00				; Y=0
+			tax					; X=A
+			plp					; get back flags
+			rtl					; and exit
+
+
+
 ;******** get a byte from keyboard buffer and interpret as necessary *****
 ;on entry A=cursor editing status 1=return &87-&8B,
 ;2= use cursor keys as soft keys 11-15
@@ -535,6 +639,31 @@ _BE5A6:			txa					; A=X
 
 ;*************************************************************************
 ;*									 *
+;*	 OSBYTE	 126  Acknowledge detection of ESCAPE condition		 *
+;*									 *
+;*************************************************************************
+
+_OSBYTE_126:		ldx	#$00				; X=0
+			bit	dp_mos_ESC_flag			; if bit 7 not set there is no ESCAPE condition
+			bpl	_OSBYTE_124			; so E673
+			lda	sysvar_KEYB_ESC_EFFECT		; else get ESCAPE Action, if this is 0
+								; Clear ESCAPE
+								; close EXEC files
+								; purge all buffers
+								; reset VDU paging counter
+			bne	_BE671				; else do none of the above
+			cli					; allow interrupts
+			sta	sysvar_SCREENLINES_SINCE_PAGE	; number of lines printed since last halt in paged
+
+;TODO: EXEC/FILES						; mode = 0
+;;			jsr	_OSCLI_EXEC			; close any open EXEC files
+			jsl	_LF0AA				; clear all buffers
+_BE671:			ldx	#$ff				; X=&FF to indicate ESCAPE acknowledged
+
+
+
+;*************************************************************************
+;*									 *
 ;*	 OSBYTE	 124  Clear ESCAPE condition				 *
 ;*									 *
 ;*************************************************************************
@@ -550,9 +679,47 @@ _OSBYTE_124:		clc					; clear carry
 
 _OSBYTE_125:		ror	dp_mos_ESC_flag			; clear	 bit 7 of ESCAPE flag
 ; TODO: TUBE
-;;			bit	sysvar_TUBE_PRESENT			; read bit 7 of Tube flag
+;;			bit	sysvar_TUBE_PRESENT		; read bit 7 of Tube flag
 ;;			bmi	_BE67C				; if set TUBE exists so E67C
 			rtl					; else RETURN
 								;
-;;_BE67C:			jmp	TUBE_ENTRY_1			; Jump to Tube entry point
+;;_BE67C:			jmp	TUBE_ENTRY_1		; Jump to Tube entry point
 
+
+;***** set input buffer number and flush it *****************************
+
+_BF095:			ldx	sysvar_CURINSTREAM			; get current input buffer
+_BF098:			jmp	_LE1AD				; flush it
+
+
+
+;*************************************************************************
+;*									 *
+;*	 OSBYTE 15  FLUSH SELECTED BUFFER CLASS				 *
+;*									 *
+;*************************************************************************
+
+				; flush selected buffer
+				; X=0 flush all buffers
+				; X>1 flush input buffer
+
+_OSBYTE_15:		bne	_BF095				; if X<>1 flush input buffer only
+_LF0AA:			ldx	#$08				; else load highest buffer number (8)
+_BF0AC:			cli					; allow interrupts
+			sei					; briefly!
+			jsl	_OSBYTE_21			; flush buffer
+			dex					; decrement X to point at next buffer
+			bpl	_BF0AC				; if X>=0 flush next buffer
+								; at this point X=255
+
+
+;*************************************************************************
+;*									 *
+;*	 OSBYTE 21  FLUSH SPECIFIC BUFFER				 *
+;*									 *
+;*************************************************************************
+;on entry X=buffer number
+
+_OSBYTE_21:		cpx	#$09				; is X<9?
+			bcc	_BF098				; if so flush buffer or else
+			rtl					; exit

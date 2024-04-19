@@ -17,7 +17,7 @@
 
 
 
-doOSBYTE:	DEBUG_PRINTF "OSBYTE #%A, X=%X, Y=%Y\n"
+doOSBYTE:	;;DEBUG_PRINTF "OSBYTE #%A, X=%X, Y=%Y\n"
 
 		sep	#$30	
 		.a8
@@ -129,7 +129,7 @@ _LF058:		jmp	(dp_mos_OS_wksp2)			;
 ;**************************************************************************
 ;**************************************************************************
 
-doOSWORD:	DEBUG_PRINTF "OSWORD #%A, X=%X, Y=%Y\n"	
+doOSWORD:	;;DEBUG_PRINTF "OSWORD #%A, X=%X, Y=%Y\n"	
 		sep	#$30	
 		.a8
 		.i8
@@ -245,10 +245,6 @@ _OSBYTE_TABLE:	.addr	_OSBYTE_0			; OSBYTE   0  (&E821)
 		.addr	_OSWORD_13			; OSWORD  13  (&D5CE)
 
 
-_OSWORD_1:
-_OSWORD_2:
-_OSWORD_3:
-_OSWORD_4:
 _OSWORD_5:
 _OSWORD_6:
 _OSWORD_7:
@@ -266,17 +262,14 @@ _OSBYTE_11:
 _OSBYTE_12:
 _OSBYTE_13:
 _OSBYTE_14:
-_OSBYTE_15:
 _OSBYTE_16:
 _OSBYTE_17:
 _OSBYTE_18:
 _OSBYTE_19:
-_OSBYTE_21:
 _OSBYTE_117:
 _OSBYTE_118:
 _OSBYTE_119:
 _OSBYTE_123:
-_OSBYTE_126:
 _OSBYTE_127:
 _OSBYTE_128:
 _OSBYTE_129:
@@ -411,3 +404,78 @@ _BE972:			lda	dp_mos_ESC_flag			; A=ESCAPE FLAG
 _OSBYTE_131:		ldy	sysvar_CUR_OSHWM			; read current OSHWM
 			ldx	#$00				; 
 			rtl					; 
+
+
+
+;*************************************************************************
+;*									 *
+;*	 OSWORD	 03   ENTRY POINT					 *
+;*									 *
+;*	 read interval timer						 *
+;*									 *
+;*************************************************************************
+;F0/1 points to block to store data
+
+_OSWORD_3:		ldx	#$0f				; X=&F displacement from clock to timer
+			bne	_BE8D8				; jump to E8D8
+
+
+;*************************************************************************
+;*									 *
+;*	 OSWORD	 01   ENTRY POINT					 *
+;*									 *
+;*	 read system clock						 *
+;*									 *
+;*************************************************************************
+;F0/1 points to block to store data
+
+_OSWORD_1:		ldx	sysvar_TIMER_SWITCH		; X=current system clock store pointer
+
+_BE8D8:			ldy	#$04				; Y=4
+_BE8DA:			lda	oswksp_TIME-5,X			; read byte
+			sta	(dp_mos_OSBW_X),Y		; store it in parameter block
+			inx					; X=x+1
+			dey					; Y=Y-1
+			bpl	_BE8DA				; if Y>0 then do it again
+_BE8E3:			rtl					; else exit
+
+
+;*************************************************************************
+;*									 *
+;*	 OSWORD	 04   ENTRY POINT					 *
+;*									 *
+;*	 write interval timer						 *
+;*									 *
+;*************************************************************************
+; F0/1 points to block to store data
+
+_OSWORD_4:		lda	#$0f				; offset between clock and timer
+			bne	_BE8EE				; jump to E8EE ALWAYS!!
+
+
+;*************************************************************************
+;*									 *
+;*	 OSWORD	 02   ENTRY POINT					 *
+;*									 *
+;*	 write system clock						 *
+;*									 *
+;*************************************************************************
+; F0/1 points to block to store data
+
+_OSWORD_2:		lda	sysvar_TIMER_SWITCH		; get current clock store pointer
+			eor	#$0f				; and invert to get inactive timer
+			clc					; clear carry
+
+_BE8EE:			pha					; store A
+			tax					; X=A
+			ldy	#$04				; Y=4
+_BE8F2:			lda	(dp_mos_OSBW_X),Y		; and transfer all 5 bytes
+			sta	oswksp_TIME-5,X			; to the clock or timer
+			inx					; 
+			dey					; 
+			bpl	_BE8F2				; if Y>0 then E8F2
+			pla					; get back stack
+			bcs	_BE8E3				; if set (write to timer) E8E3 exit
+			sta	sysvar_TIMER_SWITCH		; write back current clock store
+			rtl					; and exit
+
