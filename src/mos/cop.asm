@@ -91,6 +91,21 @@ cop_handle_emu: plp
 		plb				; NOTE: this gets set back to 0
 		pld				; NOTE: this gets set back to 0
 
+	; Stack
+	; 	+3..5	PC
+	;	+2	P	(dispatch code makes PC ready for an RTL instead of RTI!)
+	;	+1	"0"
+
+		plb
+		phb
+		phb
+
+	; Stack
+	; 	+4..6	PC
+	;	+3	P	(dispatch code makes PC ready for an RTL instead of RTI!)
+	;	+2	"0"
+	;	+1	"0"	# extra bytes to transfer to emu stack
+	
 		jml	nat2emu_rti		; native mode to emu mode exit shim
 
 cop_handle_nat: plp

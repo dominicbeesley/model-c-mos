@@ -86,25 +86,23 @@ nat_handle_brk:	DEBUG_PRINTF "NAT BREAK A=%H%A, X=%X, Y=%Y, F=%F, "
 nat_handle_nmi:	rti
 nat_handle_irq:	jml	default_IVIRQ	
 
-		.a8
-		.i8
-emu_handle_cop:	clc		
-		xce				; enter native mode 
-		jml	cop_handle_emu
 
 emu_handle_irq:	sta	dp_mos_INT_A
 		lda	1,S
 		and	#$10
 		beq	@sl
 		jmp	emu_handle_brk
-@sl:		clc
-		xce
-		pea	>@ret			; fake flags and bank 0 (return)
+@sl:		pea	@c>>8
+		pea	$04 + ((<@c)<<8)
+		pea	0
+		jmp	emu2nat_rti
+@c:		pea	>@ret			; fake flags and bank 0 (return)
 		pea	4 + (<@ret * 256)
 		jml	default_IVIRQ
-@ret:		sec
-		xce
-		lda	dp_mos_INT_A
+@ret:		pea	@c2
+		pea	$0400
+		jmp	nat2emu_rti
+@c2:		lda	dp_mos_INT_A
 		rti
 
 ;;	; TODO: Move this lot to ROM and call entry/exit shims
@@ -133,23 +131,162 @@ emu_handle_nmi:	rti
 		; stacked should be:
 		; +3..4	Addr	Address to continue at in bank 0
 		; +2	P	Flags to pass to caller
-		; +1	"0"
-nat2emu_rti:	; must switch to DP=B=0 before switching to emu mode
+		; +1	#	number of bytes extra of stack to transfer
+nat2emu_rti:	
+		sei			; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
+		rep	#$31		; we should still be careful of data below stack pointer possibly changing, clear carry
+		sep	#$10		; we can afford to lose top part of X/Y as they will get lost when we xce
+		.a16
+		.i16
+		phx
+		pha			; save caller A
+		phd			; save caller DP
+		tsc			; A = nat stack pointer
+		tcd			; D = S 
+
+	; nat stack now contains
+	;	Stack/DP offset
+	;	+8..9	RTI address (16 bits)
+	;	+7	caller's flags
+	;	+6	# number of bytes extra of stack to transfer
+	;	+5	caller's X (8 bit)
+	;	+3..4   caller's A
+	;	+1..2	caller's DP
+
+		sta	f:B0_NAT_STACK	; save nat stack pointer (temporary)
+
+		ldx	6
+		txa			; get 8 bit # extra bytes into A
+					; carry was cleared in rep above
+		adc	#9		; step back over saved stuff will get moved to emu stack
+		tax
+		adc	f:B0_NAT_STACK
+		sta	f:B0_NAT_STACK	; store back adjusted stack
+		lda	f:B0_EMU_STACK	; get emu stack pointer
+		tcs
+		; we are now using the emu mode stack, copy across stuff from
+		; native mode stack
+		
+		sep	#$20
+
+@lp:		lda	z:0,X
+		pha
+		dex
+		bne	@lp
+
+		rep	#$20
+
+	; emu stack now contains
+	;	Stack/DP offset
+	;	+10....	extra bytes requested
+	;	+8..9	RTI address (16 bits)
+	;	+7	caller's flags
+	;	+6	# number of bytes extra of stack to transfer
+	;	+5	caller's X (8 bit)
+	;	+3..4   caller's A
+	;	+1..2	caller's DP
+
+
+		; must switch to DP=B=0 before switching to emu mode
 		; as interrupts etc in emu mode may assume them
+		pld
+		pla
+		plx
+		plb		; step over #
 		pea	0
 		pld
+		phd
 		plb
+		plb
+
 		sec
 		xce
 		rti
 
+		.a8
+		.i8
+emu_handle_cop:	php				; caller's flags
+		pea	cop_handle_emu >> 8
+		pea	$04 + ((>cop_handle_emu) << 8)
+		pea	1			; copy 1 extra byte (flags)
+		; fall through to emu2nat_rti!
+
 		; enter nat mode from emu
-emu2nat_rti:	clc
+		; stacked should be:
+		; +4..6	Addr	Address to continue at 24-bit
+		; +3	P	Flags to pass to caller
+		; +2	0	reserved "0"
+		; +1	#	number of stacked bytes to transfer across
+emu2nat_rti:	sei		; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
+		clc
 		xce
+		rep	#$21	; clear carry for ADC below
+		.a16
+		.i8
+		phx			; save caller X (8bit)
+		pha			; save caller A
+		phd			; save caller DP
+		tsc			; A = nat stack pointer
+		tcd			; D = S 
+
+	; emu stack now contains
+	;	Stack/DP offset
+	;	+12...  extra bytes
+	;	+9..11	RTI address (16 bits)
+	;	+9	caller's flags
+	;	+7	reserved "0"
+	;	+6	# number of extra bytes to transfer
+	;	+5	caller's X
+	;	+3..4   caller's A
+	;	+1..2	caller's DP
+
+
+		sta	f:B0_EMU_STACK	; save nat stack pointer (temporary)
+
+		ldx	6
+		txa			; get 8 bit # extra bytes into A
+					; carry was cleared in rep above
+		adc	#11		; step back over saved stuff will get moved to emu stack
+		tax
+		adc	f:B0_EMU_STACK
+		sta	f:B0_EMU_STACK	; store back adjusted stack
+		lda	f:B0_NAT_STACK	; get emu stack pointer
+		tcs
+		; we are now using the native mode stack, copy across stuff from
+		; emu mode stack
+
+		sep	#$20
+
+@lp:		lda	z:0,X
+		pha
+		dex
+		bne	@lp
+
+		rep	#$20
+
+	; emu stack now contains
+	;	Stack/DP offset
+	;	+12...  extra bytes
+	;	+9..11	RTI address (16 bits)
+	;	+9	caller's flags
+	;	+7	reserved "0"
+	;	+6	# number of extra bytes to transfer
+	;	+5	caller's X
+	;	+3..4   caller's A
+	;	+1..2	caller's DP
+
+		pld
+		pla
+		plx
+		plb
+		plb
+
 		rti
 
 
 		.segment "boot_CODE"
+		.i8
+		.a8
 
 emu_handle_brk:
 		; mos BRK handler - TODO: what to do for native BRKs passing back up to emu?
@@ -246,10 +383,11 @@ enter_FF:	xce
 		.i16
 
 		; set up stacks
-		lda	#0
+		lda	#STACKBBC_TOP
 		sta	f:B0_EMU_STACK	; indicate EMU_STACK in use
 		lda	#STACKNAT_TOP
 		sta	f:B0_NAT_STACK	; top of NAT stack
+		tcs
 
 		sep	#$30
 		.a8
@@ -371,21 +509,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		ldy	#.loword(BBC_USERV)
 		lda	#default_BBC_vectors_len
 		mvn	#^default_BBC_vectors, #^BBC_USERV
-
-		pea	0
-		plb
-		plb						; bank 0
-		ldx	#(tblNatShimsEnd-tblNatShims)/3		; number to copy
-		ldy	#.loword(BBC_USERV)			; destination in BBC vectors
-		lda	#.loword(tblNatShims)			; address
-@lp:		sta	a:0,Y					; store in bank 0
-		inc	A
-		inc	A
-		inc	A
-		iny
-		iny
-		dex
-		bne	@lp
 
 ; zeroes to the native OS Vecs
 		lda	#0

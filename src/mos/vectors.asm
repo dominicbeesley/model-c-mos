@@ -20,7 +20,7 @@
 	; we've got here via an entry shim the stack will be
 	;	
 	; 	Stack
-	;	+3....	depends on which vector, usually ready for an RTS (for IRQ1/2/BRK ready for an RTI)
+	;	+3..4	return address-1 [depends on which vector, usually ready for an RTS (for IRQ1/2/BRK ready for an RTI)] - only works for RTS type vectors at present
 	; 	+1..2	shim "return" address+2 (used to calculate index of vector*3)
 
 	; TODO: This doesn't work for IRQ1/2/BRK!
@@ -32,6 +32,7 @@ bbcEmu2NatVectorEntry:
 		php							; caller's flags
 		pea	bbcEmu2NatVectorEntry_ff >> 8
 		pea	$04 + ((<bbcEmu2NatVectorEntry_ff) << 8) 	; flags, all off except I
+		pea	5						; bring 5 bytes of stack with us
 		jml	emu2nat_rti
 
 		;stack
@@ -48,6 +49,7 @@ bbcEmu2NatVectorEntry_ff:
 		pha
 
 		;stack
+		;	+6..7	caller's return address-1
 		;	+4..5	return address to entry shim+2
 		;	+3	P
 		;	+1..2	A
@@ -64,7 +66,7 @@ bbcEmu2NatVectorEntry_ff:
 
 
 		;stack
-		;	+3..4   Vector callers rts address
+		;	+3..4   caller's return address-1
 		;	+1..2	return address to entry shim+-1
 		php
 		rep	#$30
@@ -98,7 +100,7 @@ bbcEmu2NatVectorEntry_ff:
 		plb
 
 		;stack
-		;	+5..7	vectors caller's rti address (bank 0)
+		;	+5..6	vectors caller's rti address (bank 0)
 		;	+4	P
 		;	+3	0
 		;	+1..2	A
@@ -241,7 +243,7 @@ COP_08:
 
 		lda	DPCOP_P
 		pha					; Caller's flags	
-		lda	#0
+		lda	#2				; number of bytes of stack to transfer
 		pha
 
 	; Stack
@@ -249,23 +251,24 @@ COP_08:
 	;	+5..6	return address from vector
 	;	+3..4	Vector address
 	;	+2	P
-	;	+1	"0"
+	;	+1	"2" number of bytes of stack to transfer
 
 		lda	DPCOP_AH+1
 		xba
 		lda	DPCOP_AH
-		
+
 		jml	nat2emu_rti			; enter emu mode and set DP/B to 0
-	; The vector handler will be entered with stack:
-	; Stack
-	;	+3..4	COP_DP
+	; The vector handler will be entered with emu stack:
+	; Emu Stack
 	;	+1..2	return address from vector	; suitable for RTS or RTI
+	; The native stack will hold the saved DP
+	; Nat Stack
+	;	+1..2	DP
 
 
 @ret:		
 		.a8
 		.i8
-	;;TODO: CHECK: DOES PHP in emu push 1's in M/X
 		pha
 		php
 		
@@ -277,6 +280,7 @@ COP_08:
 		
 		pea	@c>>8
 		pea	$34 + ((<@c)<<8)
+		pea	2			; transfer 2 bytes from emu to nat stack (P, A)
 		jml	emu2nat_rti
 
 	;;;;;;;;; enter native mode ;;;;;;;;;;;;
@@ -287,7 +291,7 @@ COP_08:
 		pld
 
 
-		pla
+		pla				; get back flags
 		eor	DPCOP_P
 		and	#$CF			; mask out original flags
 		eor	DPCOP_P			; get back Caller's flags and nothing else
