@@ -385,8 +385,9 @@ _LF01F:			ldx	#$01				; set timer to 1
 _KEYBOARD_SCAN:		pha
 			lda	#$03				; stop Auto scan
 			sta	f:sheila_SYSVIA_orb		; by writing to system VIA
-			lda	#$7f				; set bits 0 to 6 of port A to input on bit 7
+			ldy	#$7f				; set bits 0 to 6 of port A to input on bit 7
 								; output on bits 0 to 6
+			tya
 			sta	f:sheila_SYSVIA_ddra		; 
 			txa
 			sta	f:sheila_SYSVIA_ora_nh		; write X to Port A system VIA
@@ -500,7 +501,7 @@ _OSBYTE_121:	sec
 			rtl
 
 
-_LF0CC:		; drop through - bypass OSBYTE but still vectored?!
+_LF0CC:		clc
 		ldx	#$10
 
 

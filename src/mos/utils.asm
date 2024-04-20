@@ -6,7 +6,7 @@
 		; exit with carry set if non-Alpha character
 _LE4E3:	
 utilsAisAlpha:	php
-		sep	#30		
+		sep	#$30		
 		pha					; Save A
 		and	#$df				; convert lower to upper case
 		cmp	#$41				; is it 'A' or greater ??
