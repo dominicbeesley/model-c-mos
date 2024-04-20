@@ -1531,7 +1531,6 @@ _BC98B:			rts					; exit
 ;*************************************************************************
 
 _VDU_25:		
-			DEBUG_PRINTF "VDU 25\n"
 
 			ldx	vduvar_PIXELS_PER_BYTE_MINUS1	; pixels per byte
 			beq	_LC938				; if no graphics available go to VDU Extension
