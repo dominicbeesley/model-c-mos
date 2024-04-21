@@ -104,8 +104,8 @@ _BE7C8:		php					; push flags
 
 _BE7CA:		pla					; pull flags
 		pla					; pull flags
-
-		jsr	_OSBYTE_143			; offer paged ROMS service 7/8 unrecognised osbyte/word
+		
+		jsl	_OSBYTE_143			; offer paged ROMS service 7/8 unrecognised osbyte/word
 
 		bne	_BE7D6				; if roms don't recognise it then E7D6
 		ldx	dp_mos_OSBW_X			; else restore X
@@ -278,8 +278,6 @@ _OSBYTE_136:
 _OSBYTE_137:
 _OSBYTE_139:
 _OSBYTE_140_141:
-_OSBYTE_142:
-_OSBYTE_143:
 _OSBYTE_144:
 _OSBYTE_146:
 _OSBYTE_147:
@@ -479,3 +477,45 @@ _BE8F2:			lda	(dp_mos_OSBW_X),Y		; and transfer all 5 bytes
 			sta	sysvar_TIMER_SWITCH		; write back current clock store
 			rtl					; and exit
 
+
+;*************************************************************************
+;*									 *
+;*	 OSBYTE 142 - ENTER LANGUAGE ROM AT &8000			 *
+;*									 *
+;*	 X=rom number C set if OSBYTE call clear if initialisation	 *
+;*									 *
+;*************************************************************************
+
+_OSBYTE_142:		php					; save flags
+			stx	sysvar_CUR_LANG			; put X in current ROM page
+			jsr	roms_selX			; select that ROM
+			ldy	#8
+			lda	#$FF
+			pha
+			plb	
+			inc	A
+			sta	dp_mos_error_ptr
+			lda	#$80
+			sta	dp_mos_error_ptr+1
+			; display text string held in ROM at &8009,Y
+@lp:			iny
+			lda	(dp_mos_error_ptr),Y
+			beq	@sk
+			cop	COP_00_OPWRC
+			bra	@lp
+@sk:			pea	0
+			plb
+			plb
+			sty	dp_mos_error_ptr		; save Y on exit (end of language string)
+			cop	COP_03_OPNLI			; two line feeds
+			cop	COP_03_OPNLI			; are output
+			plp					; then get back flags
+			lda	#$01				; A=1 required for language entry
+;TODO: TUBE
+;;			bit	sysvar_TUBE_PRESENT			; check if tube exists
+;;			bmi	_START_TUBE			; and goto DC08 if it does
+
+		; enter language at 8000 in emu mode
+		pea	$8000			; address
+		pea	$0000			; flags
+		jml	nat2emu_rti

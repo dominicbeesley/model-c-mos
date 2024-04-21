@@ -4,6 +4,11 @@
 		.include "sysvars.inc"
 		
 		.export roms_scanroms
+		.export roms_init_services
+		.export roms_selX
+		.export _OSBYTE_143
+
+ROM_SERVICE=$8003
 
 		.code
 
@@ -93,12 +98,6 @@ nextROM:
 		cpx	#$10
 		bcc	scanROMlp
 
-		;TODO: Call service calls for OSHWM, Hazel etc
-
-		lda	#$0E	; force PAGE to E
-		sta	sysvar_PRI_OSHWM
-		sta	sysvar_CUR_OSHWM
-
 		plp
 		rts
 
@@ -131,3 +130,94 @@ staRomTableX:	phb
 		plb
 		rts
 
+
+
+;*************************************************************************
+;*									 *
+;*	 OSBYTE 143							 *
+;*	 Pass service commands to sideways ROMs				 *
+;*									 *
+;*************************************************************************
+				; On entry X=service call number
+				; Y=any additional parameter
+				; On exit X=0 if claimed, or preserved if unclaimed
+				; Y=any returned parameter
+				; When called internally, EQ set if call claimed
+
+		.a8
+		.i8
+_OSBYTE_143:	
+
+		lda	dp_mos_curROM			; Get current ROM number
+		pha					; Save it
+
+		; enter emulation mode
+		pea	.loword(@c)
+		php
+		lda	#0
+		pha
+		jml	nat2emu_rti
+@c:		
+
+		txa					; Pass service call number to  A
+		ldx	#$0f				; Start at ROM 15
+		; Issue service call loop
+_BF16E:		bit	oswksp_ROMTYPE_TAB,X		; Read bit 7 on ROM type table (no ROM has type 254 &FE)
+		bpl	_BF183				; If not set (+ve result), step to next ROM down
+		stx	dp_mos_curROM			; Otherwise, select this ROM, &F4 RAM copy
+		stx	.loword(sheila_ROMCTL_SWR)	; Page in selected ROM
+		jsr	ROM_SERVICE			; Call the ROM's service entry
+							; X and P do not need to be preserved by the ROM
+		tax					; On exit pass A to X to check if claimed
+		beq	_BF186				; If 0, service call claimed, re-select ROM and exit
+		ldx	dp_mos_curROM			; Otherwise, get current ROM back
+_BF183:		dex					; Step to next ROM down
+		bpl	_BF16E				; Loop until done ROM 0
+
+_BF186:		
+
+		; leave emulation mode
+		pea	@c2>>8
+		lda	#<@c2
+		pha
+		php
+		lda	#0
+		pha
+		pha
+		jml	emu2nat_rti
+@c2:		
+
+		pla					; Get back original ROM number
+		sta	dp_mos_curROM			; Set ROM number RAM copy
+		sta	sheila_ROMCTL_SWR		; Page in the original ROM
+		txa					; Pass X back to A to set zero flag
+		rtl					; And return
+
+
+
+roms_init_services:
+		php
+		sep	#$30
+		.a8
+		.i8
+
+		; TODO: auto-hazel
+
+		ldy	#$0e				; set current value of PAGE
+		ldx	#$01				; issue claim absolute workspace call	
+		phk
+		jsr	_OSBYTE_143			; via F168
+		ldx	#$02				; send private workspace claim call
+		phk
+		jsr	_OSBYTE_143			; via F168
+		sty	sysvar_PRI_OSHWM		; set primary OSHWM
+		sty	sysvar_CUR_OSHWM		; set current OSHWM
+		ldx	#$fe				; issue call for Tube to explode character set etc.
+		ldy	sysvar_TUBE_PRESENT		; Y=FF if tube present else Y=0
+		phk
+		jsr	_OSBYTE_143			; and make call via F168	
+
+
+		plp
+		rts
+	rts

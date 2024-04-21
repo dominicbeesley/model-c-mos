@@ -493,9 +493,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.i16
 		.a16
 
-		DEBUG_PRINTF "scan BBC ROMs\n"
-		jsr	roms_scanroms	; only on ctrl-break, but always for now...
-
 
 		DEBUG_PRINTF "initHandles\n"
 		jsr	initHandles
@@ -536,6 +533,8 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		lda	#.loword(doOSWORD)
 		jsl	AddToVector
 
+		DEBUG_PRINTF "initBuffers\n"
+		jsr	initBuffers
 	
 		sep	#$30
 		.i8
@@ -551,26 +550,51 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 
 		DEBUG_PRINTF "VDU_INIT\n"
-		lda	#2
+		lda	#7
 		jsl	VDU_INIT
 
 		rep	#$30
 		.i16
 		.a16
 
-		DEBUG_PRINTF "initBuffers\n"
-		jsr	initBuffers
+;		ldx	#.loword(str_boot)
+;		ldy	#$7C00
+;		lda	#6*40
+;		mvn	#$FF,#$FF
+
+		phk
+		plb
+		ldx	#.loword(str_boot)
+@lp:		lda	a:0,X
+		and	#$FF
+		beq	@sk
+		ora	#$80
+
+		cop	COP_00_OPWRC
+
+		inx
+		bra	@lp
+@sk:		cop	COP_03_OPNLI
+		cop	COP_03_OPNLI
+
 
 		DEBUG_PRINTF "initKeyboard\n"
 		jsr	initKeyboard
 
+		DEBUG_PRINTF "scan BBC ROMs\n"
+		jsr	roms_scanroms			; only on ctrl-break, but always for now...
+		jsr	roms_init_services		; call initialisation service calls
+
 
 		cli
+		jmp	enter_basic
 
 
 		DEBUG_PRINTF "TEST INSV\n"
 
 		ldy	#0
+		phk
+		plb
 @inslp:		lda	str_basprog,Y
 		and	#$00FF
 		beq	@don
@@ -666,33 +690,13 @@ here:		lda	#17
 enter_basic:	
 		sep	#$30
 		.a8
-		.i8	
+		.i8
+		ldx	sysvar_ROMNO_BASIC
+		lda	#OSBYTE_142_ENTER_LANGUAGE
+		cop	COP_06_OPOSB
 
-		; MODE 0
-		lda	#22
-		cop	COP_00_OPWRC
-		lda	#0
-		cop	COP_00_OPWRC
+		wdm 0
 
-		pea	DPBBC
-		pld
-		phd
-		plb
-		plb
-
-		; TODO: OSBYTE 142
-		lda	sysvar_ROMNO_BASIC
-		sta	dp_mos_curROM
-		sta	f:sheila_ROMCTL_SWR
-		sta	sysvar_CUR_LANG
-
-
-		lda	#0
-		pha
-		inc	A		
-		pea	$8000			; address
-		pea	$0000			; flags
-		jml	nat2emu_rti
 
 str_basprog:	.byte "OLD",13,"RUN",13,0
 		;;.byte "P.\"DOMISH\"",13,0
@@ -814,6 +818,10 @@ bankFF:		pea	$FFFF
 		plb
 		rts
 
+
+str_boot:
+		.incbin "logo.bin"
+		.byte	0
 
 
 ; These are cut-down configuration routines, only for use during boot
