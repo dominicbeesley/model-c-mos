@@ -273,7 +273,6 @@ _OSBYTE_123:
 _OSBYTE_127:
 _OSBYTE_128:
 _OSBYTE_129:
-_OSBYTE_130:
 _OSBYTE_136:
 _OSBYTE_137:
 _OSBYTE_139:
@@ -519,3 +518,19 @@ _OSBYTE_142:		php					; save flags
 		pea	$8000			; address
 		pea	$0000			; flags
 		jml	nat2emu_rti
+
+
+
+
+;*************************************************************************
+;*									 *
+;*	 OSBYTE 130 - GET HIGH ORDER ADDRESS     			 *
+;*									 *
+;*	 Returns X=Y=FF                                           	 *
+;*	TODO: should this return something different for EMU/NAT?	 *
+;*************************************************************************
+;NOTE: we have to return FFFF for BASIC2's Tube check
+_OSBYTE_130:
+		ldx	#$FF
+		txy
+		rtl
