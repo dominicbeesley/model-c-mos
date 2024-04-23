@@ -132,76 +132,91 @@ emu_handle_nmi:	rti
 		; +3..4	Addr	Address to continue at in bank 0
 		; +2	P	Flags to pass to caller
 		; +1	#	number of bytes extra of stack to transfer
-nat2emu_rti:	
+.proc nat2emu_rti
 		sei			; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
 		rep	#$31		; we should still be careful of data below stack pointer possibly changing, clear carry
 		sep	#$10		; we can afford to lose top part of X/Y as they will get lost when we xce
 		.a16
-		.i16
+		.i8
+		phy
 		phx
 		pha			; save caller A
-		phd			; save caller DP
-		tsc			; A = nat stack pointer
-		tcd			; D = S 
-
-	; nat stack now contains
-	;	Stack/DP offset
-	;	+8..9	RTI address (16 bits)
-	;	+7	caller's flags
-	;	+6	# number of bytes extra of stack to transfer
-	;	+5	caller's X (8 bit)
-	;	+3..4   caller's A
-	;	+1..2	caller's DP
-
-		sta	f:B0_NAT_STACK	; save nat stack pointer (temporary)
-
-		ldx	6
-		txa			; get 8 bit # extra bytes into A
-					; carry was cleared in rep above
-		adc	#9		; step back over saved stuff will get moved to emu stack
-		tax
-		adc	f:B0_NAT_STACK
-		sta	f:B0_NAT_STACK	; store back adjusted stack
-		lda	f:B0_EMU_STACK	; get emu stack pointer
-		tcs
-		; we are now using the emu mode stack, copy across stuff from
-		; native mode stack
-		
-		sep	#$20
-
-@lp:		lda	z:0,X
-		pha
-		dex
-		bne	@lp
-
-		rep	#$20
-
-	; emu stack now contains
-	;	Stack/DP offset
-	;	+10....	extra bytes requested
-	;	+8..9	RTI address (16 bits)
-	;	+7	caller's flags
-	;	+6	# number of bytes extra of stack to transfer
-	;	+5	caller's X (8 bit)
-	;	+3..4   caller's A
-	;	+1..2	caller's DP
-
 
 		; must switch to DP=B=0 before switching to emu mode
 		; as interrupts etc in emu mode may assume them
-		pld
-		pla
-		plx
-		plb		; step over #
 		pea	0
 		pld
 		phd
 		plb
 		plb
 
+		tsc			; A = nat stack pointer
+	; nat stack now contains
+	;	Stack/DP offset
+	;	+7..8	RTI address (16 bits)
+	;	+6	caller's flags
+	;	+5	# number of bytes extra of stack to transfer
+	;	+4	caller's Y (8 bit)
+	;	+3	caller's X (8 bit)
+	;	+1..2   caller's A
+N_STACKED = 8
+		sta	a:B0_NAT_STACK	; save nat stack pointer (temporary)
+
+		lda	5,S
+		and	#$00FF		; get 8 bit # extra bytes into A
+					; carry was cleared in rep above
+		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack
+		pha
+		adc	a:B0_NAT_STACK
+		sta	a:B0_NAT_STACK	; store back adjusted stack
+		rep	#$10
+		.i16
+		tax			; source for copy (top)
+		lda	a:B0_EMU_STACK	; get emu stack pointer
+		sec
+		sbc	1,S
+		ply			; count
+		tcs
+		; we are now using the emu mode stack, copy across stuff from
+		; native mode stack
+		
+		tya
+		ldy	a:B0_EMU_STACK
+
+		mvp	#0,#0		; copy stack data across
+
+
+		sep	#$30
+		.i8
+		.a8
+
+		inc	A
+		sta	5,S
+
+	; emu stack now contains
+	;	Stack/DP offset
+	;	+9....	extra bytes requested
+	;	+7..8	RTI address (16 bits)
+	;	+6	caller's flags
+	;	+5	"0"
+	;	+4	caller's Y (8 bit)
+	;	+3	caller's X (8 bit)
+	;	+1..2   caller's A (16 bit)
+
+
+		pla
+		xba
+		pla
+		xba
+		plx
+		ply
+		plb		; "0"
+
 		sec
 		xce
 		rti
+
+.endproc
 
 		.a8
 		.i8
@@ -217,72 +232,87 @@ emu_handle_cop:	php				; caller's flags
 		; +3	P	Flags to pass to caller
 		; +2	0	reserved "0"
 		; +1	#	number of stacked bytes to transfer across
-emu2nat_rti:	sei		; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
+
+.proc emu2nat_rti
+		sei		; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
 		clc
 		xce
 		rep	#$21	; clear carry for ADC below
 		.a16
 		.i8
+		phy
 		phx			; save caller X (8bit)
 		pha			; save caller A
-		phd			; save caller DP
-		tsc			; A = nat stack pointer
-		tcd			; D = S 
+
+;		;TODO: force bank 0 - maybe remove?
+;		pea	0
+;		plb
+;		plb
+
 
 	; emu stack now contains
 	;	Stack/DP offset
-	;	+12...  extra bytes
-	;	+9..11	RTI address (16 bits)
-	;	+9	caller's flags
-	;	+7	reserved "0"
-	;	+6	# number of extra bytes to transfer
-	;	+5	caller's X
-	;	+3..4   caller's A
-	;	+1..2	caller's DP
+	;	+11...  extra bytes
+	;	+8..10	RTI address (16 bits)
+	;	+7	caller's flags
+	;	+6	reserved "0"
+	;	+5	# number of extra bytes to transfer
+	;	+4	caller's Y
+	;	+3	caller's X
+	;	+1..2   caller's A
 
+	N_STACKED = 10
 
-		sta	f:B0_EMU_STACK	; save nat stack pointer (temporary)
+		tsc
+		sta	a:B0_EMU_STACK	; save nat stack pointer (temporary)
 
-		ldx	6
-		txa			; get 8 bit # extra bytes into A
-					; carry was cleared in rep above
-		adc	#11		; step back over saved stuff will get moved to emu stack
-		tax
-		adc	f:B0_EMU_STACK
-		sta	f:B0_EMU_STACK	; store back adjusted stack
-		lda	f:B0_NAT_STACK	; get emu stack pointer
+		lda	5,S		; get 8 bit # extra bytes into A (0 must be pushed above 8 bit len)
+		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack
+		rep	#$11		; clear carry and choose big index registers
+		.i16
+		pha			; number of bytes to copy
+		adc	a:B0_EMU_STACK
+		sta	a:B0_EMU_STACK	; store back adjusted stack
+		tax			; set source for copy (topmost)
+		lda	a:B0_NAT_STACK	; get emu stack pointer
+		sec
+		sbc	1,S		; make room on native stack
+		ply
 		tcs
+
+		tya		
+		ldy	a:B0_NAT_STACK	; set dest for copy (topmost) - still pointing at top
+
 		; we are now using the native mode stack, copy across stuff from
-		; emu mode stack
+		; emu mode stack into the space we reserved
 
-		sep	#$20
+		; X points at emu stack
+		; Y points at native stack
+		; A contains number of bytes to copy
 
-@lp:		lda	z:0,X
-		pha
-		dex
-		bne	@lp
-
-		rep	#$20
+		mvp	#0,#0		; copy stack data
 
 	; emu stack now contains
 	;	Stack/DP offset
-	;	+12...  extra bytes
-	;	+9..11	RTI address (16 bits)
-	;	+9	caller's flags
-	;	+7	reserved "0"
-	;	+6	# number of extra bytes to transfer
-	;	+5	caller's X
-	;	+3..4   caller's A
-	;	+1..2	caller's DP
+	;	+11...  extra bytes
+	;	+8..10	RTI address (16 bits)
+	;	+7	caller's flags
+	;	+6	reserved "0"
+	;	+5	# number of extra bytes to transfer
+	;	+4	caller's Y
+	;	+3	caller's X
+	;	+1..2   caller's A
 
-		pld
+		sep	#$10
+		.i8
 		pla
 		plx
+		ply
 		plb
 		plb
 
 		rti
-
+.endproc
 
 		.segment "boot_CODE"
 		.i8
