@@ -393,8 +393,18 @@ emu_handle_res:
 		; Enter auto-boot mode
 		lda	sheila_MEM_CTL
 		and	#<~BITS_MEM_CTL_BOOT_MASK
-		ora	#MEM_CTL_AUTOBOOT_MODE
+		ora	#MEM_CTL_AUTOBOOT_THROT_MODE	; production mode - but no hoglet debugger
+;		ora	#MEM_CTL_AUTOBOOT_MODE
 		sta	sheila_MEM_CTL
+
+; Map the BLTURBO registers so that both native and emulation modes see the 
+; same RAM in 0-FFFF, the rest from motherboard
+		lda	#$01
+		sta	sheila_MEM_LOMEMTURBO
+
+		lda	#BITS_MEM_TURBO2_THROTTLE	
+		sta	sheila_MEM_TURBO2
+
 		
 		; enter native mode
 		clc
@@ -429,13 +439,6 @@ enter_FF:	xce
 		sta	fred_JIM_DEVNO
 
 
-; Map the BLTURBO registers so that both native and emulation modes see the 
-; same RAM in 0-FFFF, the rest from motherboard
-		lda	#$01
-		sta	sheila_MEM_LOMEMTURBO
-
-		lda	#BITS_MEM_TURBO2_THROTTLE	; throttle for ease of debug
-		sta	sheila_MEM_TURBO2
 
 
 ;TODO:::::::::::::::: ZERO DPSYS :::::::::: This should depend on break type -see original MOS
