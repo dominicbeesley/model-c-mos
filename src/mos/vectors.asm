@@ -406,7 +406,7 @@ AddToVector:	php
 		; store return bank
 		phk
 		pla
-		sta	f:b0b_ll_nat_vec::handler+2,X
+		sta	f:b0b_ll_nat_vec::return+2,X
 		rep	#$30
 		.a16
 		.i16
