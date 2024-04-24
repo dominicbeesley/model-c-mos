@@ -36,16 +36,6 @@
 
 		.segment "default_handlers"
 
-; deice - all 65816 entries are initially ABORT
-; entry point inspects instruction and changes to BP if WDM instruction
-nat_handle_abort:	
-		.a16
-		.i16
-		rep	#$30
-		pha
-		lda	#DEICE_STATE_ABORT
-		jml	deice_enter_nat
-		rti	
 
 		.a8
 		.i8
@@ -54,8 +44,18 @@ emu_handle_abort:
 		lda	#DEICE_STATE_ABORT
 		clc
 		xce				; switch to native mode
-		jml	deice_enter_emu
-		rti
+		bra	enter_deice
+
+; deice - all 65816 entries are initially ABORT
+; entry point inspects instruction and changes to BP if WDM instruction
+nat_handle_abort:	
+		.a16
+		.i16
+		rep	#$30
+		pha
+		lda	#DEICE_STATE_ABORT
+enter_deice:	jml	deice_enter_nat
+
 
 
 deice_nat2emu_rti:
@@ -66,27 +66,15 @@ deice_nat2emu_rti:
 
 
 nat_handle_cop:	jml	cop_handle_nat	
-nat_handle_brk:	DEBUG_PRINTF "NAT BREAK A=%H%A, X=%X, Y=%Y, F=%F, "
-		rep	#$30
-		.a16
-		.i16
-		lda	2,S
-		sec
-		sbc	#2
-		tax
-		sep	#$20
-		.a8
-		.i16
-		lda	4,S
-		DEBUG_PRINTF "PC=%A%X\n"
-		sei
-@x:		jmp	@x
+nat_handle_brk:	jmp	brk_handle_nat
 
 
 nat_handle_nmi:	rti
 nat_handle_irq:	jml	default_IVIRQ	
 
 
+		.a8
+		.i8
 emu_handle_irq:	sta	dp_mos_INT_A
 		lda	1,S
 		and	#$10
@@ -1012,6 +1000,24 @@ kernelRaiseEvent:
 		rts
 
 ;;;;;;;;;;;;;;;;;; TODO: split this up into relevant modules?
+
+
+brk_handle_nat:
+		DEBUG_PRINTF "NAT BREAK A=%H%A, X=%X, Y=%Y, F=%F, "
+		rep	#$30
+		.a16
+		.i16
+		lda	2,S
+		sec
+		sbc	#2
+		tax
+		sep	#$20
+		.a8
+		.i16
+		lda	4,S
+		DEBUG_PRINTF "PC=%A%X\n"
+		sei
+@x:		jmp	@x
 
 
 
