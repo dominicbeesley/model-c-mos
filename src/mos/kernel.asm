@@ -66,7 +66,7 @@ deice_nat2emu_rti:
 
 
 nat_handle_cop:	jml	cop_handle_nat	
-nat_handle_brk:	jmp	brk_handle_nat
+nat_handle_brk:	jml	brk_handle_nat
 
 
 nat_handle_nmi:	rti
