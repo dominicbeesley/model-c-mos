@@ -26,12 +26,57 @@
 		.export _OSWORD_12
 		.export _OSWORD_13
 
+		.segment "BMOS_NAT_CODE"
+
+
+	.macro STA_SCR_DP_Y dp
+
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		sta	(dp),Y
+		plb
+		plp
+
+	.endmacro
+
+	.macro LDA_SCR_DP_Y dp
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		lda	(dp),Y
+		plb
+		plp
+
+	.endmacro
+
+	.macro ORA_SCR_DP_Y dp
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		ora	(dp),Y
+		plb
+		plp
+
+	.endmacro
 
 
 ; This taken from https://github.com/raybellis/mos120/blob/master/mos120.s
 ; and hacked for native mode
 
-;THIS CODE ASSUMES IT IS RUNNING IN BANK FF/Same bank as Screen
+;THIS CODE ASSUMES IT IS RUNNING IN BANK F3/Same bank as Screen! 
+; TODO: make char pattern pointer 24 bit
+; TODO: make screen pointer(s) 24 bit?
+; TODO: utilize blitter
 
 
 			.byte	$08,$0d,$0d			; Termination byte in next table
@@ -535,7 +580,7 @@ _LC4BA:			.byte	$04				; &20-&3F - OSHWM+&0400
 ;**************************************************************************
 ;**************************************************************************
 ;**									 **
-;**	 OSWRCH	 MAIN ROUTINE  entry from E0C5				 **
+;**	 OSWRCH	 MAIN ROUTINE  entry from Native vector				 **
 ;**									 **
 ;**	 output a byte via the VDU stream				 **
 ;**									 **
@@ -1904,24 +1949,27 @@ _BCB5E:			asl					; A=A*2
 			lda	_TAB_MULTBL_LKUP_H,X		; row multiplication table pointer
 			sta	z:dp_mos_vdu_mul+1		; store it (&E0) now points to C3B5 or C375
 
-			lda	_TAB_BPR,X			; get nuber of bytes per row from table
+
+			pea	0
+			plb
+			plb
+
+			lda	f:_TAB_BPR,X			; get nuber of bytes per row from table
 			sta	vduvar_BYTES_PER_ROW		; store as bytes per character row
 
 			stx	vduvar_BYTES_PER_ROW+1		; bytes per character row
 			lda	#$43				; A=&43
 			jsr	AND_VDU_STATUS			; A=A and &D0:&D0=A
 			ldx	vduvar_MODE			; screen mode
-			lda	_ULA_SETTINGS,X			; get video ULA control setting
+			lda	f:_ULA_SETTINGS,X		; get video ULA control setting
 			jsl	vduSetULACTL			; set video ULA using osbyte 154 code
 			php					; push flags
 			sei					; set interrupts
-			ldx	_TAB_CRTCBYMOSZ,Y			; get cursor end register data from table
+			tyx
+			lda	f:_TAB_CRTCBYMOSZ,X		; get cursor end register data from table
+			tax
 			ldy	#$0b				; Y=11
 
-
-			pea	0
-			plb
-			plb
 
 @lp:			lda	f:_CRTC_REG_TAB,X		; get end of 6845 registers 0-11 table
 			jsr	SET_CRTC_YeqA			; set register Y
@@ -1959,12 +2007,16 @@ _LCBC1_DOCLS:		ldx	#$00				; X=0
 			sta	f:$FF0000,X				
 			lda	vduvar_SCREEN_SIZE_HIGH
 			xba
+			rep	#$30
+			.a16
+			dec	A
 			dec	A
 			mvn	#$FF,#$FF			; CLS
 
 
 			plp
 			.i8
+			.a8
 
 			ldx	#$00				; X=0
 			stx	sysvar_SCREENLINES_SINCE_PAGE			; paged mode counter
@@ -2091,8 +2143,8 @@ _LCD6A:			php					; save flags
 			dey					; Y=Y-1
 			bne	_BCD8F				; if Y=0 Mode 7 is in use
 
-			lda	vduvar_GRA_WKSP+8			; so get mode 7 write character cursor character &7F
-			sta	(dp_mos_vdu_top_scanline),Y		; store it at top scan line of current character
+			lda	vduvar_GRA_WKSP+8		; so get mode 7 write character cursor character &7F			
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; store it at top scan line of current character
 _LCD77:			pla					; pull A
 _BCD78:			plp					; pull flags
 _BCD79:			rts					; and exit
@@ -2102,10 +2154,10 @@ _LCD7A:			php					; push flags
 			ldy	vduvar_BYTES_PER_CHAR				; bytes per character
 			dey					; 
 			bne	_BCD8F				; if not mode 7
-			lda	(dp_mos_vdu_top_scanline),Y		; get cursor from top scan line
-			sta	vduvar_GRA_WKSP+8			; store it
-			lda	vduvar_MO7_CUR_CHAR			; mode 7 write cursor character
-			sta	(dp_mos_vdu_top_scanline),Y		; store it at scan line
+			LDA_SCR_DP_Y dp_mos_vdu_top_scanline	; get cursor from top scan line
+			sta	vduvar_GRA_WKSP+8		; store it
+			lda	vduvar_MO7_CUR_CHAR		; mode 7 write cursor character
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; store it at scan line
 			jmp	_LCD77				; and exit
 
 _BCD8F:			lda	#$ff				; A=&FF =cursor
@@ -2116,9 +2168,9 @@ _BCD8F:			lda	#$ff				; A=&FF =cursor
 ;********** produce white block write cursor *****************************
 
 _BCD97:			sta	dp_mos_vdu_wksp			; store it
-_BCD99:			lda	(dp_mos_vdu_top_scanline),Y		; get scan line byte
+_BCD99:			LDA_SCR_DP_Y dp_mos_vdu_top_scanline	; get scan line byte
 			eor	dp_mos_vdu_wksp			; invert it
-			sta	(dp_mos_vdu_top_scanline),Y		; store it on scan line
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; store it on scan line
 			dey					; decrement scan line counter
 			bpl	_BCD99				; do it again
 			bmi	_LCD77				; then jump to &CD77
@@ -2218,12 +2270,12 @@ _LCE38:			ldx	vduvar_TXT_WINDOW_WIDTH_BYTES+1			; text window width hi (bytes)
 
 			ldy	#$00				; Y=0 to set loop counter
 
-_BCE3F:			lda	(dp_mos_vdu_wksp),Y			; copy 256 bytes
-			sta	(dp_mos_vdu_top_scanline),Y		; 
+_BCE3F:			LDA_SCR_DP_Y dp_mos_vdu_wksp		; copy 256 bytes
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; 
 			iny					; 
 			bne	_BCE3F				; Till Y=0 again
 			inc	dp_mos_vdu_top_scanline+1			; increment hi bytes
-			inc	dp_mos_vdu_wksp+1			; 
+			inc	dp_mos_vdu_wksp+1		; 
 			dex					; decrement window width
 			bne	_BCE3F				; if not 0 go back and do loop again
 
@@ -2231,8 +2283,8 @@ _BCE4D:			ldy	vduvar_TXT_WINDOW_WIDTH_BYTES			; text window width lo (bytes)
 			beq	_BCE5A				; if Y=0 CE5A
 
 _BCE52:			dey					; else Y=Y-1
-			lda	(dp_mos_vdu_wksp),Y			; copy Y bytes
-			sta	(dp_mos_vdu_top_scanline),Y		; 
+			LDA_SCR_DP_Y dp_mos_vdu_wksp		; copy Y bytes
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; 
 			tya					; A=Y
 			bne	_BCE52				; if not 0 CE52
 _BCE5A:			rts					; and exit
@@ -2249,7 +2301,7 @@ _LCE5B:			jsr	_LCDDA_EXG_BMPR_CURS_X				; exchange text column/line with workspa
 			jmp	_LCDDA_EXG_BMPR_CURS_X				; exchange text column/line with workspace
 
 _LCE6E:			lda	vduvar_TXT_WINDOW_LEFT			; text window left
-			bpl	_BCEE3				; Jump CEE3 always!
+			jmp	_BCEE3				; Jump CEE3 always!
 
 _LCE73:			lda	dp_mos_vdu_wksp			; get back A
 			pha					; push A
@@ -2260,8 +2312,8 @@ _LCE73:			lda	dp_mos_vdu_wksp			; get back A
 _BCE7F:			ldy	vduvar_BYTES_PER_CHAR				; bytes per character to set loop counter
 
 			dey					; copy loop
-_BCE83:			lda	(dp_mos_vdu_wksp),Y			; 
-			sta	(dp_mos_vdu_top_scanline),Y		; 
+_BCE83:			LDA_SCR_DP_Y dp_mos_vdu_wksp		; 
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; 
 			dey					; 
 			bpl	_BCE83				; 
 
@@ -2303,7 +2355,7 @@ _BCEBF:			lda	vduvar_TXT_BACK			; background text colour
 			phk
 			plb
 _BCEC5:			dey					; Y=Y-1 decrementing loop counter
-			sta	(dp_mos_vdu_top_scanline),Y	; store background colour at this point on screen
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; store background colour at this point on screen
 			bne	_BCEC5				; if Y<>0 do it again
 			plb
 			txa					; else A=X
@@ -2489,16 +2541,17 @@ _LCFBF:			ldx	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 
 			phb
 			phk
-			plb					; TODO: assume FONT/Screen in same bank
+			plb
 
 			cpx	#$03				; if X=3
 			beq	_VDU_OUT_COL4			; goto CFEE to handle 4 colour modes
-			bcs	_VDU_OUT_COL16			; else if X>3 D01E to deal with 16 colours
+			bcc	_VDU_OUT_COL2
+			jmp	_VDU_OUT_COL16			; else if X>3 D01E to deal with 16 colours
 
-_VDU_OUT_COL2:		lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
+_VDU_OUT_COL2:		LDA_SCR_DP_Y dp_mos_vdu_wksp+4		; get pattern byte
 			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
 			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
-			sta	(dp_mos_vdu_top_scanline),Y	; write to screen
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; write to screen
 			dey					; Y=Y-1
 			bpl	_VDU_OUT_COL2			; if still +ve do loop again
 			plb
@@ -2509,17 +2562,19 @@ _VDU_OUT_COL2:		lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
 _VDU_OUT_MODE7:		phb
 			phk
 			plb
+
 			ldy	#$02				; Y=2
 __mode7_xlate_loop:	cmp	_TELETEXT_CHAR_TAB,Y		; compare with teletext conversion table
 			beq	__mode7_xlate_char		; if equal then CFE9
 			dey					; else Y=Y-1
 			bpl	__mode7_xlate_loop		; and if +ve CFDE
 
-__mode7_out_char:	sta	(dp_mos_vdu_top_scanline)	; if not write byte to screen
+__mode7_out_char:	ldy	#0
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; if not write byte to screen
 			plb
 			rts					; and exit
 
-__mode7_xlate_char:	lda	_TELETEXT_CHAR_TAB+1,Y	; convert with teletext conversion table
+__mode7_xlate_char:	lda	_TELETEXT_CHAR_TAB+1,Y		; convert with teletext conversion table
 			bne	__mode7_out_char		; and write it
 
 
@@ -2528,7 +2583,7 @@ __mode7_xlate_char:	lda	_TELETEXT_CHAR_TAB+1,Y	; convert with teletext conversio
 _VDU_OUT_COL4:		
 @lp:
 			;;TODO: assumes font in bank FF and this code in FF and screen in FF!
-			lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
+			LDA_SCR_DP_Y dp_mos_vdu_wksp+4		; get pattern byte
 			pha					; save it
 			lsr					; move hi nybble to lo
 			lsr					; 
@@ -2538,7 +2593,7 @@ _VDU_OUT_COL4:
 			lda	_COL16_MASK_TAB,X		; 4 colour mode byte mask look up table
 			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
 			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
-			sta	(dp_mos_vdu_top_scanline),Y	; write to screen
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; write to screen
 			tya					; A=Y
 
 			clc					; clear carry
@@ -2550,11 +2605,11 @@ _VDU_OUT_COL4:
 			lda	_COL16_MASK_TAB,X		; 4 colour mode byte mask look up table
 			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
 			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
-			sta	(dp_mos_vdu_top_scanline),Y	; write to screen
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; write to screen
 			tya					; A=Y
 			sbc	#$08				; A=A-9
 			tay					; Y=A
-			bpl	@lp				; if +ve do loop again
+			bpl	@lp				; if +ve do loop again			
 _BD017:			plb
 			rts					; exit
 
@@ -2567,7 +2622,7 @@ _BD018:			tya					; Y=Y-&21
 
 ;******* 16 COLOUR MODES *************************************************
 
-_VDU_OUT_COL16:		lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
+_VDU_OUT_COL16:		LDA_SCR_DP_Y dp_mos_vdu_wksp+4		; get pattern byte
 			sta	z:dp_mos_vdu_wksp+2		; store it
 			sec					; set carry
 _BD023:			lda	#$00				; A=0
@@ -2580,7 +2635,7 @@ _BD023:			lda	#$00				; A=0
 			lda	_COL4_MASK_TAB,X		; multiply by &55 using look up table
 			ora	z:dp_mos_vdu_txtcolourOR	; and set colour factors
 			eor	z:dp_mos_vdu_txtcolourEOR	; 
-			sta	(dp_mos_vdu_top_scanline),Y	; and store result
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; and store result
 			clc					; clear carry
 			tya					; Y=Y+8 moving screen RAM pointer on 8 bytes
 			adc	#$08				; 
@@ -2738,12 +2793,12 @@ _LD0F3:
 
 			lda	dp_mos_vdu_grpixmask		; pick up and modify screen byte
 			and	dp_mos_vdu_gracolourOR		; 
-			ora	(dp_mos_vdu_gra_char_cell),Y	; 
+			ORA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; 
 			sta	dp_mos_vdu_wksp			; 
 			lda	dp_mos_vdu_gracolourEOR		; 
 			and	dp_mos_vdu_grpixmask		; 
 			eor	dp_mos_vdu_wksp			; 
-			sta	(dp_mos_vdu_gra_char_cell),Y	; put it back again
+			STA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; put it back again
 			plb
 _BD103:			rts					; and exit
 								;
@@ -2751,10 +2806,10 @@ _BD103:			rts					; and exit
 _LD104:			phb
 			phk
 			plb
-			lda	(dp_mos_vdu_gra_char_cell),Y	; this is a more simplistic version of the above
+			LDA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; this is a more simplistic version of the above
 			ora	dp_mos_vdu_gracolourOR		; 
 			eor	dp_mos_vdu_gracolourEOR		; 
-			sta	(dp_mos_vdu_gra_char_cell),Y		; 
+			STA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; 
 			plb
 			rts					; and exit
 
@@ -3051,12 +3106,12 @@ _BD306:			phb
 			plb
 			lda	dp_mos_vdu_grpixmask		; byte mask for current graphics point
 			and	dp_mos_vdu_gracolourOR		; and with graphics colour byte
-			ora	(dp_mos_vdu_gra_char_cell),Y	; or  with curent graphics cell line
+			ORA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; or  with curent graphics cell line
 			sta	dp_mos_vdu_wksp			; store result
 			lda	dp_mos_vdu_gracolourEOR		; same again with next byte (hi??)
 			and	dp_mos_vdu_grpixmask		; 
 			eor	dp_mos_vdu_wksp			; 
-			sta	(dp_mos_vdu_gra_char_cell),Y	; then store it inm current graphics line
+			STA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; then store it inm current graphics line
 			plb
 _BD316:			sec					; set carry
 			lda	vduvar_GRA_WKSP+5		; A=&335/6-&337/8
@@ -3296,7 +3351,7 @@ _BD4A9:			rts					; return
 								;
 _LD4AA:			jsr	_LD85D				; check window boundaries and set up screen pointer
 			bne	_BD4B7				; if A<>0 D4B7
-			lda	(dp_mos_vdu_gra_char_cell),Y			; else get byte from current graphics cell
+			LDA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; else get byte from current graphics cell
 			eor	vduvar_GRA_BACK			; compare with current background colour
 			sta	dp_mos_vdu_wksp			; store it
 			rts					; and RETURN
@@ -3329,7 +3384,7 @@ _LD4BF:			jsr	_LD4AA				; check current screen state
 			jsr	_LD574				; else D574
 			bcc	_BD4FA				; if carry clear D4FA
 _BD4D9:			jsr	_LD3FD				; else D3FD to pick up colour multiplier
-			lda	(dp_mos_vdu_gra_char_cell),Y			; get graphics cell line
+			LDA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; get graphics cell line
 			eor	vduvar_GRA_BACK			; EOR with background colour
 			sta	dp_mos_vdu_wksp			; and store
 			bne	_BD4F7				; if not 0 D4F7
@@ -3362,7 +3417,7 @@ _BD513:			dex					; X=X-1
 _BD514:			jsr	_LD54B				; 
 			bcc	_BD540				; 
 _BD519:			jsr	_LD3ED				; update pointers
-			lda	(dp_mos_vdu_gra_char_cell),Y			; get byte from graphics line
+			LDA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; get byte from graphics line
 			eor	vduvar_GRA_BACK			; EOR with background colour
 			sta	dp_mos_vdu_wksp			; and store it
 			lda	dp_mos_vdu_wksp+2			; 
@@ -3834,7 +3889,7 @@ _LD839:			pha					; store A
 			jsr	_LD85F				; set a screen address after checking for window
 								; violations
 			bne	_BD85A				; if A<>0 D85A to exit with A=&FF
-			lda	(dp_mos_vdu_gra_char_cell),Y			; else get top line of current graphics cell
+			LDA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; else get top line of current graphics cell
 _BD847:			asl					; A=A*2 C=bit 7
 			rol	dp_mos_vdu_wksp			; &DA=&DA+2 +C	C=bit 7 &DA
 			asl	dp_mos_vdu_grpixmask			; byte mask=bM*2 +carry from &DA

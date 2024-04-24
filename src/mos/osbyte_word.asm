@@ -45,10 +45,18 @@ _BE78A:		lda	#$a1				; A=&A1
 _BE78E:		sec					; set carry
 		sbc	#$5f				; convert to &16 to &41 (22-65)
 
-_BE791:		asl					; double it (44-130)
-		sec					; set carry
+_BE791:		sec					; set carry
 
-_BE793:		sty	dp_mos_OSBW_Y			; store Y
+
+_BE793:		php
+		pha
+		asl	A
+		adc	1,S
+		sta	1,S				; multiply by **3** for far addresses
+		pla
+		plp
+
+		sty	dp_mos_OSBW_Y			; store Y
 		tay					; Y=A
 		bit	sysvar_ECO_OSBW_INTERCEPT		; read econet intercept flag
 		bpl	_BE7A2				; if no econet intercept required E7A2
@@ -63,11 +71,15 @@ _BE793:		sty	dp_mos_OSBW_Y			; store Y
 
 _BE7A2:		phk
 		plb
+		phb					; return address bank
+		per    	_OSBYTEWORD_EXIT_NAT-1
 
-		lda	_OSBYTE_TABLE + 1,Y		; get address from table
-		sta	dp_mos_OS_wksp2+1			; store it as hi byte
+		lda	_OSBYTE_TABLE + 2,Y		; get address from table
+		pha					; handler bank
+		lda	_OSBYTE_TABLE + 1,Y		; repeat for hi byte
+		pha					; handler bank
 		lda	_OSBYTE_TABLE,Y			; repeat for lo byte
-		sta	dp_mos_OS_wksp2			; 
+		pha					; handler bank
 		
 		pea	0				; always enter handler with B=0, DP=0, .a8, .i8
 		plb
@@ -82,8 +94,10 @@ _BE7A2:		phk
 
 _BE7B6:		sec					; set carry
 		ldx	dp_mos_OSBW_X			; restore X
-		phk					; !!!!!! LONG CALL API CHANGE !!!!!
-		jsr	_LF058				; call &FA/B
+		rtl					; call handler (address pushed above)
+
+
+_OSBYTEWORD_EXIT_NAT:
 		bvs	_BE7D6				; check for V set (not implemented)
 
 _LE7BC:		ror					; C=bit 0
@@ -147,80 +161,81 @@ doOSWORD:	;;DEBUG_PRINTF "OSWORD #%A, X=%X, Y=%Y\n"
 		bcs	_BE7C8				; else E7C8 with carry set pass to ROMS & exit
 
 		adc	#$44				; add to form pointer to table
-		asl					; double it
+;;;		asl					; double it
+		clc
 		bra	_BE793				; goto E793 ALWAYS!! (carry clear E7F8)
 							; this reads bytes from table and enters routine
 
 
 ;TODO: consider making these far vectors in RAM somewhere to allow modules to implement?
-_OSBYTE_TABLE:	.addr	_OSBYTE_0			; OSBYTE   0  (&E821)
-		.addr	_OSBYTE_1_6			; OSBYTE   1  (&E988)
-		.addr	_OSBYTE_2			; OSBYTE   2  (&E6D3)
-		.addr	_OSBYTE_3_4			; OSBYTE   3  (&E997)
-		.addr	_OSBYTE_3_4			; OSBYTE   4  (&E997)
-		.addr	_OSBYTE_5			; OSBYTE   5  (&E976)
-		.addr	_OSBYTE_1_6			; OSBYTE   6  (&E988)
-		.addr	_OSBYTE_7			; OSBYTE   7  (&E68B)
-		.addr	_OSBYTE_8			; OSBYTE   8  (&E689)
-		.addr	_OSBYTE_9			; OSBYTE   9  (&E6B0)
-		.addr	_OSBYTE_10			; OSBYTE  10  (&E6B2)
-		.addr	_OSBYTE_11			; OSBYTE  11  (&E995)
-		.addr	_OSBYTE_12			; OSBYTE  12  (&E98C)
-		.addr	_OSBYTE_13			; OSBYTE  13  (&E6F9)
-		.addr	_OSBYTE_14			; OSBYTE  14  (&E6FA)
-		.addr	_OSBYTE_15			; OSBYTE  15  (&F0A8)
-		.addr	_OSBYTE_16			; OSBYTE  16  (&E706)
-		.addr	_OSBYTE_17			; OSBYTE  17  (&DE8C)
-		.addr	_OSBYTE_18			; OSBYTE  18  (&E9C8)
-		.addr	_OSBYTE_19			; OSBYTE  19  (&E9B6)
-		.addr	_OSBYTE_20			; OSBYTE  20  (&CD07)
-		.addr	_OSBYTE_21			; OSBYTE  21  (&F0B4)
-		.addr	_OSBYTE_117			; OSBYTE 117  (&E86C)
-		.addr	_OSBYTE_118			; OSBYTE 118  (&E9D9)
-		.addr	_OSBYTE_119			; OSBYTE 119  (&E275)
-		.addr	_OSBYTE_120			; OSBYTE 120  (&F045)
-		.addr	_OSBYTE_121			; OSBYTE 121  (&F0CF)
-		.addr	_OSBYTE_122			; OSBYTE 122  (&F0CD)
-		.addr	_OSBYTE_123			; OSBYTE 123  (&E197)
-		.addr	_OSBYTE_124			; OSBYTE 124  (&E673)
-		.addr	_OSBYTE_125			; OSBYTE 125  (&E674)
-		.addr	_OSBYTE_126			; OSBYTE 126  (&E65C)
-		.addr	_OSBYTE_127			; OSBYTE 127  (&E035)
-		.addr	_OSBYTE_128			; OSBYTE 128  (&E74F)
-		.addr	_OSBYTE_129			; OSBYTE 129  (&E713)
-		.addr	_OSBYTE_130			; OSBYTE 130  (&E729)
-		.addr	_OSBYTE_131			; OSBYTE 131  (&F085)
-		.addr	_OSBYTE_132			; OSBYTE 132  (&D923)
-		.addr	_OSBYTE_133			; OSBYTE 133  (&D926)
-		.addr	_OSBYTE_134			; OSBYTE 134  (&D647)
-		.addr	_OSBYTE_135			; OSBYTE 135  (&D7C2)
-		.addr	_OSBYTE_136			; OSBYTE 136  (&E657)
-		.addr	_OSBYTE_137			; OSBYTE 137  (&E67F)
-		.addr	_OSBYTE_138			; OSBYTE 138  (&E4AF)
-		.addr	_OSBYTE_139			; OSBYTE 139  (&E034)
-		.addr	_OSBYTE_140_141			; OSBYTE 140  (&F135)
-		.addr	_OSBYTE_140_141			; OSBYTE 141  (&F135)
-		.addr	_OSBYTE_142			; OSBYTE 142  (&DBE7)
-		.addr	_OSBYTE_143			; OSBYTE 143  (&F168)
-		.addr	_OSBYTE_144			; OSBYTE 144  (&EAE3)
-		.addr	_OSBYTE_145			; OSBYTE 145  (&E460)
-		.addr	_OSBYTE_146			; OSBYTE 146  (&FFAA)
-		.addr	_OSBYTE_147			; OSBYTE 147  (&EAF4)
-		.addr	_OSBYTE_148			; OSBYTE 148  (&FFAE)
-		.addr	_OSBYTE_149			; OSBYTE 149  (&EAF9)
-		.addr	_OSBYTE_150			; OSBYTE 150  (&FFB2)
-		.addr	_OSBYTE_151			; OSBYTE 151  (&EAFE)
-		.addr	_OSBYTE_152			; OSBYTE 152  (&E45B)
-		.addr	_OSBYTE_153			; OSBYTE 153  (&E4F3)
-		.addr	_OSBYTE_154			; OSBYTE 154  (&E9FF)
-		.addr	_OSBYTE_155			; OSBYTE 155  (&EA10)
-		.addr	_OSBYTE_156			; OSBYTE 156  (&E17C)
-		.addr	_OSBYTE_157			; OSBYTE 157  (&FFA7)
-		.addr	_OSBYTE_158			; OSBYTE 158  (&EE6D)
-		.addr	_OSBYTE_159			; OSBYTE 159  (&EE7F)
-		.addr	_OSBYTE_160			; OSBYTE 160  (&E9C0)
-		.addr	_OSBYTE_166_255			; OSBYTE 166+
-		.addr	_OSCLI_USERV			; OSWORD &E0+
+_OSBYTE_TABLE:	.faraddr	_OSBYTE_0-1			; OSBYTE   0  (&E821)
+		.faraddr	_OSBYTE_1_6-1			; OSBYTE   1  (&E988)
+		.faraddr	_OSBYTE_2-1			; OSBYTE   2  (&E6D3)
+		.faraddr	_OSBYTE_3_4-1			; OSBYTE   3  (&E997)
+		.faraddr	_OSBYTE_3_4-1			; OSBYTE   4  (&E997)
+		.faraddr	_OSBYTE_5-1			; OSBYTE   5  (&E976)
+		.faraddr	_OSBYTE_1_6-1			; OSBYTE   6  (&E988)
+		.faraddr	_OSBYTE_7-1			; OSBYTE   7  (&E68B)
+		.faraddr	_OSBYTE_8-1			; OSBYTE   8  (&E689)
+		.faraddr	_OSBYTE_9-1			; OSBYTE   9  (&E6B0)
+		.faraddr	_OSBYTE_10-1			; OSBYTE  10  (&E6B2)
+		.faraddr	_OSBYTE_11-1			; OSBYTE  11  (&E995)
+		.faraddr	_OSBYTE_12-1			; OSBYTE  12  (&E98C)
+		.faraddr	_OSBYTE_13-1			; OSBYTE  13  (&E6F9)
+		.faraddr	_OSBYTE_14-1			; OSBYTE  14  (&E6FA)
+		.faraddr	_OSBYTE_15-1			; OSBYTE  15  (&F0A8)
+		.faraddr	_OSBYTE_16-1			; OSBYTE  16  (&E706)
+		.faraddr	_OSBYTE_17-1			; OSBYTE  17  (&DE8C)
+		.faraddr	_OSBYTE_18-1			; OSBYTE  18  (&E9C8)
+		.faraddr	_OSBYTE_19-1			; OSBYTE  19  (&E9B6)
+		.faraddr	_OSBYTE_20-1			; OSBYTE  20  (&CD07)
+		.faraddr	_OSBYTE_21-1			; OSBYTE  21  (&F0B4)
+		.faraddr	_OSBYTE_117-1			; OSBYTE 117  (&E86C)
+		.faraddr	_OSBYTE_118-1			; OSBYTE 118  (&E9D9)
+		.faraddr	_OSBYTE_119-1			; OSBYTE 119  (&E275)
+		.faraddr	_OSBYTE_120-1			; OSBYTE 120  (&F045)
+		.faraddr	_OSBYTE_121-1			; OSBYTE 121  (&F0CF)
+		.faraddr	_OSBYTE_122-1			; OSBYTE 122  (&F0CD)
+		.faraddr	_OSBYTE_123-1			; OSBYTE 123  (&E197)
+		.faraddr	_OSBYTE_124-1			; OSBYTE 124  (&E673)
+		.faraddr	_OSBYTE_125-1			; OSBYTE 125  (&E674)
+		.faraddr	_OSBYTE_126-1			; OSBYTE 126  (&E65C)
+		.faraddr	_OSBYTE_127-1			; OSBYTE 127  (&E035)
+		.faraddr	_OSBYTE_128-1			; OSBYTE 128  (&E74F)
+		.faraddr	_OSBYTE_129-1			; OSBYTE 129  (&E713)
+		.faraddr	_OSBYTE_130-1			; OSBYTE 130  (&E729)
+		.faraddr	_OSBYTE_131-1			; OSBYTE 131  (&F085)
+		.faraddr	_OSBYTE_132-1			; OSBYTE 132  (&D923)
+		.faraddr	_OSBYTE_133-1			; OSBYTE 133  (&D926)
+		.faraddr	_OSBYTE_134-1			; OSBYTE 134  (&D647)
+		.faraddr	_OSBYTE_135-1			; OSBYTE 135  (&D7C2)
+		.faraddr	_OSBYTE_136-1			; OSBYTE 136  (&E657)
+		.faraddr	_OSBYTE_137-1			; OSBYTE 137  (&E67F)
+		.faraddr	_OSBYTE_138-1			; OSBYTE 138  (&E4AF)
+		.faraddr	_OSBYTE_139-1			; OSBYTE 139  (&E034)
+		.faraddr	_OSBYTE_140_141-1			; OSBYTE 140  (&F135)
+		.faraddr	_OSBYTE_140_141-1			; OSBYTE 141  (&F135)
+		.faraddr	_OSBYTE_142-1			; OSBYTE 142  (&DBE7)
+		.faraddr	_OSBYTE_143-1			; OSBYTE 143  (&F168)
+		.faraddr	_OSBYTE_144-1			; OSBYTE 144  (&EAE3)
+		.faraddr	_OSBYTE_145-1			; OSBYTE 145  (&E460)
+		.faraddr	_OSBYTE_146-1			; OSBYTE 146  (&FFAA)
+		.faraddr	_OSBYTE_147-1			; OSBYTE 147  (&EAF4)
+		.faraddr	_OSBYTE_148-1			; OSBYTE 148  (&FFAE)
+		.faraddr	_OSBYTE_149-1			; OSBYTE 149  (&EAF9)
+		.faraddr	_OSBYTE_150-1			; OSBYTE 150  (&FFB2)
+		.faraddr	_OSBYTE_151-1			; OSBYTE 151  (&EAFE)
+		.faraddr	_OSBYTE_152-1			; OSBYTE 152  (&E45B)
+		.faraddr	_OSBYTE_153-1			; OSBYTE 153  (&E4F3)
+		.faraddr	_OSBYTE_154-1			; OSBYTE 154  (&E9FF)
+		.faraddr	_OSBYTE_155-1			; OSBYTE 155  (&EA10)
+		.faraddr	_OSBYTE_156-1			; OSBYTE 156  (&E17C)
+		.faraddr	_OSBYTE_157-1			; OSBYTE 157  (&FFA7)
+		.faraddr	_OSBYTE_158-1			; OSBYTE 158  (&EE6D)
+		.faraddr	_OSBYTE_159-1			; OSBYTE 159  (&EE7F)
+		.faraddr	_OSBYTE_160-1			; OSBYTE 160  (&E9C0)
+		.faraddr	_OSBYTE_166_255-1			; OSBYTE 166+
+		.faraddr	_OSCLI_USERV-1			; OSWORD &E0+
 
 
 ;*************************************************************************
@@ -229,20 +244,20 @@ _OSBYTE_TABLE:	.addr	_OSBYTE_0			; OSBYTE   0  (&E821)
 ;*			                                              *
 ;*************************************************************************
 
-		.addr	_OSWORD_0			; OSWORD   0  (&E902)
-		.addr	_OSWORD_1			; OSWORD   1  (&E8D5)
-		.addr	_OSWORD_2			; OSWORD   2  (&E8E8)
-		.addr	_OSWORD_3			; OSWORD   3  (&E8D1)
-		.addr	_OSWORD_4			; OSWORD   4  (&E8E4)
-		.addr	_OSWORD_5			; OSWORD   5  (&E803)
-		.addr	_OSWORD_6			; OSWORD   6  (&E80B)
-		.addr	_OSWORD_7			; OSWORD   7  (&E82D)
-		.addr	_OSWORD_8			; OSWORD   8  (&E8AE)
-		.addr	_OSWORD_9			; OSWORD   9  (&C735)
-		.addr	_OSWORD_10			; OSWORD  10  (&CBF3)
-		.addr	_OSWORD_11			; OSWORD  11  (&C748)
-		.addr	_OSWORD_12			; OSWORD  12  (&C8E0)
-		.addr	_OSWORD_13			; OSWORD  13  (&D5CE)
+		.faraddr	_OSWORD_0-1			; OSWORD   0  (&E902)
+		.faraddr	_OSWORD_1-1			; OSWORD   1  (&E8D5)
+		.faraddr	_OSWORD_2-1			; OSWORD   2  (&E8E8)
+		.faraddr	_OSWORD_3-1			; OSWORD   3  (&E8D1)
+		.faraddr	_OSWORD_4-1			; OSWORD   4  (&E8E4)
+		.faraddr	_OSWORD_5-1			; OSWORD   5  (&E803)
+		.faraddr	_OSWORD_6-1			; OSWORD   6  (&E80B)
+		.faraddr	_OSWORD_7-1			; OSWORD   7  (&E82D)
+		.faraddr	_OSWORD_8-1			; OSWORD   8  (&E8AE)
+		.faraddr	_OSWORD_9-1			; OSWORD   9  (&C735)
+		.faraddr	_OSWORD_10-1			; OSWORD  10  (&CBF3)
+		.faraddr	_OSWORD_11-1			; OSWORD  11  (&C748)
+		.faraddr	_OSWORD_12-1			; OSWORD  12  (&C8E0)
+		.faraddr	_OSWORD_13-1			; OSWORD  13  (&D5CE)
 
 
 _OSWORD_5:
