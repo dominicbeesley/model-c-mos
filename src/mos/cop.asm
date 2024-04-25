@@ -424,9 +424,24 @@ COP_06:		ldx	DPCOP_X
 		ldy	DPCOP_Y
 		cop	COP_08_OPCAV
 		.byte	IX_BYTEV
-		stx	DPCOP_X
 		sty	DPCOP_Y
+		stx	DPCOP_X
+		php
+		sep	#$30
+		.a8
+		.i8
+		txa
+		php
+		lda	1,S
+		eor	DPCOP_P
+		and	#$CF			; keep original M/X flags
+		eor	DPCOP_P			; get back Caller's flags and nothing else
+		sta	DPCOP_P			; set flags but keep M/X from caller
+		plp
+		plp		
 		rtl
+		.a16
+		.i16
 
 
 ; TODO: - this must depend on whether called from EMU or NAT mode as b0 is 
