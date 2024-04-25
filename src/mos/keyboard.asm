@@ -10,6 +10,7 @@
 		.export _OSBYTE_120
 		.export _OSBYTE_121
 		.export _OSBYTE_122
+		.export _OSBYTE_118
 		.export initKeyboard
 
 		
@@ -87,6 +88,42 @@ keyScanIRQ_CA2:	.i8					; interrupt handlers entered in .a8/.i8
 
 		.a8
 		.i8
+
+;*************************************************************************
+;*									 *
+;*	  OSBYTE &76 (118) SET LEDs to Keyboard Status			 *
+;*									 *
+;*************************************************************************
+				; osbyte entry with carry set
+				; called from &CB0E, &CAE3, &DB8B
+
+_OSBYTE_118:		php					; PUSH P
+			sei					; DISABLE INTERUPTS
+			lda	#$40				; switch on CAPS and SHIFT lock lights
+			jsr	_SET_LEDS_TEST_ESCAPE		; via subroutine
+			bmi	__led_escape			; if ESCAPE exists (M set) E9E7
+			clc					; else clear V and C
+			clv					; before calling main keyboard routine to
+			jsr	_LF068				; switch on lights as required
+__led_escape:		plp					; get back flags
+			rol					; and rotate carry into bit 0
+			rtl					; Return to calling routine
+
+
+;***************** Turn on keyboard lights and Test Escape flag ************
+				; called from &E1FE, &E9DD
+				;
+_SET_LEDS_TEST_ESCAPE:	bcc	_BE9F5				; if carry clear
+			pha
+			lda	#$07				; switch on shift lock light
+			sta	sheila_SYSVIA_orb			; 
+			dec	A				; Y=6
+			sta	sheila_SYSVIA_orb			; switch on Caps lock light
+			tay
+			pla
+_BE9F5:			bit	dp_mos_ESC_flag			; set minus flag if bit 7 of &00FF is set indicating
+			rts					; that ESCAPE condition exists, then return
+
 
 ;************ Modify code as if SHIFT pressed *****************************
 
@@ -445,7 +482,7 @@ _KEY_TRANS_TABLE_3:	.byte	$31,$32,$64,$72,$36,$75,$6f,$70,$5b,$8f
 ;_LF065:			bit	_BD9B7				; set V and M
 ;_LF068:			jmp	(VEC_KEYV)			; i.e. KEYV
 _LF065:		sep	#$C0
-		cop	COP_08_OPCAV
+_LF068:		cop	COP_08_OPCAV
 		.byte   IX_KEYV
 		rts
 
