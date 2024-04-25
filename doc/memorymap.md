@@ -68,4 +68,93 @@ FF00    FF FF00 +--------------------------+    |-------------------------|     
                 M  EMU Ext vector entry    M    | EXSYS                   |
                 M  points and HW vectors   M    |                         |
                 +--------------------------+    +-------------------------+     01 0000
+                                                | Handle pointers         |
+                                                +-------------------------+     01 0100
+                                                |                         |
+                                                |   --- reserved ---      |
+                                                |                         |
+                                                +-------------------------+     02 0000
+                                                |                         |
+                                                |   USER PROGRAM MEMORY?  |
+                                                |                         |
+                                                +-------------------------+ END OF RAM 
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                |XXXXXXX RESERVED XXXXXXXX|
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                +-------------------------+     60 0000
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                |XXXXXXX RESERVED XXXXXXXX|
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                +-------------------------+ BB RAM BASE
+                                                |                         |
+                                                |   BATTERY BACKED RAM    |
+                                                |        (optional)       |
+                                                |       +-----------------+     7C 0000
+                                                |       |                 |
+                                                |       |  EMU SW RAM     |
+                                                |       |                 |
+                                                +-------+-----------------+     80 0000
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                |XXXXXXX RESERVED XXXXXXXX|  [Flash repeats]
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                +-------------------------+ Flash BASE (98 0000)
+                                                |                         |
+                                                |   Flash Memory 39x040   |
+                                                |                         |
+                                                |       +-----------------+     9C 0000
+                                                |       |                 |
+                                                |       |  EMU SW ROM/MOS |
+                                                |       |                 |
+                                                +-------+-----------------+     A0 0000
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                |XXXXXXX RESERVED XXXXXXXX|  [Flash repeats]
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                +-------------------------+     F3 0000
+                                                |                         |
+                                                | "Screen memory"         |
+                                                | unmapped access to BBC  |
+                                                | low ram without overlays|
+                                                +-------------------------+     F3 8000
+                                                | Motherboard ROMs        |
+                                                +-------------------------+     F3 C000
+                                                | Motherboard MOS         |
+                                                +-------------------------+     F4 0000
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                |XXXXXXX RESERVED XXXXXXXX|  undefined
+                                                |XXXXXXXXXXXXXXXXXXXXXXXXX|
+                                                +-------------------------+     FC 0000
+                                                |                         |
+                                                | Debug/Version info      |
+                                                |                         |
+                                                +-------------------------+     FD 0000
+                                                |XXXXXXX RESERVED XXXXXXXX|  undefined
+                                                +----------+--------------+     FE FC00
+                                                |          |XX RESERVED XX|
+                                                |          +--------------+     FE FC80
+                                                |          | Blitter      |
+                                                |          +--------------+     FE FC80
+                                                |          | Paula sound  |      
+                                                |          +--------------+     FE FC90
+                                                |          | DMA          |
+                                                |          +--------------+     FE FCA0
+                                                |          | Blitter ext  |
+                                                |          +--------------+     FE FCB0
+                                                |          | Aeris        |
+                                                |          +--------------+     FE FCC0
+                                                |          |XX RESERVED XX|
+                                                |          +--------------+     FE FCD0
+                                                |          | i2/c eeprom  |
+                                                |          +--------------+     FE FCE0
+                                                |          |XX RESERVED XX|
+                                                +----------+--------------+     FE FD00
+                                                |XXXXXXX RESERVED XXXXXXXX|  undefined
+                                                +-------------------------+     FF 0000
+                                                |                         |
+                                                | Mirror of emu bank 0    |
+                                                |                         |
+                                                +-------------------------+     
+                                                
+
+
+
 ```
