@@ -48,7 +48,7 @@ Log     Phys
 C000    FF C000 +-----------------+--------+----+-------------------------|     00 C000
                 M                 |                                       |
                 M      MOS ROM    | HAZEL                  (may be moved  |
-                M                 |                       mode in future) |
+                M                 |                            in future) |
 E000    ?? ???? ?-----------------+---------------------------------------|
                 ?      **WINDOW**          ?    |                         |
                 ? MOS at boot can be any   ?    |                         |
