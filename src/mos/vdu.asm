@@ -3449,9 +3449,9 @@ _BD519:			jsr	_LD3ED				; update pointers
 			bne	_BD53D				; if A<>d53D
 			sec					; else set carry
 			txa					; A=x
-			adc	vduvar_PIXELS_PER_BYTE_MINUS1			; Add number of pixels/byte
+			adc	vduvar_PIXELS_PER_BYTE_MINUS1	; Add number of pixels/byte
 			bcc	_BD536				; and if carry clear D536
-			inc	dp_mos_vdu_wksp+1			; else inc DB
+			inc	dp_mos_vdu_wksp+1		; else inc DB
 			bpl	_BD53D				; and if +ve D53D
 _BD536:			tax					; get back X
 			jsr	_LD104				; display a point
@@ -3579,24 +3579,24 @@ _BD5E0:			lda	vduvar_GRA_CUR_EXT,X		; get graphics coordinate
 ;*									 *
 ;*************************************************************************
 
-_LD5EA:			ldx	#<vduvar_VDU_Q_START+5			; X=&20
+_LD5EA:			ldx	#<vduvar_VDU_Q_START+5		; X=&20
 			ldy	#<vduvar_GRA_WKSP+$E		; Y=&3E
 			jsr	_LD47C				; copy 300/7+X to 300/7+Y
 								; this gets XY data parameters and current graphics
 								; cursor position
 			jsr	_LD632				; exchange 320/3 with 324/7 if 316/7=<322/3
-			ldx	#<vduvar_GRA_CUR_EXT+3+1		; X=&14
-			ldy	#<vduvar_GRA_CUR_INT			; Y=&24
+			ldx	#<vduvar_GRA_CUR_EXT+3+1	; X=&14
+			ldy	#<vduvar_GRA_CUR_INT		; Y=&24
 			jsr	_LD636				; 
 			jsr	_LD632				; 
 
-			ldx	#<vduvar_VDU_Q_START+5			; 
+			ldx	#<vduvar_VDU_Q_START+5		; 
 			ldy	#<vduvar_TEMP_8+2		; 
 			jsr	_LD411				; calculate 032A/B-(324/5-320/1)
 			lda	vduvar_TEMP_8+3			; and store
-			sta	vduvar_GRA_WKSP+2			; result
+			sta	vduvar_GRA_WKSP+2		; result
 
-			ldx	#<vduvar_TEMP_8		; set pointers
+			ldx	#<vduvar_TEMP_8			; set pointers
 			jsr	_LD459				; 
 			ldy	#<vduvar_TEMP_8+6		; 
 
@@ -3606,25 +3606,25 @@ _LD5EA:			ldx	#<vduvar_VDU_Q_START+5			; X=&20
 			jsr	_LD658				; execute fill routine
 
 			jsr	_LCDE2				; 
-			ldx	#<vduvar_VDU_Q_START+5			; 
+			ldx	#<vduvar_VDU_Q_START+5		; 
 			jsr	_LCDE4				; 
 			sec					; 
 			jsr	_LD658				; 
 
 			ldx	#<vduvar_GRA_WKSP+$E		; ;X=&3E
-			ldy	#<vduvar_VDU_Q_START+5			; ;Y=&20
+			ldy	#<vduvar_VDU_Q_START+5		; ;Y=&20
 			jsr	_LD47C				; ;copy 300/7+X to 300/7+Y
 			jmp	_LD0D9				; ;this gets XY data parameters and current graphics
 								; cursor position
 
-_LD632:			ldx	#<vduvar_VDU_Q_START+5			; X=&20
-			ldy	#<vduvar_GRA_CUR_EXT+3+1		; Y=&14
-_LD636:			lda	vduvar_GRA_WINDOW_BOTTOM,X			; 
-			cmp	vduvar_GRA_WINDOW_BOTTOM,Y			; 
-			lda	vduvar_GRA_WINDOW_BOTTOM+1,X		; 
-			sbc	vduvar_GRA_WINDOW_BOTTOM+1,Y		; 
+_LD632:			ldx	#<vduvar_VDU_Q_START+5		; X=&20
+			ldy	#<vduvar_GRA_CUR_EXT+3+1	; Y=&14
+_LD636:			lda	vduvar_GRA_WINDOW_BOTTOM,X	; 
+			cmp	vduvar_GRA_WINDOW_BOTTOM,Y	; 
+			lda	vduvar_GRA_WINDOW_BOTTOM+1,X	; 
+			sbc	vduvar_GRA_WINDOW_BOTTOM+1,Y	; 
 			bmi	_BD657				; if 302/3+Y>302/3+X return
-			jmp	_LCDE6_EXG4_P3				; else swap 302/3+X with 302/3+Y
+			jmp	_LCDE6_EXG4_P3			; else swap 302/3+X with 302/3+Y
 
 
 ;*************************************************************************
