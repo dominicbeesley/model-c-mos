@@ -984,7 +984,9 @@ _BC6A9:			jsr	_LCDFF				; execute upward scroll
 _LC6AC:			jsr	_LCEAC				; clear a line
 
 _LC6AF:			jsr	_LCF06				; set up display address
-			bcc	_BC732				; 
+			bcs	@sk
+			jmp	_BC732				; 
+@sk:
 
 ;*********** graphic cursor right ****************************************
 
@@ -1048,13 +1050,13 @@ _VDU_28:		ldx	vduvar_MODE			; screen mode
 			lda	vduvar_VDU_Q_START+6		; get bottom margin
 			cmp	vduvar_VDU_Q_START+8		; compare with top margin
 			bcc	_BC758				; if bottom margin exceeds top return
-			cmp	_TEXT_ROW_TABLE,X		; text window bottom margin maximum
+			cmp	f:_TEXT_ROW_TABLE,X		; text window bottom margin maximum
 			beq	_BC70C				; if equal then its OK
 			bcs	_BC758				; else exit
 
 _BC70C:			lda	vduvar_VDU_Q_START+7		; get right margin
 			tay					; put it in Y
-			cmp	_TEXT_COL_TABLE,X		; text window right hand margin maximum
+			cmp	f:_TEXT_COL_TABLE,X		; text window right hand margin maximum
 			beq	_BC717				; if equal then OK
 			bcs	_BC758				; if greater than maximum exit
 
@@ -1072,6 +1074,9 @@ _BC717:			sec					; set carry to subtract
 			bcs	_VDU_30				; home cursor within window
 _BC732:			jmp	SET_CURS_CHARSCANAX		; set cursor position
 
+
+
+_BC758:	rts
 
 ;*************************************************************************
 ;*									 *
@@ -1127,7 +1132,7 @@ _BC750:			sta	(dp_mos_OSBW_X),Y		; store data
 			cpy	#$04				; to next bytes until Y=4
 			bne	_BC74F				; 
 
-_BC758:			rtl					; and exit
+			rtl					; and exit
 
 
 ;*************************************************************************
@@ -2271,77 +2276,87 @@ _LCE2A:			lda	dp_mos_vdu_wksp+2			;
 
 ;*********** copy routines ***********************************************
 
-_LCE38:			ldx	vduvar_TXT_WINDOW_WIDTH_BYTES+1			; text window width hi (bytes)
-			beq	_BCE4D				; if no more than 256 bytes to copy X=0 so CE4D
+_LCE38:
+			phb
+			BANK_SCR
+
+			lda	f:vduvar_TXT_WINDOW_WIDTH_BYTES+1; text window width hi (bytes)
+			tax
+			beq	@lt256				; if no more than 256 bytes to copy X=0 so CE4D
 
 			ldy	#$00				; Y=0 to set loop counter
 
-_BCE3F:			LDA_SCR_DP_Y dp_mos_vdu_wksp		; copy 256 bytes
-			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; 
+@lp:			lda	(dp_mos_vdu_wksp),Y		; copy 256 bytes
+			sta	(dp_mos_vdu_top_scanline),Y	; 
 			iny					; 
-			bne	_BCE3F				; Till Y=0 again
-			inc	dp_mos_vdu_top_scanline+1			; increment hi bytes
+			bne	@lp				; Till Y=0 again
+			inc	dp_mos_vdu_top_scanline+1	; increment hi bytes
 			inc	dp_mos_vdu_wksp+1		; 
 			dex					; decrement window width
-			bne	_BCE3F				; if not 0 go back and do loop again
+			bne	@lp				; if not 0 go back and do loop again
 
-_BCE4D:			ldy	vduvar_TXT_WINDOW_WIDTH_BYTES			; text window width lo (bytes)
-			beq	_BCE5A				; if Y=0 CE5A
+@lt256:			lda	f:vduvar_TXT_WINDOW_WIDTH_BYTES	; text window width lo (bytes)
+			tay
+			beq	@ex				; if Y=0 CE5A
 
-_BCE52:			dey					; else Y=Y-1
-			LDA_SCR_DP_Y dp_mos_vdu_wksp		; copy Y bytes
-			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; 
+@lp2:			dey					; else Y=Y-1
+			lda	(dp_mos_vdu_wksp),Y		; copy Y bytes
+			sta	(dp_mos_vdu_top_scanline),Y	; 
 			tya					; A=Y
-			bne	_BCE52				; if not 0 CE52
-_BCE5A:			rts					; and exit
+			bne	@lp2				; if not 0 CE52
+@ex:			plb
+			rts					; and exit
 
 
-_LCE5B:			jsr	_LCDDA_EXG_BMPR_CURS_X				; exchange text column/line with workspace
+_LCE5B:			jsr	_LCDDA_EXG_BMPR_CURS_X		; exchange text column/line with workspace
 			sec					; set carry
-			lda	vduvar_TXT_WINDOW_BOTTOM			; bottom margin
-			sbc	vduvar_TXT_WINDOW_TOP			; top of text window
-			sta	dp_mos_vdu_wksp+4			; store it
+			lda	vduvar_TXT_WINDOW_BOTTOM	; bottom margin
+			sbc	vduvar_TXT_WINDOW_TOP		; top of text window
+			sta	dp_mos_vdu_wksp+4		; store it
 			bne	_LCE6E				; set text column to left hand column
 			pla					; get back return address
 			pla					; 
-			jmp	_LCDDA_EXG_BMPR_CURS_X				; exchange text column/line with workspace
+			jmp	_LCDDA_EXG_BMPR_CURS_X		; exchange text column/line with workspace
 
-_LCE6E:			lda	vduvar_TXT_WINDOW_LEFT			; text window left
+_LCE6E:			lda	vduvar_TXT_WINDOW_LEFT		; text window left
 			jmp	_BCEE3				; Jump CEE3 always!
 
 _LCE73:			lda	dp_mos_vdu_wksp			; get back A
 			pha					; push A
 			sec					; set carry
-			lda	vduvar_TXT_WINDOW_RIGHT			; text window right
-			sbc	vduvar_TXT_WINDOW_LEFT			; text window left
-			sta	dp_mos_vdu_wksp+5			; 
-_BCE7F:			ldy	vduvar_BYTES_PER_CHAR				; bytes per character to set loop counter
+			lda	vduvar_TXT_WINDOW_RIGHT		; text window right
+			sbc	vduvar_TXT_WINDOW_LEFT		; text window left
+			sta	dp_mos_vdu_wksp+5		; 
+_BCE7F:			ldy	vduvar_BYTES_PER_CHAR		; bytes per character to set loop counter
 
+			phb
+			BANK_SCR
 			dey					; copy loop
-_BCE83:			LDA_SCR_DP_Y dp_mos_vdu_wksp		; 
-			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; 
+@lp:			lda 	(dp_mos_vdu_wksp),Y		; 
+			sta	(dp_mos_vdu_top_scanline),Y	; 
 			dey					; 
-			bpl	_BCE83				; 
+			bpl	@lp				; 
 
 			ldx	#$02				; X=2
-_BCE8C:			clc					; clear carry
-			lda	dp_mos_vdu_top_scanline,X			; 
-			adc	vduvar_BYTES_PER_CHAR				; bytes per character
-			sta	dp_mos_vdu_top_scanline,X			; 
-			lda	dp_mos_vdu_top_scanline+1,X		; 
+@addlp:			clc					; clear carry
+			lda	dp_mos_vdu_top_scanline,X	; 
+			adc	f:vduvar_BYTES_PER_CHAR		; bytes per character
+			sta	dp_mos_vdu_top_scanline,X	; 
+			lda	dp_mos_vdu_top_scanline+1,X	; 
 			adc	#$00				; 
-			bpl	_BCE9E				; if this remains in screen RAM OK
+			bpl	@addsk				; if this remains in screen RAM OK
 
 			sec					; else wrap around screen
-			sbc	vduvar_SCREEN_SIZE_HIGH			; screen RAM size hi byte
-_BCE9E:			sta	dp_mos_vdu_top_scanline+1,X		; 
+			sbc	f:vduvar_SCREEN_SIZE_HIGH	; screen RAM size hi byte
+@addsk:			sta	dp_mos_vdu_top_scanline+1,X	; 
 			dex					; X=X-2
 			dex					; 
-			beq	_BCE8C				; if X=0 adjust second set of pointers
-			dec	dp_mos_vdu_wksp+5			; decrement window width
+			beq	@addlp				; if X=0 adjust second set of pointers
+			dec	dp_mos_vdu_wksp+5		; decrement window width
 			bpl	_BCE7F				; and if still +ve do it all again
 			pla					; get back A
 			sta	dp_mos_vdu_wksp			; and store it
+			plb
 			rts					; then exit
 
 ;*********** clear a line ************************************************
@@ -2358,10 +2373,9 @@ _BCEBF:			lda	vduvar_TXT_BACK			; background text colour
 			ldy	vduvar_BYTES_PER_CHAR		; bytes per character
 
 			phb
-			phk
-			plb
+			BANK_SCR
 _BCEC5:			dey					; Y=Y-1 decrementing loop counter
-			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; store background colour at this point on screen
+			sta	(dp_mos_vdu_top_scanline),Y	; store background colour at this point on screen
 			bne	_BCEC5				; if Y<>0 do it again
 			plb
 			txa					; else A=X
@@ -2379,27 +2393,27 @@ _BCEC5:			dey					; Y=Y-1 decrementing loop counter
 
 
 
-_BCEDA:			stx	dp_mos_vdu_top_scanline			; restore D8/9
-			sta	dp_mos_vdu_top_scanline+1			; 
-			dec	dp_mos_vdu_wksp+2			; decrement window width
+_BCEDA:			stx	dp_mos_vdu_top_scanline		; restore D8/9
+			sta	dp_mos_vdu_top_scanline+1	; 
+			dec	dp_mos_vdu_wksp+2		; decrement window width
 			bpl	_BCEBF				; ind if not 0 do it all again
 			pla					; get back A
-_BCEE3:			sta	vduvar_TXT_CUR_X			; restore text column
+_BCEE3:			sta	vduvar_TXT_CUR_X		; restore text column
 _BCEE6:			sec					; set carry
 			rts					; and exit
 
 
-_LCEE8:			ldx	vduvar_TXT_CUR_X			; text column
-			cpx	vduvar_TXT_WINDOW_LEFT			; text window left
+_LCEE8:			ldx	vduvar_TXT_CUR_X		; text column
+			cpx	vduvar_TXT_WINDOW_LEFT		; text window left
 			bmi	_BCEE6				; if less than left margin return with carry set
-			cpx	vduvar_TXT_WINDOW_RIGHT			; text window right
+			cpx	vduvar_TXT_WINDOW_RIGHT		; text window right
 			beq	_BCEF7				; if equal to right margin thats OK
 			bpl	_BCEE6				; if greater than right margin return with carry set
 
-_BCEF7:			ldx	vduvar_TXT_CUR_Y			; current text line
-			cpx	vduvar_TXT_WINDOW_TOP			; top of text window
+_BCEF7:			ldx	vduvar_TXT_CUR_Y		; current text line
+			cpx	vduvar_TXT_WINDOW_TOP		; top of text window
 			bmi	_BCEE6				; if less than top margin
-			cpx	vduvar_TXT_WINDOW_BOTTOM			; bottom margin
+			cpx	vduvar_TXT_WINDOW_BOTTOM	; bottom margin
 			beq	_LCF06				; set up display address
 			bpl	_BCEE6				; or greater than bottom margin return with carry set
 
@@ -2576,8 +2590,7 @@ __mode7_xlate_loop:	cmp	_TELETEXT_CHAR_TAB,Y		; compare with teletext conversion
 			dey					; else Y=Y-1
 			bpl	__mode7_xlate_loop		; and if +ve CFDE
 
-__mode7_out_char:	ldy	#0
-			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; if not write byte to screen
+__mode7_out_char:	sta	(dp_mos_vdu_top_scanline)	; if not write byte to screen
 			plb
 			rts					; and exit
 
@@ -2800,28 +2813,27 @@ _LD0EB:			jsr	_LD85D				; calculate position
 _LD0F0:			ldy	vduvar_GRA_CUR_CELL_LINE	; else get current graphics scan line
 _LD0F3:			
 			phb
-			phk
-			plb
+			BANK_SCR
 
 			lda	dp_mos_vdu_grpixmask		; pick up and modify screen byte
 			and	dp_mos_vdu_gracolourOR		; 
-			ORA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; 
+			ora	(dp_mos_vdu_gra_char_cell),Y	; 
 			sta	dp_mos_vdu_wksp			; 
 			lda	dp_mos_vdu_gracolourEOR		; 
 			and	dp_mos_vdu_grpixmask		; 
 			eor	dp_mos_vdu_wksp			; 
-			STA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; put it back again
+			sta	(dp_mos_vdu_gra_char_cell),Y	; put it back again
 			plb
 _BD103:			rts					; and exit
 								;
 
 _LD104:			phb
-			phk
-			plb
-			LDA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; this is a more simplistic version of the above
+			BANK_SCR
+
+			lda	(dp_mos_vdu_gra_char_cell),Y	; this is a more simplistic version of the above
 			ora	dp_mos_vdu_gracolourOR		; 
 			eor	dp_mos_vdu_gracolourEOR		; 
-			STA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; 
+			sta	(dp_mos_vdu_gra_char_cell),Y	; 
 			plb
 			rts					; and exit
 
@@ -3114,16 +3126,15 @@ _BD2F9:			stx	dp_mos_vdu_wksp+2		;
 			ora	#$00				; 
 			bne	_BD316				; 
 _BD306:			phb
-			phk
-			plb
+			BANK_SCR
 			lda	dp_mos_vdu_grpixmask		; byte mask for current graphics point
 			and	dp_mos_vdu_gracolourOR		; and with graphics colour byte
-			ORA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; or  with curent graphics cell line
+			ora	(dp_mos_vdu_gra_char_cell),Y	; or  with curent graphics cell line
 			sta	dp_mos_vdu_wksp			; store result
 			lda	dp_mos_vdu_gracolourEOR		; same again with next byte (hi??)
 			and	dp_mos_vdu_grpixmask		; 
 			eor	dp_mos_vdu_wksp			; 
-			STA_SCR_DP_Y dp_mos_vdu_gra_char_cell	; then store it inm current graphics line
+			sta	(dp_mos_vdu_gra_char_cell),Y	; then store it inm current graphics line
 			plb
 _BD316:			sec					; set carry
 			lda	vduvar_GRA_WKSP+5		; A=&335/6-&337/8
@@ -3385,13 +3396,13 @@ _BD4B9:			inc	vduvar_GRA_CUR_INT+2			; increment current graphics cursor vertica
 
 
 _LD4BF:			jsr	_LD4AA				; check current screen state
-			and	dp_mos_vdu_grpixmask			; if A and &D1 <> 0 a plotted point has been found
+			and	dp_mos_vdu_grpixmask		; if A and &D1 <> 0 a plotted point has been found
 			bne	_BD4B9				; so D4B9
 			ldx	#$00				; X=0
 			jsr	_LD592				; update pointers
 			beq	_BD4FA				; if 0 then D4FA
-			ldy	vduvar_GRA_CUR_CELL_LINE			; else Y=graphics scan line
-			asl	dp_mos_vdu_grpixmask			; 
+			ldy	vduvar_GRA_CUR_CELL_LINE	; else Y=graphics scan line
+			asl	dp_mos_vdu_grpixmask		; 
 			bcs	_BD4D9				; if carry set D4D9
 			jsr	_LD574				; else D574
 			bcc	_BD4FA				; if carry clear D4FA
@@ -3402,9 +3413,9 @@ _BD4D9:			jsr	_LD3FD				; else D3FD to pick up colour multiplier
 			bne	_BD4F7				; if not 0 D4F7
 			sec					; else set carry
 			txa					; A=X
-			adc	vduvar_PIXELS_PER_BYTE_MINUS1			; add pixels/byte
+			adc	vduvar_PIXELS_PER_BYTE_MINUS1	; add pixels/byte
 			bcc	_BD4F0				; and if carry clear D4F0
-			inc	dp_mos_vdu_wksp+1			; else increment &DB
+			inc	dp_mos_vdu_wksp+1		; else increment &DB
 			bpl	_BD4F7				; and if +ve D4F7
 
 _BD4F0:			tax					; else X=A
@@ -3415,15 +3426,15 @@ _BD4F0:			tax					; else X=A
 _BD4F7:			jsr	_LD574				; 
 _BD4FA:			ldy	#$00				; Y=0
 			jsr	_LD5AC				; 
-			ldy	#<vduvar_VDU_Q_START+5			; 
-			ldx	#<vduvar_GRA_CUR_INT			; 
-			jsr	_LCDE6_EXG4_P3				; exchange 300/3 +Y with 300/3+X
+			ldy	#<vduvar_VDU_Q_START+5		; 
+			ldx	#<vduvar_GRA_CUR_INT		; 
+			jsr	_LCDE6_EXG4_P3			; exchange 300/3 +Y with 300/3+X
 _LD506:			jsr	_LD4AA				; check screen pixel
 			ldx	#$04				; Y=5
 			jsr	_LD592				; 
 			txa					; A=x
 			bne	_BD513				; if A<>0 d513
-			dec	dp_mos_vdu_wksp+1			; else	&DB=&dB-1
+			dec	dp_mos_vdu_wksp+1		; else	&DB=&dB-1
 
 _BD513:			dex					; X=X-1
 _BD514:			jsr	_LD54B				; 
