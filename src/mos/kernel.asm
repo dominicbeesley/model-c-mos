@@ -571,32 +571,33 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 
 		DEBUG_PRINTF "VDU_INIT\n"
-		lda	#7
+		lda	#0
 		jsl	VDU_INIT
 
-		rep	#$30
+		rep	#$10
 		.i16
-		.a16
+		sep	#$20
+		.a8
 
-;		ldx	#.loword(str_boot)
-;		ldy	#$7C00
-;		lda	#6*40
-;		mvn	#$FF,#$FF
 
 		phk
-		plb
+		plb		
+		ldx	#.loword(str_boot_7)		
+		lda	vduvar_MODE
+		eor	#7
+		beq	@lp
 		ldx	#.loword(str_boot)
 @lp:		lda	a:0,X
-		and	#$FF
 		beq	@sk
-		ora	#$80
-
 		cop	COP_00_OPWRC
-
 		inx
 		bra	@lp
 @sk:		cop	COP_03_OPNLI
 		cop	COP_03_OPNLI
+
+		rep	#$30
+		.a16
+		.i16
 
 
 		DEBUG_PRINTF "initKeyboard\n"
@@ -840,10 +841,11 @@ bankFF:		pea	$FFFF
 		rts
 
 
-str_boot:
+str_boot_7:
 		.incbin "logo.bin"
 		.byte	0
 
+str_boot:	.byte	"Dossytronics 816 MOS", 0
 
 ; These are cut-down configuration routines, only for use during boot
 ; they have a similar API to those found in the bltutils rom
