@@ -29,6 +29,12 @@
 		.segment "BMOS_NAT_CODE"
 
 
+	.macro BANK_SCR
+		pea	$F3F3
+		plb
+		plb
+	.endmacro
+
 	.macro STA_SCR_DP_Y dp
 
 
@@ -1490,7 +1496,7 @@ _BC927:			pla					; get back A
 
 			ldy	#$07				; Y=7
 _BC92D:			lda	vduvar_VDU_Q_START+1,Y		; transfer definition parameters
-			sta	(dp_mos_vdu_wksp+4),Y		; to RAM definition
+			sta	[dp_mos_vdu_wksp+3],Y		; to RAM definition
 			dey					; 
 			bpl	_BC92D				; 
 			rts					; and exit
@@ -2036,7 +2042,7 @@ _LCBC1_DOCLS:		ldx	#$00				; X=0
 
 _OSWORD_10:		jsr	_LD03E				; set up character definition pointers
 			ldy	#$00				; Y=0
-_BCBF8:			lda	(dp_mos_vdu_wksp+4),Y			; get first byte
+_BCBF8:			lda	[dp_mos_vdu_wksp+3],Y			; get first byte
 			iny					; Y=Y+1
 			sta	(dp_mos_OSBW_X),Y			; store it in YX
 			cpy	#$08				; until Y=8
@@ -2486,16 +2492,18 @@ _LCF63:			jsr	_LD0B3				; set graphics byte mask in &D4/5
 			ldy	#$00				; Y=0
 _BCF6B:			sty	dp_mos_vdu_wksp+2		; &DC=Y
 			ldy	dp_mos_vdu_wksp+2		; Y=&DC
-			lda	(dp_mos_vdu_wksp+4),Y		; get pattern byte
+
+			lda	[dp_mos_vdu_wksp+3],Y		; get pattern byte
 			beq	_BCF86				; if A=0 CF86
-			sta	dp_mos_vdu_wksp+3		; else &DD=A
+		;TODO: check for clash with wksp+1
+			sta	dp_mos_vdu_wksp+1		; else &DD=A
 _BCF75:			bpl	_BCF7A				; and if >0 CF7A
 			jsr	_LD0E3				; else display a pixel
 _BCF7A:			inc	vduvar_GRA_CUR_INT		; current horizontal graphics cursor
 			bne	_BCF82				; 
 			inc	vduvar_GRA_CUR_INT+1		; current horizontal graphics cursor
 
-_BCF82:			asl	dp_mos_vdu_wksp+3		; &DD=&DD*2
+_BCF82:			asl	dp_mos_vdu_wksp+1		; &DD=&DD*2
 			bne	_BCF75				; and if<>0 CF75
 _BCF86:			ldx	#$28				; point to workspace
 			ldy	#$24				; point to horizontal graphics cursor
@@ -2540,18 +2548,17 @@ _LCFBF:			ldx	vduvar_COL_COUNT_MINUS1		; number of logical colours less 1
 			ldy	#$07				; else Y=7
 
 			phb
-			phk
-			plb
+			BANK_SCR
 
 			cpx	#$03				; if X=3
 			beq	_VDU_OUT_COL4			; goto CFEE to handle 4 colour modes
 			bcc	_VDU_OUT_COL2
 			jmp	_VDU_OUT_COL16			; else if X>3 D01E to deal with 16 colours
 
-_VDU_OUT_COL2:		LDA_SCR_DP_Y dp_mos_vdu_wksp+4		; get pattern byte
+_VDU_OUT_COL2:		lda	[dp_mos_vdu_wksp+3],Y		; get pattern byte
 			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
 			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
-			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; write to screen
+			sta	(dp_mos_vdu_top_scanline),Y	; write to screen
 			dey					; Y=Y-1
 			bpl	_VDU_OUT_COL2			; if still +ve do loop again
 			plb
@@ -2583,17 +2590,17 @@ __mode7_xlate_char:	lda	_TELETEXT_CHAR_TAB+1,Y		; convert with teletext conversi
 _VDU_OUT_COL4:		
 @lp:
 			;;TODO: assumes font in bank FF and this code in FF and screen in FF!
-			LDA_SCR_DP_Y dp_mos_vdu_wksp+4		; get pattern byte
+			lda	[dp_mos_vdu_wksp+3],Y		; get pattern byte
 			pha					; save it
 			lsr					; move hi nybble to lo
 			lsr					; 
 			lsr					; 
 			lsr					; 
 			tax					; X=A
-			lda	_COL16_MASK_TAB,X		; 4 colour mode byte mask look up table
+			lda	f:_COL16_MASK_TAB,X		; 4 colour mode byte mask look up table
 			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
 			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
-			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; write to screen
+			sta	(dp_mos_vdu_top_scanline),Y	; write to screen
 			tya					; A=Y
 
 			clc					; clear carry
@@ -2605,7 +2612,7 @@ _VDU_OUT_COL4:
 			lda	_COL16_MASK_TAB,X		; 4 colour mode byte mask look up table
 			ora	z:dp_mos_vdu_txtcolourOR	; text colour byte to be orred or EORed into memory
 			eor	z:dp_mos_vdu_txtcolourEOR	; text colour byte to be orred or EORed into memory
-			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; write to screen
+			sta	(dp_mos_vdu_top_scanline),Y	; write to screen
 			tya					; A=Y
 			sbc	#$08				; A=A-9
 			tay					; Y=A
@@ -2622,7 +2629,7 @@ _BD018:			tya					; Y=Y-&21
 
 ;******* 16 COLOUR MODES *************************************************
 
-_VDU_OUT_COL16:		LDA_SCR_DP_Y dp_mos_vdu_wksp+4		; get pattern byte
+_VDU_OUT_COL16:		lda	[dp_mos_vdu_wksp+3],Y	; get pattern byte
 			sta	z:dp_mos_vdu_wksp+2		; store it
 			sec					; set carry
 _BD023:			lda	#$00				; A=0
@@ -2632,10 +2639,10 @@ _BD023:			lda	#$00				; A=0
 			asl	z:dp_mos_vdu_wksp+2		; rotate again to get second
 			rol					; bit into A
 			tax					; and store result in X
-			lda	_COL4_MASK_TAB,X		; multiply by &55 using look up table
+			lda	f:_COL4_MASK_TAB,X		; multiply by &55 using look up table
 			ora	z:dp_mos_vdu_txtcolourOR	; and set colour factors
 			eor	z:dp_mos_vdu_txtcolourEOR	; 
-			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; and store result
+			sta	(dp_mos_vdu_top_scanline),Y	; and store result
 			clc					; clear carry
 			tya					; Y=Y+8 moving screen RAM pointer on 8 bytes
 			adc	#$08				; 
@@ -2649,7 +2656,7 @@ _BD023:			lda	#$00				; A=0
 _LD03E:			asl					; 23456780  C holds 1
 			rol					; 34567801  C holds 2
 			rol					; 45678012  C holds 3
-			sta	z:dp_mos_vdu_wksp+4		; save this pattern
+			sta	z:dp_mos_vdu_wksp+3		; save this pattern
 			and	#$03				; 00000012
 			rol					; 00000123 C=0
 			tax					; X=A=0 - 7
@@ -2658,12 +2665,17 @@ _LD03E:			asl					; 23456780  C holds 1
 			tay					; this is used as a pointer
 			lda	f:_LC40D,X			; A=&80/2^X i.e.1,2,4,8,&10,&20,&40, or &80
 			bit	vduvar_EXPLODE_FLAGS		; with font flag
-			beq	_BD057				; if 0 D057
+			beq	@BD057				; if 0 D057
 			ldy	vduvar_EXPLODE_FLAGS,X		; else get hi byte from table
-_BD057:			sty	dp_mos_vdu_wksp+5		; store Y
-			lda	dp_mos_vdu_wksp+4		; get back pattern
+@BD057:			sty	dp_mos_vdu_wksp+4		; store Y
+			lda	dp_mos_vdu_wksp+3		; get back pattern
 			and	#$f8				; convert to 45678000
-			sta	dp_mos_vdu_wksp+4		; and re store it
+			sta	dp_mos_vdu_wksp+3		; and re store it
+
+			; TODO: get bank for extended chars
+			lda	#$FF
+			sta	dp_mos_vdu_wksp+5
+
 			rts					; exit
 								;
 ;*************************************************************************
@@ -3830,8 +3842,8 @@ _BD7E1:			txa					; A=&20
 			pla					; get back A
 			tax					; and X
 _BD7E8:			ldy	#$07				; Y=7
-_BD7EA:			lda	vduvar_TEMP_8,Y		; get byte in pattern copy
-			cmp	(dp_mos_vdu_wksp+4),Y			; check against pattern source
+_BD7EA:			lda	vduvar_TEMP_8,Y			; get byte in pattern copy
+			cmp	[dp_mos_vdu_wksp+3],Y		; check against pattern source
 			bne	_BD7F9				; if not the same D7F9
 			dey					; else Y=Y-1
 			bpl	_BD7EA				; and if +ve D7EA
@@ -3839,10 +3851,10 @@ _BD7EA:			lda	vduvar_TEMP_8,Y		; get byte in pattern copy
 			cpx	#$7f				; is X=&7F (delete)
 			bne	_BD7D7				; if not D7D7
 _BD7F9:			inx					; else X=X+1
-			lda	dp_mos_vdu_wksp+4			; get byte lo address
+			lda	dp_mos_vdu_wksp+3		; get byte lo address
 			clc					; clear carry
 			adc	#$08				; add 8
-			sta	dp_mos_vdu_wksp+4			; store it
+			sta	dp_mos_vdu_wksp+3		; store it
 			bne	_BD7E8				; and go back to check next character if <>0
 
 			txa					; A=X
