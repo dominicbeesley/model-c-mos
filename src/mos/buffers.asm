@@ -579,8 +579,7 @@ _BE551:			tay					; Y=A
 			txa					; A=X
 			pha					; Push X
 			tya					; get back Y
-; TODO: cursor editing - make into a VDU call?
-;;;			jsr	_LD8CE				; execute edit action
+			jsl	vdu_LD8CE_COPYCURS		; execute edit action
 
 			pla					; restore X
 			tax					; 
@@ -627,7 +626,7 @@ _BE5A6:			txa					; A=X
 			pha					; Push A
 
 ;TODO: cursor editing - call OSBYTE 135
-;;			jsr	_LD905				; read a character from the screen
+			jsl	vdu_LD905_COPY			; read a character from the screen
 			tay					; Y=A
 			beq	_BE534				; if not valid A=0 so BEEP
 			pla					; else restore X
