@@ -28,6 +28,7 @@ B0LL_IRQ_BLOCKS		:= $00FE06
 B0_IRQ_STACK		:= $00FE10
 B0_EMU_STACK		:= $00FE12
 B0_NAT_STACK		:= $00FE14
+WINDOW_CUR		:= $00FE16			; current value of the window registers
 
 EXSYS			:= $00FF00
 EXSYS_FpHandles		:= $00FF02

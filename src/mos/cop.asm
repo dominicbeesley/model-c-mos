@@ -212,7 +212,7 @@ tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
 		.word	.loword(COP_02)		;OPWRA 02 = Write string at BHA
 		.word	.loword(COP_03)		;OPNLI 03 = OSNEWL - write CR/LF
 		.word   .loword(COP_04)		;OPRDC 04 = OSRDCH - read a char
-		.word   .loword(COP_NotImpl)	;5
+		.word   .loword(COP_05)		;OPCLI 05 = OPCLI - execute command at BYX [deprecated]
 		.word   .loword(COP_06)		;OPOSB 06 = OSBYTE
 		.word   .loword(COP_07)		;OPOSW 07 = OSWORD
 		.word   .loword(COP_08)		;OPCAV 08 = Call A Vector **NEW**
@@ -221,7 +221,7 @@ tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
 		.word   .loword(COP_NotImpl)	;B
 		.word   .loword(COP_NotImpl)	;C
 		.word   .loword(COP_NotImpl)	;D
-		.word   .loword(COP_NotImpl)	;E
+		.word   .loword(COP_0E)		;OPCOM 0E = OPCOM - execute command at BHA
 		.word   .loword(COP_NotImpl)	;F
 
 		.word   .loword(COP_NotImpl)	;10
@@ -247,7 +247,7 @@ tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
 		.word   .loword(COP_NotImpl)	;23
 		.word   .loword(COP_NotImpl)	;24
 		.word   .loword(COP_NotImpl)	;24
-		.word   .loword(COP_NotImpl)	;26
+		.word   .loword(COP_26)		;OPBHA - return address of immediate string in BHA
 		.word   .loword(COP_NotImpl)	;27
 		.word   .loword(COP_NotImpl)	;28
 		.word   .loword(COP_NotImpl)	;29
@@ -276,6 +276,38 @@ tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
 		.word   .loword(COP_NotImpl)	;3F
 
 tblCopDispatchLen := *-tblCOPDispatch
+
+;	********************************************************************************
+;	* either: BYX contains the absolute address                                    *
+;	* OR: Y(16) = 0 and X contains an offset from the direct page register D. The  *
+;	* pointer is D+X.                                                              *
+;	*                                                                              *
+;	* This assumes a COP entry frame in DP                                         *
+;	*                                                                              *
+;	********************************************************************************
+                .a16
+                .i16
+makeBYXptr:     php
+                sep   #$30
+                .i8
+                .a8
+                tya                   ;A(8)=Y(8)
+                xba                   ;put Y in H
+                lda   DPCOP_X         ;get X in A
+                rep   #$30
+                .a16
+                .i16
+                ldy   DPCOP_Y         ;check for 0 in Y
+                bne   @ret
+                clc                   ;if Y is zero
+                lda   DPCOP_X         ;add original X to DP and set B=0
+                adc   DPCOP_DP
+                pea   $0000
+                plb
+                plb
+@ret:           plp
+                rts
+
 
 
 ;		********************************************************************************
@@ -468,3 +500,80 @@ COP_06:		ldx	DPCOP_X
 ;	********************************************************************************
 COP_07:		;TODO
 		rtl
+
+; ********************************************************************************
+; * COP 26 - OPBHA                                                               *
+; *                                                                              *
+; * returns the immediate string following the COP call as BHA                   *
+; ********************************************************************************
+                .a16
+                .i16
+COP_26:	        lda   DPCOP_PC+1
+                sta   DPCOP_AH+1
+                lda   DPCOP_PC
+                inc   A
+                sta   DPCOP_AH
+; This skips over any string following the cop call
+@copExitImmedStr:
+		inc  DPCOP_PC
+                lda   [DPCOP_PC]
+                and   #$00ff
+                bne   @copExitImmedStr
+                rtl
+
+
+; ********************************************************************************
+; * COP 05 - OPCLI - execute command line                                        *
+; *                                                                              *
+; * Action: This call sends the address of a command line string to the          *
+; * operating system's command line interpreter. The string must be terminated   *
+; * by CR (ASCII &0D).                                                           *
+; * On entry: either: BYX contains the absolute address of the start of the      *
+; * command line                                                                 *
+; * OR: Y is 0 and X contains an offset from the direct page register D. The     *
+; * start of the command line is in the direct page at address D+X.              *
+; * On exit: No registers preserved                                              *
+; ********************************************************************************
+                .a16
+                .i16
+COP_05:          jsr   makeBYXptr
+; ********************************************************************************
+; * COP 0E OPCOM - execute command at BHA                                        *
+; *                                                                              *
+; * Action: This call sends the address of a command line string to the          *
+; * operating system's command line interpreter. The string must be terminated   *
+; * by CR (ASCII &0D).                                                           *
+; * On entry: BHA points to the start of the command                             *
+; * On exit: No registers preserved                                              *
+; ********************************************************************************
+                .a16
+                .i16
+COP_0E:         phd
+
+		jsl	windowPush
+		phy
+
+		txa
+		xba
+		tay
+
+		cop	COP_08_OPCAV
+		.byte	IX_CLIV
+
+		ply
+		jsl	windowPop
+
+
+                pld                   ;back to COP DP that points at user stack
+
+
+                sta   DPCOP_AH
+                stx   DPCOP_X
+                sty   DPCOP_Y
+                sep   #$30
+                .a8
+                .i8
+                phb
+                pla
+                sta   DPCOP_B
+                rtl

@@ -554,6 +554,15 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		lda	#.loword(doOSWORD)
 		jsl	AddToVector
 
+		pea	DPBBC
+		pld
+		ldx	#IX_CLIV
+		phk
+		plb
+		lda	#.loword(doCLIV)
+		jsl	AddToVector
+
+
 		DEBUG_PRINTF "initBuffers\n"
 		jsr	initBuffers
 	
@@ -609,6 +618,11 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 
 		cli
+
+		cop	COP_26_OPBHA
+		.byte	"HELP",13,0
+		cop	COP_0E_OPCOM
+
 		jmp	enter_basic
 
 

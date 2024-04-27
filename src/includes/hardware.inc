@@ -7,6 +7,7 @@ IRQ_PRIOR_VSYNC			:= $E8
 IRQ_PRIOR_KEYB			:= $20
 
 sheila_WINDOW			:= $FFFE3E
+WINDOW				:= $E000
 
 sheila_MEM_CTL			:= $FFFE31
 BITS_MEM_CTL_SWMOS		:= $01
