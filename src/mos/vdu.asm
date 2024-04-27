@@ -2108,9 +2108,12 @@ _BCD1C:			stx	sysvar_EXPLODESTATUS		; character definition explosion switch
 
 _BCD24:			cpx	sysvar_EXPLODESTATUS		; character definition explosion switch
 			bcs	_BCD34				; 
-			ldy	_LC4BA,X			; get soft character  RAM allocation
+			pha
+			lda	f:_LC4BA,X			; get soft character  RAM allocation
+			tay
+			pla
 			sta	vduvar_FONT_LOC32_63,Y		; font location bytes
-			adc	#$01				; Add 1
+			inc	A				; Add 1
 			inx					; X=X+1
 			bne	_BCD24				; if X<>0 then CD24
 
