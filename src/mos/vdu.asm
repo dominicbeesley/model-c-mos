@@ -2081,7 +2081,7 @@ _LCCF8:			pha					; Push A
 			cmp	vduvar_SCREEN_BOTTOM_HIGH			; hi byte of screen RAM address
 			rts					; return
 
-
+; TODO: move this to kernel? its' really about OSHWM?
 ;*************************************************************************
 ;*									 *
 ;*	 OSBYTE 20 - EXPLODE CHARACTERS					 *
