@@ -57,8 +57,18 @@
 		
 		ldy	WINDOW_CUR		; preserve current WINDOW
 
+
+	;TODO: this assumes MOS at 7D0000
 		lda	2,S			; A = BH
-		and	#$FFF8			; mask off 2K block boundary
+		and	#$FFC0
+		cmp	#$FFC0
+		bne	@sk1
+		lda	2,S
+		and	#$003F
+		ora	#$7D00
+		bra	@sk2
+@sk1:		lda	2,S			; A = BH
+@sk2:		and	#$FFF8			; mask off 2K block boundary
 		sta	f:WINDOW_CUR
 		sta	f:sheila_WINDOW
 		lda	2,S
