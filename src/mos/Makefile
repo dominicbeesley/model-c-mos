@@ -8,7 +8,7 @@ DEPS=$(INCS)
 TARGETS=boot.mos
 OBJS_boot.mos=	kernel deice boot-vecs font roms debug vectors bbc-ext-vectors \
 				bbc-nat-vectors b0blocks vdu cop irqs hardware bbcmosapi osbyte_word \
-				buffers keyboard utils window cli
+				buffers keyboard utils window cli brk fscv
 SSD_EXTRAS=_21BOOT.txt.inf
 SSD=$(SSDS)/model-c-mos.ssd
 DEPLOY=$(DEPLOY_TOP)/model-c-mos

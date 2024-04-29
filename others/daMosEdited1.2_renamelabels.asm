@@ -5617,7 +5617,7 @@ _BD93E:			tay					; Pass high byte of address to Y
 
 			.org	$d940
 
-_VECTOR_TABLE:		.addr	_USERV				; USERV				&200
+_VECTOR_TABLE:		.addr	brkBadCommand			; USERV				&200
 			.addr	_BRKV				; BRKV				&202
 			.addr	_IRQ1V				; IRQ1V				&204
 			.addr	_IRQ2V				; IRQ2V				&206
@@ -6870,27 +6870,32 @@ _BDF05:			pla
 
 _MSG_COPYSYM:		.byte	")C(",0				; Copyright string match
 
+
+		.macro OSCLTBL str, hand, val
+			.byte	str, >hand, <hand, val
+		.endmacro
+
 ;**** COMMMANDS ****
 ;				  Command    Address	   Call goes to
-_OSCLI_TABLE:		.byte	".",$e0,$31,$05			; *.	    &E031, A=5	   FSCV, XY=>String
-			.byte	"FX",$e3,$42,$ff		; *FX	    &E342, A=&FF   Number parameters
-			.byte	"BASIC",$e0,$18,$00		; *BASIC    &E018, A=0	   XY=>String
-			.byte	"CAT",$e0,$31,$05		; *CAT	    &E031, A=5	   FSCV, XY=>String
-			.byte	"CODE",$e3,$48,$88		; *CODE	    &E348, A=&88   OSBYTE &88
-			.byte	"EXEC",$f6,$8d,$00		; *EXEC	    &F68D, A=0	   XY=>String
-			.byte	"HELP",$f0,$b9,$ff		; *HELP	    &F0B9, A=&FF   F2/3=>String
-			.byte	"KEY",$e3,$27,$ff		; *KEY	    &E327, A=&FF   F2/3=>String
-			.byte	"LOAD",$e2,$3c,$00		; *LOAD	    &E23C, A=0	   XY=>String
-			.byte	"LINE",$e6,$59,$01		; *LINE	    &E659, A=1	   USERV, XY=>String
-			.byte	"MOTOR",$e3,$48,$89		; *MOTOR    &E348, A=&89   OSBYTE
-			.byte	"OPT",$e3,$48,$8b		; *OPT	    &E348, A=&8B   OSBYTE
-			.byte	"RUN",$e0,$31,$04		; *RUN	    &E031, A=4	   FSCV, XY=>String
-			.byte	"ROM",$e3,$48,$8d		; *ROM	    &E348, A=&8D   OSBYTE
-			.byte	"SAVE",$e2,$3e,$00		; *SAVE	    &E23E, A=0	   XY=>String
-			.byte	"SPOOL",$e2,$81,$00		; *SPOOL    &E281, A=0	   XY=>String
-			.byte	"TAPE",$e3,$48,$8c		; *TAPE	    &E348, A=&8C   OSBYTE
-			.byte	"TV",$e3,$48,$90		; *TV	    &E348, A=&90   OSBYTE
-			.byte	"",$e0,$31,$03			; Unmatched &E031, A=3	   FSCV, XY=>String
+_OSCLI_TABLE:		OSCLTBL	".",	_OSCLI_FSCV	,$05	; *.	    &E031, A=5	   FSCV, XY=>String
+			OSCLTBL	"FX",	_OSCLI_FX	,$ff	; *FX	    &E342, A=&FF   Number parameters
+			OSCLTBL	"BASIC",_OSCLI_BASIC	,$00	; *BASIC    &E018, A=0	   XY=>String
+			OSCLTBL	"CAT",	_OSCLI_FSCV	,$05	; *CAT	    &E031, A=5	   FSCV, XY=>String
+			OSCLTBL	"CODE",	_OSCLI_OSBYTE	,$88	; *CODE	    &E348, A=&88   OSBYTE &88
+			OSCLTBL	"EXEC",	_OSCLI_EXEC	,$00	; *EXEC	    &F68D, A=0	   XY=>String
+			OSCLTBL	"HELP",	_OSCLI_HELP	,$ff	; *HELP	    &F0B9, A=&FF   F2/3=>String
+			OSCLTBL	"KEY",	_OSCLI_KEY	,$ff	; *KEY	    &E327, A=&FF   F2/3=>String
+			OSCLTBL	"LOAD",	_OSCLI_LOAD	,$00	; *LOAD	    &E23C, A=0	   XY=>String
+			OSCLTBL	"LINE",	_OSCLI_USERV	,$01	; *LINE	    &E659, A=1	   USERV, XY=>String
+			OSCLTBL	"MOTOR",_OSCLI_OSBYTE	,$89	; *MOTOR    &E348, A=&89   OSBYTE
+			OSCLTBL	"OPT",	_OSCLI_OSBYTE	,$8b	; *OPT	    &E348, A=&8B   OSBYTE
+			OSCLTBL	"RUN",	_OSCLI_FSCV	,$04	; *RUN	    &E031, A=4	   FSCV, XY=>String
+			OSCLTBL	"ROM",	_OSCLI_OSBYTE	,$8d	; *ROM	    &E348, A=&8D   OSBYTE
+			OSCLTBL	"SAVE",	_OSCLI_SAVE	,$00	; *SAVE	    &E23E, A=0	   XY=>String
+			OSCLTBL	"SPOOL",_OSCLI_SPOOL	,$00	; *SPOOL    &E281, A=0	   XY=>String
+			OSCLTBL	"TAPE",	_OSCLI_OSBYTE	,$8c	; *TAPE	    &E348, A=&8C   OSBYTE
+			OSCLTBL	"TV",	_OSCLI_OSBYTE	,$90	; *TV	    &E348, A=&90   OSBYTE
+			OSCLTBL	"",	_OSCLI_FSCV	,$03	; Unmatched &E031, A=3	   FSCV, XY=>String
 			.byte	$00				; Table end marker
 
 ; Command routines are entered with XY=>command tail, A=table parameter,
@@ -7480,11 +7485,11 @@ _BE28F:			ldy	dp_mos_OS_wksp				; get back original Y
 			lda	#$80				; else A=&80
 			jsr	OSFIND				; to open file Y for output
 			tay					; Y=A
-			beq	_USERV				; and if this is =0 then E310 BAD COMMAND ERROR
+			beq	brkBadCommand				; and if this is =0 then E310 BAD COMMAND ERROR
 			sta	sysvar_SPOOL_FILE			; store file handle
 _BE29F:			rts					; and exit
 
-_BE2A0:			bne	_USERV				; if NE then BAD COMMAND error
+_BE2A0:			bne	brkBadCommand				; if NE then BAD COMMAND error
 			inc	OSFILE_CB_6			; increment 2F4 to 00
 _BE2A5:			ldx	#$ee				; X=&EE
 			ldy	#$02				; Y=&02
@@ -7510,7 +7515,7 @@ _BE2C1:			rts					; and exit
 
 _BE2C2:			ldx	#$0a				; X=0A
 			jsr	_LE2AD				; 
-			bcc	_USERV				; if no hex digit found EXIT via BAD Command error
+			bcc	brkBadCommand				; if no hex digit found EXIT via BAD Command error
 			clv					; clear bit 6
 
 ;******************READ file length from text line************************
@@ -7523,7 +7528,7 @@ _BE2C2:			ldx	#$0a				; X=0A
 
 _BE2D4:			ldx	#$0e				; X=E
 			jsr	_LE2AD				; 
-			bcc	_USERV				; if carry clear no hex digit so exit via error
+			bcc	brkBadCommand				; if carry clear no hex digit so exit via error
 			php					; save flags
 			bvc	_BE2ED				; if V set them E2ED explicit end address found
 			ldx	#$fc				; else X=&FC
@@ -7545,21 +7550,21 @@ _BE2EF:			lda	OSFILE_CB_10,X			; copy start adddress to load and execution addre
 								; to do osfile
 			ldx	#$06				; else set up execution address
 			jsr	_LE2AD				; 
-			bcc	_USERV				; if error BAD COMMAND
+			bcc	brkBadCommand				; if error BAD COMMAND
 			beq	_BE2A5				; and if end of line reached do OSFILE
 
 			ldx	#$02				; else set up load address
 			jsr	_LE2AD				; 
-			bcc	_USERV				; if error BAD command
+			bcc	brkBadCommand				; if error BAD command
 			beq	_BE2A5				; else on end of line do OSFILE
 								; anything else is an error!!!!
 
 ;******** Bad command error ************************************
 
-_USERV:			brk					; 
+brkBadCommand:		brk					; 
 			.byte	$fe				; error number
 			.byte	"Bad command"			; 
-_BE31D:			brk					
+brkBadKey:		brk					
 			.byte	$fb				; 
 			.byte	"Bad key"			; 
 			brk					
@@ -7572,9 +7577,9 @@ _BE31D:			brk
 ;*************************************************************************
 
 _OSCLI_KEY:		jsr	_LE04E				; set up key number in A
-			bcc	_BE31D				; if not valid number give error
+			bcc	brkBadKey				; if not valid number give error
 			cpx	#$10				; if key number greater than 15
-			bcs	_BE31D				; if greater then give error
+			bcs	brkBadKey				; if greater then give error
 			jsr	_SKIP_COMMA			; otherwise skip commas, and check for CR
 			php					; save flags for later
 			ldx	$0b10				; get pointer to top of existing key strings
@@ -7596,7 +7601,7 @@ _OSCLI_KEY:		jsr	_LE04E				; set up key number in A
 ;	A=number
 
 _OSCLI_FX:		jsr	_LE04E				; convert the number to binary
-			bcc	_USERV				; if bad number call bad command
+			bcc	brkBadCommand				; if bad number call bad command
 			txa					; save X
 
 
@@ -7619,21 +7624,21 @@ _OSCLI_OSBYTE:		pha					; save A
 			jsr	_LE043				; skip commas and check for newline (CR)
 			beq	_BE36C				; if CR found E36C
 			jsr	_LE04E				; convert character to binary
-			bcc	_USERV				; if bad character bad command error
+			bcc	brkBadCommand				; if bad character bad command error
 			stx	dp_mos_GSREAD_characc			; else save it
 			jsr	_SKIP_COMMA			; skip comma and check CR
 			beq	_BE36C				; if CR then E36C
 			jsr	_LE04E				; get another parameter
-			bcc	_USERV				; if bad error
+			bcc	brkBadCommand				; if bad error
 			stx	dp_mos_GSREAD_quoteflag			; else store in E4
 			jsr	_SKIP_SPACE			; now we must have a newline
-			bne	_USERV				; if none then output an error
+			bne	brkBadCommand				; if none then output an error
 
 _BE36C:			ldy	dp_mos_GSREAD_quoteflag			; Y=third osbyte parameter
 			ldx	dp_mos_GSREAD_characc			; X=2nd
 			pla					; A=first
 			jsr	OSBYTE				; call osbyte
-			bvs	_USERV				; if V set on return then error
+			bvs	brkBadCommand				; if V set on return then error
 			rts					; else RETURN
 
 ;********* *KEY CONTINUED ************************************************
@@ -7644,10 +7649,10 @@ _BE377:			sec					;
 _BE37B:			jsr	_GSREAD				; call GSREAD carry is set if end of line found
 			bcs	_BE388				; E388 to deal with end of line
 			inx					; point to first byte of new key definition
-			beq	_BE31D				; if X=0 buffer WILL overflow so exit with BAD KEY error
+			beq	brkBadKey				; if X=0 buffer WILL overflow so exit with BAD KEY error
 			sta	SOFTKEYS,X			; store character
 			bcc	_BE37B				; and loop to get next byte if end of line not found
-_BE388:			bne	_BE31D				; if Z clear then no matching '"' found or for some
+_BE388:			bne	brkBadKey				; if Z clear then no matching '"' found or for some
 								; other reason line doesn't terminate properly
 			php					; else if all OK save flags
 			sei					; bar interrupts
@@ -10784,7 +10789,7 @@ _BF1A2:			rts					; return cassette =0
 _FSCV_TABLE:		.addr	_FSCV_OPT - 1			; *OPT		  (F54C)
 			.addr	_FSCV_EOF - 1			; check EOF	  (F61D)
 			.addr	_FSCV_RUN - 1			; */		  (F304)
-			.addr	_USERV - 1			; unknown command (E30F)
+			.addr	brkBadCommand - 1			; unknown command (E30F)
 			.addr	_FSCV_RUN - 1			; *RUN		  (F304)
 			.addr	_FSCV_CAT - 1			; *CAT		  (F32A)
 			.addr	_OSBYTE_119 - 1			; osbyte 77	  (E274)
@@ -11483,7 +11488,7 @@ _FSCV_OPT:		txa					; A=X
 			beq	_BF561				; i.e. if X=1 F561 message control
 			dex					; X=X-1
 			beq	_BF568				; i.e. if X=2 F568 error response
-_BF55E:			jmp	_USERV				; else E310 to issue Bad Command error
+_BF55E:			jmp	brkBadCommand				; else E310 to issue Bad Command error
 
 ;*********** message control *********************************************
 
@@ -12110,7 +12115,7 @@ _BF933:			rts					; return
 
 _LF934:			lda	sysvar_CFSRFS_SWITCH			; filing system flag 0=CFS 2=RFS
 			beq	_BF93C				; if cassette F93C
-			jmp	_USERV				; else 'Bad Command error message'
+			jmp	brkBadCommand				; else 'Bad Command error message'
 _BF93C:			jsr	_LFB8E				; switch Motor On
 			jsr	_LFBE2				; set up CFS for write operation
 			jsr	_CFS_CHECK_BUSY			; check if free to print message
@@ -13026,9 +13031,9 @@ _EXTENDED:
 	;	+2	X
 	;	+1	Y
 
-			lda	#<(_EXTENDED_EXIT-1)		; return address from call
+			lda	#>(_EXTENDED_EXIT-1)		; return address from call
 			sta	STACK+8,X			; A
-			lda	#>(_EXTENDED_EXIT-1)		; 
+			lda	#<(_EXTENDED_EXIT-1)		; 
 			sta	STACK+7,X			; 
 			ldy	STACK+10,X			; this is VECTOR number*3+2!!
 			lda	$0d9d,Y				; lo byte of action address

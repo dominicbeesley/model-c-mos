@@ -352,7 +352,7 @@ _BE920:			iny					; increment Y
 _BE921:			cop	COP_00_OPWRC			; and call OSWRCH
 
 _BE924:			cop	COP_04_OPRDC			; else read character  from input stream
-		DEBUG_PRINTF "OSW0 RDCH A=%A F=%F\n"
+;;		DEBUG_PRINTF "OSW0 RDCH A=%A F=%F\n"
 			bcs	_BE972				; if carry set then illegal character or other error
 								; exit via E972
 			tax					; X=A

@@ -306,58 +306,6 @@ emu_handle_cop:	php				; caller's flags
 		.i8
 		.a8
 
-emu_handle_brk:
-		; mos BRK handler - TODO: what to do for native BRKs passing back up to emu?
-
-		txa					; save X on stack
-		pha					; 
-		tsx					; get status pointer
-		lda	$0103,X				; get Program Counter lo
-		cld					; 
-		sec					; set carry
-		sbc	#$01				; subtract 2 (1+carry)
-		sta	dp_mos_error_ptr		; and store it in &FD
-		lda	$0104,X				; get hi byte
-		sbc	#$00				; subtract 1 if necessary
-		sta	dp_mos_error_ptr+1		; and store in &FE
-		lda	dp_mos_curROM			; get currently active ROM
-		sta	sysvar_ROMNO_ATBREAK		; and store it in &24A
-		stx	dp_mos_OSBW_X			; store stack pointer in &F0
-
-	; TODO: OSBYTE 143
-	;	ldx	#$06				; and issue ROM service call 6
-	;	jsr	_OSBYTE_143			; (User BRK) to ROMs
-							; at this point &FD/E point to byte after BRK
-							; ROMS may use BRK for their own purposes
-
-		ldx	sysvar_CUR_LANG			; get current language
-		jsr	_LDC16				; and activate it
-		pla					; get back original value of X
-		tax					; 
-		lda	dp_mos_INT_A			; get back original value of A
-		cli					; allow interrupts
-		jmp	(BBC_BRKV)			; and JUMP via BRKV (normally into current language)
-
-default_emu_brkv:
-		DEBUG_PRINTF "EMU BREAK A=%H%A, X=%X, Y=%Y, F=%F, PC="
-		pla
-		pla
-		sec
-		sbc	#2
-		tay
-		pla
-		jsl	debug_printHexA
-		tya
-		sbc	#0
-		jsl	debug_printHexA
-		lda	#13
-		jsl	debug_printA
-@x:		jmp	@x
-
-
-_LDC16:		stx	dp_mos_curROM			; RAM copy of rom latch
-		stx	.loword(sheila_ROMCTL_SWR)	; write to rom latch
-		rts					; and return
 
 emu_default_irq1v:
 emu_default_irq2v:
@@ -562,8 +510,15 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		lda	#.loword(doCLIV)
 		jsl	AddToVector
 
+		pea	DPBBC
+		pld
+		ldx	#IX_FSCV
+		phk
+		plb
+		lda	#.loword(doFSCV)
+		jsl	AddToVector
 
-		DEBUG_PRINTF "initBuffers\n"
+		DEBUG_PRINTF "buffers\n"
 		jsr	initBuffers
 	
 		sep	#$30
@@ -572,14 +527,14 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		lda	#$80
 		sta	sysvar_RAM_AVAIL
 
-		DEBUG_PRINTF "initIRQdispatcher\n"
+		DEBUG_PRINTF "IRQdisp\n"
 		jsr	initIRQdispatcher
 
-		DEBUG_PRINTF "hardwareInit\n"
+		DEBUG_PRINTF "hardware\n"
 		jsr	hardwareInit
 
 
-		DEBUG_PRINTF "VDU_INIT\n"
+		DEBUG_PRINTF "VDU\n"
 		lda	#0
 		jsl	VDU_INIT
 
@@ -609,121 +564,20 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.i16
 
 
-		DEBUG_PRINTF "initKeyboard\n"
+		DEBUG_PRINTF "Keyb\n"
 		jsr	initKeyboard
 
-		DEBUG_PRINTF "scan BBC ROMs\n"
+		DEBUG_PRINTF "scan ROMs\n"
 		jsr	roms_scanroms			; only on ctrl-break, but always for now...
 		jsr	roms_init_services		; call initialisation service calls
 
 
 		cli
 
-		cop	COP_26_OPBHA
-		.byte	"HELP",13,0
-		cop	COP_0E_OPCOM
+;		cop	COP_26_OPBHA
+;		.byte	"HELP",13,0
+;		cop	COP_0E_OPCOM
 
-		jmp	enter_basic
-
-
-		DEBUG_PRINTF "TEST INSV\n"
-
-		ldy	#0
-		phk
-		plb
-@inslp:		lda	str_basprog,Y
-		and	#$00FF
-		beq	@don
-
-		phy
-		phd
-		ldx	#0
-		cop	COP_08_OPCAV
-		.byte	IX_INSV
-		
-		pld
-		ply
-
-		iny
-		bra	@inslp
-@don:		
-
-		DEBUG_PRINTF "POP\n"
-		wdm 0
-
-loop:		jmp loop
-
-		ldx	#0
-here2:
-		lda	#'X'
-		cop	COP_00_OPWRC
-
-	.macro	PLOT	code, xx, yy		
-		lda	#25
-		cop	COP_00_OPWRC
-		lda	#<code
-		cop	COP_00_OPWRC
-		lda	#<xx
-		cop	COP_00_OPWRC
-		lda	#>xx
-		cop	COP_00_OPWRC
-		lda	#<yy
-		cop	COP_00_OPWRC
-		lda	#>yy
-		cop	COP_00_OPWRC
-	.endmacro
-
-		; gcol
-		lda	#18
-		cop	COP_00_OPWRC
-		lda	#0
-		cop	COP_00_OPWRC
-		lda	$0
-		and	#$F
-		inc	$0
-		cop	COP_00_OPWRC
-
-		PLOT	69,500,500
-		PLOT	4,0,0
-		PLOT	5,800,400
-
-		
-		lda	#50
-		ldy	#0
-@l1:		dey
-		bne	@l1
-		dec	A	
-		bne	@l1
-
-
-here:		lda	#17
-		cop	COP_00_OPWRC
-		txa
-		and	#$0F
-		cop	COP_00_OPWRC
-		lda	#17
-		cop	COP_00_OPWRC
-		txa
-		lsr	A
-		lsr	A
-		lsr	A
-		lsr	A
-		and	#$0F
-		ora	#$80
-		cop	COP_00_OPWRC
-
-		cop	COP_01_OPWRS
-		.byte	"Hello",10,13,0	
-		inx
-		jsr	PrintHexX
-
-		txa
-		and	#$ff
-		bne	here
-
-		jmp	here2
-
-enter_basic:	
 		sep	#$30
 		.a8
 		.i8
@@ -1016,24 +870,6 @@ kernelRaiseEvent:
 		rts
 
 ;;;;;;;;;;;;;;;;;; TODO: split this up into relevant modules?
-
-
-brk_handle_nat:
-		DEBUG_PRINTF "NAT BREAK A=%H%A, X=%X, Y=%Y, F=%F, "
-		rep	#$30
-		.a16
-		.i16
-		lda	2,S
-		sec
-		sbc	#2
-		tax
-		sep	#$20
-		.a8
-		.i16
-		lda	4,S
-		DEBUG_PRINTF "PC=%A%X\n"
-		sei
-@x:		jmp	@x
 
 
 

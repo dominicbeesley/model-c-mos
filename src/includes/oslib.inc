@@ -13,7 +13,9 @@ EVENT_08_NET				:=	8
 EVENT_09_USER				:=	9
 
 
-
+FSCV_02_RUN				:=	2
+FSCV_03_FSCMD				:=	3
+FSCV_08_CLI_INIT			:=	8
 
 
 OSBYTE_0_HOST_OS			:=	0
