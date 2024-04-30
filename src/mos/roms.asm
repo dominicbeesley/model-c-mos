@@ -70,13 +70,13 @@ compareLoop:
 		; The first 1 KB of the current ROM matches the first
 		; 1 KB of some higher-priority ROM, so the current ROM
 		; is invalid.
-		lda	#1
+		lda	#0			; TODO: not line 350 here - set to 0 for BLTUTIL
 		jsr	staRomTableX		; mark bad
 ;;		DEBUG_PRINTF "matched"
 currentROMInvalid:
 		ldx	z:dp_mos_curROM
 ;;		DEBUG_PRINTF "invalid X=%X\n"
-		lda	#1			; like MOS 350 blank out bad uns
+		lda	#0			; TODO: not line 350 here - set to 0 for BLTUTIL
 		jsr	staRomTableX
 		bra	nextROM
 
@@ -200,6 +200,13 @@ roms_init_services:
 		sep	#$30
 		.a8
 		.i8
+
+		; TODO: hard/soft/cold boot
+		lda	#0
+		ldx	#$F
+@lp:		sta	swrom_wksp_tab,X
+		dex
+		bpl	@lp
 
 		; TODO: auto-hazel
 
