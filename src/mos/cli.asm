@@ -145,73 +145,7 @@ exitrts:	rts
 		.byte	IX_FSCV
 		rtl
 
-; Skip spaces
-utilNextSkipSpace:	iny					
-utilSkipSpace:		lda	(dp_mos_txtptr),Y			
-			cmp	#$20				
-			beq	utilNextSkipSpace		
-__compare_newline:	cmp	#$0d				
-			rts					
-
-_LE043:			bcc	utilSkipSpace			
-_SKIP_COMMA:		jsr	utilSkipSpace			
-			cmp	#$2c				
-			bne	__compare_newline		
-			iny					
-			rts					
-
-_LE04E:			jsr	utilSkipSpace			
-			jsr	_CHECK_FOR_DIGIT		
-			bcc	__not_digit			
-_BE056:			sta	dp_mos_OS_wksp				
-			jsr	_CHECK_FOR_DIGIT_NXT		
-			bcc	_BE076				
-			tax					
-			lda	dp_mos_OS_wksp				
-			asl	A				
-			bcs	__not_digit			
-			asl	A				
-			bcs	__not_digit			
-			adc	dp_mos_OS_wksp				
-			bcs	__not_digit			
-			asl	A				
-			bcs	__not_digit			
-			sta	dp_mos_OS_wksp				
-			txa					
-			adc	dp_mos_OS_wksp				
-			bcs	__not_digit			
-			bcc	_BE056				
-_BE076:			ldx	dp_mos_OS_wksp				
-			cmp	#$0d				
-			sec					
-			rts					
-
-_CHECK_FOR_DIGIT_NXT:	iny					
-_CHECK_FOR_DIGIT:	lda	(dp_mos_txtptr),Y			
-			cmp	#$3a				
-			bcs	__not_digit			
-			cmp	#$30				
-			bcc	__not_digit			
-			and	#$0f				
-			rts					
-
-__next_field:		jsr	_SKIP_COMMA			
-__not_digit:		clc					
-			rts					
-
-_CHECK_FOR_HEX:		jsr	_CHECK_FOR_DIGIT		
-			bcs	__check_hex_done		
-			and	#$df				
-			cmp	#$47				
-			bcs	__next_field			
-			cmp	#$41				
-			bcc	__next_field			
-			php					
-			sbc	#$37				
-			plp					
-__check_hex_done:	iny					
-			rts	
-		
+	
 .endproc
 
 
