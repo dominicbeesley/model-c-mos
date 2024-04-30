@@ -7,6 +7,8 @@
 bbc_OSRDRM: rts
 bbc_VDUCHR: rts
 bbc_OSEVEN: rts
+bbc_GSINIT: rts
+bbc_GSREAD: rts
 bbc_NVRDCH: rts
 bbc_NVWRCH: rts
 
@@ -30,8 +32,8 @@ bbc_NVWRCH: rts
 OSRDRM:			jmp	bbc_OSRDRM			; OSRDRM get a byte from sideways ROM
 VDUCHR:			jmp	bbc_VDUCHR			; VDUCHR VDU character output
 OSEVEN:			jmp	bbc_OSEVEN			; OSEVEN generate an EVENT
-GSINIT:			jmp	_GSINIT				; GSINIT initialise OS string
-GSREAD:			jmp	_GSREAD				; GSREAD read character from input stream
+GSINIT:			jmp	bbc_GSINIT			; GSINIT initialise OS string
+GSREAD:			jmp	bbc_GSREAD			; GSREAD read character from input stream
 NVRDCH:			jmp	bbc_NVRDCH			; NVRDCH non vectored OSRDCH
 NVWRCH:			jmp	bbc_NVWRCH			; NVWRCH non vectored OSWRCH
 OSFIND:			jmp	(BBC_FINDV)			; OSFIND open or close a file

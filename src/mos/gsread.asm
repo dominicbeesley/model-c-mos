@@ -1,11 +1,14 @@
 		.include "dp_bbc.inc"
 
-		.export _LEA1D
+;;		.export _LEA1D
 		.export _GSINIT
 		.export _GSREAD
 
 		.export utilSkipSpace
 		.export utilNextSkipSpace
+		.export utilReadDigits8bit
+		.export utilSkipComma
+
 
 
 ;*************************************************************************
@@ -21,15 +24,15 @@
 _LEA1D:			clc					; clear carry
 
 _GSINIT:		ror	dp_mos_GSREAD_quoteflag		; Rotate moves carry to &E4
-			jsr	utilSkipSpace			; get character from text
+			jsl	utilSkipSpace			; get character from text
 			iny					; increment Y to point at next character
 			cmp	#$22				; check to see if its '"'
 			beq	_BEA2A				; if so EA2A (carry set)
 			dey					; decrement Y
 			clc					; clear carry
-_BEA2A:			ror	dp_mos_GSREAD_quoteflag			; move bit 7 to bit 6 and put carry in bit 7
+_BEA2A:			ror	dp_mos_GSREAD_quoteflag		; move bit 7 to bit 6 and put carry in bit 7
 			cmp	#$0d				; check to see if its CR to set Z
-			rts					; and return
+			rtl					; and return
 
 
 ;*************************************************************************
@@ -62,9 +65,9 @@ _BEA4B:			cmp	#$22				; is it '"'
 			cmp	#$22				; is it '"'
 			beq	_BEA89				; if so then EA89
 
-_BEA5A:			jsr	utilSkipSpace			; read a byte from text
+_BEA5A:			jsl	utilSkipSpace			; read a byte from text
 			sec					; and return with
-			rts					; carry set
+			rtl					; carry set
 								;
 _BEA5F:			cmp	#$7c				; is it '|'
 			bne	_BEA89				; if not EA89
@@ -92,12 +95,93 @@ _BEA89:			clv					; clear V
 _BEA8A:			iny					; increment Y
 			ora	dp_mos_GSREAD_characc			; 
 			clc					; clear carry
-			rts					; Return
+			rtl					; Return
 								;
 _LEA8F:			brk					; 
 			.byte	$fd				; error number
 			.byte	"Bad string"			; message
 			brk					; 
+
+
+; Skip spaces
+utilNextSkipSpace:	iny					
+utilSkipSpace:		lda	(dp_mos_txtptr),Y			
+			cmp	#$20				
+			beq	utilNextSkipSpace		
+__compare_newline:	cmp	#$0d				
+			rtl					
+
+utilSkipComma:		jsl	utilSkipSpace			
+			cmp	#$2c				
+			bne	__compare_newline		
+			iny					
+			rtl					
+
+_LE04E:
+.proc utilReadDigits8bit
+			jsl	utilSkipSpace			
+			jsr	_CHECK_FOR_DIGIT		
+			bcc	@clcrtl			
+@lp:			sta	dp_mos_OS_wksp				
+			jsr	_CHECK_FOR_DIGIT_NXT		
+			bcc	@nodig				
+			tax					
+			lda	dp_mos_OS_wksp				
+			asl	A				
+			bcs	@clcrtl			
+			asl	A				
+			bcs	@clcrtl			
+			adc	dp_mos_OS_wksp				
+			bcs	@clcrtl			
+			asl	A				
+			bcs	@clcrtl			
+			sta	dp_mos_OS_wksp				
+			txa					
+			adc	dp_mos_OS_wksp				
+			bcs	@clcrtl			
+			bcc	@lp				
+@nodig:			ldx	dp_mos_OS_wksp				
+			cmp	#$0d				
+			sec					
+			rtl					
+
+			jsl	utilSkipComma			
+@clcrtl:		clc					
+			rtl					
+
+
+.endproc
+
+_CHECK_FOR_DIGIT_NXT:	iny					
+_CHECK_FOR_DIGIT:	lda	(dp_mos_txtptr),Y			
+			cmp	#$3a				
+			bcs	@clcrts
+			cmp	#$30				
+			bcc	@clcrts
+			and	#$0f				
+			rts		
+@clcrts:		clc
+			rts			
+
+
+_CHECK_FOR_HEX:		jsr	_CHECK_FOR_DIGIT		
+			bcs	__check_hex_done		
+			and	#$df				
+			cmp	#$47				
+			bcs	__next_field			
+			cmp	#$41				
+			bcc	__next_field			
+			php					
+			sbc	#$37				
+			plp					
+__check_hex_done:	iny					
+			rts	
+__next_field:		jsl	utilSkipComma			
+			clc					
+			rts
+
+
+;TODO: this is all in keyboard module ? dedupe?
 
 ;************ Modify code as if SHIFT pressed *****************************
 
@@ -129,6 +213,7 @@ _BEABE:			rts					; exit
 								; DELETE unchanged
 								; &80+ has bit 4 changed
 
+
 ;************** Implement CTRL codes *************************************
 
 _LEABF:			cmp	#$7f				; is it DEL
@@ -142,72 +227,3 @@ _BEACB:			cmp	#$40				; if A<&40
 			bcc	_BEAD1				; goto EAD1  and return unchanged
 			and	#$1f				; else zero bits 5 to 7
 _BEAD1:			rts					; return
-
-
-
-; Skip spaces
-utilNextSkipSpace:	iny					
-utilSkipSpace:		lda	(dp_mos_txtptr),Y			
-			cmp	#$20				
-			beq	utilNextSkipSpace		
-__compare_newline:	cmp	#$0d				
-			rts					
-
-_LE043:			bcc	utilSkipSpace			
-_SKIP_COMMA:		jsr	utilSkipSpace			
-			cmp	#$2c				
-			bne	__compare_newline		
-			iny					
-			rts					
-
-_LE04E:			jsr	utilSkipSpace			
-			jsr	_CHECK_FOR_DIGIT		
-			bcc	__not_digit			
-_BE056:			sta	dp_mos_OS_wksp				
-			jsr	_CHECK_FOR_DIGIT_NXT		
-			bcc	_BE076				
-			tax					
-			lda	dp_mos_OS_wksp				
-			asl	A				
-			bcs	__not_digit			
-			asl	A				
-			bcs	__not_digit			
-			adc	dp_mos_OS_wksp				
-			bcs	__not_digit			
-			asl	A				
-			bcs	__not_digit			
-			sta	dp_mos_OS_wksp				
-			txa					
-			adc	dp_mos_OS_wksp				
-			bcs	__not_digit			
-			bcc	_BE056				
-_BE076:			ldx	dp_mos_OS_wksp				
-			cmp	#$0d				
-			sec					
-			rts					
-
-_CHECK_FOR_DIGIT_NXT:	iny					
-_CHECK_FOR_DIGIT:	lda	(dp_mos_txtptr),Y			
-			cmp	#$3a				
-			bcs	__not_digit			
-			cmp	#$30				
-			bcc	__not_digit			
-			and	#$0f				
-			rts					
-
-__next_field:		jsr	_SKIP_COMMA			
-__not_digit:		clc					
-			rts					
-
-_CHECK_FOR_HEX:		jsr	_CHECK_FOR_DIGIT		
-			bcs	__check_hex_done		
-			and	#$df				
-			cmp	#$47				
-			bcs	__next_field			
-			cmp	#$41				
-			bcc	__next_field			
-			php					
-			sbc	#$37				
-			plp					
-__check_hex_done:	iny					
-			rts	

@@ -500,7 +500,7 @@ _BE8F2:			lda	(dp_mos_OSBW_X),Y		; and transfer all 5 bytes
 
 _OSBYTE_142:		php					; save flags
 			stx	sysvar_CUR_LANG			; put X in current ROM page
-			jsr	roms_selX			; select that ROM
+			jsl	roms_selX			; select that ROM
 			ldy	#8
 			lda	#$FF
 			pha

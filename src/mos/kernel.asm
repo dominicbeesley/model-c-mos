@@ -505,7 +505,8 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		pea	DPBBC
 		pld
 		ldx	#IX_CLIV
-		phk
+		pea	doCLIV >> 8
+		plb
 		plb
 		lda	#.loword(doCLIV)
 		jsl	AddToVector
@@ -568,8 +569,8 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		jsr	initKeyboard
 
 		DEBUG_PRINTF "scan ROMs\n"
-		jsr	roms_scanroms			; only on ctrl-break, but always for now...
-		jsr	roms_init_services		; call initialisation service calls
+		jsl	roms_scanroms			; only on ctrl-break, but always for now...
+		jsl	roms_init_services		; call initialisation service calls
 
 
 		cli

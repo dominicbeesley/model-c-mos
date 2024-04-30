@@ -2,6 +2,7 @@
 		.include "hardware.inc"
 		.include "debug.inc"
 		.include "sysvars.inc"
+		.include "oslib.inc"
 		
 		.export roms_scanroms
 		.export roms_init_services
@@ -10,7 +11,7 @@
 
 ROM_SERVICE=$8003
 
-		.code
+		.segment "BMOS_NAT_CODE"
 
 roms_selA:	php
 		sep	#$20
@@ -23,7 +24,7 @@ roms_selX:	pha				; push A (whatever size)
 		txa
 		jsr	roms_selA
 		pla
-		rts		
+		rtl		
 
 
 roms_scanroms:	php
@@ -31,7 +32,9 @@ roms_scanroms:	php
 		.a8
 		.i8
 
-		jsr	bankFF
+		pea	$FFFF
+		plb
+		plb
 
 ;;; - adapted from Tom's MOS disassembly TODO: insert/unplug stuff hacked out
 
@@ -89,7 +92,9 @@ currentROMValid:
 
 		phb
 ;;		DEBUG_PRINTF "BASIC #%X\n"
-		jsr	bank0
+		pea	0
+		plb
+		plb
 		stx	sysvar_ROMNO_BASIC
 		plb
 
@@ -99,12 +104,12 @@ nextROM:
 		bcc	scanROMlp
 
 		plp
-		rts
+		rtl
 
 
 		; this call assumes a8/i8 on entry/exit
 isRomValid:	
-		jsr	roms_selX
+		jsl	roms_selX
 		ldy	$8007		; fetch ROM copyright offset pointer
 		clc             	; assume no match
 		ldx	#3
@@ -125,10 +130,15 @@ isRomValid:
 strr_copy: 	.byte	")C(",0
 
 staRomTableX:	phb
-		jsr	bank0
+		pea	0
+		plb
+		plb
 		sta	oswksp_ROMTYPE_TAB,X
 		plb
 		rts
+
+
+		.code
 
 
 
@@ -195,7 +205,9 @@ _BF186:
 
 
 
-roms_init_services:
+		.segment "BMOS_NAT_CODE"
+
+.proc roms_init_services:far
 		php
 		sep	#$30
 		.a8
@@ -212,19 +224,19 @@ roms_init_services:
 
 		ldy	#$0e				; set current value of PAGE
 		ldx	#$01				; issue claim absolute workspace call	
-		phk
-		jsr	_OSBYTE_143			; via F168
+		lda	#OSBYTE_143_SERVICE_CALL
+		cop	COP_06_OPOSB
 		ldx	#$02				; send private workspace claim call
-		phk
-		jsr	_OSBYTE_143			; via F168
+		lda	#OSBYTE_143_SERVICE_CALL
+		cop	COP_06_OPOSB
 		sty	sysvar_PRI_OSHWM		; set primary OSHWM
 		sty	sysvar_CUR_OSHWM		; set current OSHWM
 		ldx	#$fe				; issue call for Tube to explode character set etc.
 		ldy	sysvar_TUBE_PRESENT		; Y=FF if tube present else Y=0
-		phk
-		jsr	_OSBYTE_143			; and make call via F168	
+		lda	#OSBYTE_143_SERVICE_CALL
+		cop	COP_06_OPOSB
 
 
 		plp
-		rts
-	rts
+		rtl
+.endproc

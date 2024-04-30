@@ -84,7 +84,7 @@ _LDC16:		stx	dp_mos_curROM			; RAM copy of rom latch
 
 
 
-		.segment "CODE"
+		.segment "BMOS_NAT_CODE"
 
 
 brk_handle_nat:	

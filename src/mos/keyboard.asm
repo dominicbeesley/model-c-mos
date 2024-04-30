@@ -344,7 +344,7 @@ _LEFAB:		bmi	_BEFB5				; if not effective goto EFB5 else
 
 _BEFB5:		rol	dp_mos_OS_wksp2			; move CAPS LOCK into bit 7
 		bmi	_BEFC6				; if not effective goto EFC6
-		jsr	utilsAisAlpha			; else make changes for CAPS LOCK on, return with
+		jsl	utilsAisAlpha			; else make changes for CAPS LOCK on, return with
 							; C clear for Alphabetic codes
 		bcs	_BEFC6				; if carry set goto EFC6 else make changes for
 		jsr	_LEA9C				; SHIFT as above
