@@ -136,6 +136,7 @@ exitrts:	rts
 		ldx	#SERVICE_4_UKCMD		; 4=UnknownCommand
 		lda	#OSBYTE_143_SERVICE_CALL
 		cop	COP_06_OPOSB			; Pass to sideways ROMs
+		txa
 		beq	exitrtl				; If claimed, exit
 		lda	dp_mos_OS_wksp			; Restore pointer to start of command
 		jsr	_GET_TEXT_PTR			; Convert &F2/3,A to XY, ignore returned A
@@ -227,7 +228,7 @@ _OSCLI_TABLE:
 			OSCLTBL	"CAT",	_OSCLI_FSCV	,$05	; *CAT	    &E031, A=5	   FSCV, XY=>String
 ;			OSCLTBL	"CODE",	_OSCLI_OSBYTE	,$88	; *CODE	    &E348, A=&88   OSBYTE &88
 ;			OSCLTBL	"EXEC",	_OSCLI_EXEC	,$00	; *EXEC	    &F68D, A=0	   XY=>String
-;			OSCLTBL	"HELP",	_OSCLI_HELP	,$ff	; *HELP	    &F0B9, A=&FF   F2/3=>String
+			OSCLTBL	"HELP",	_OSCLI_HELP	,$ff	; *HELP	    &F0B9, A=&FF   F2/3=>String
 ;			OSCLTBL	"KEY",	_OSCLI_KEY	,$ff	; *KEY	    &E327, A=&FF   F2/3=>String
 ;			OSCLTBL	"LOAD",	_OSCLI_LOAD	,$00	; *LOAD	    &E23C, A=0	   XY=>String
 ;			OSCLTBL	"LINE",	_OSCLI_USERV	,$01	; *LINE	    &E659, A=1	   USERV, XY=>String
@@ -261,3 +262,18 @@ _OSCLI_BASIC:		ldx	sysvar_ROMNO_BASIC	; Get BASIC ROM number
 			rtl
 
 
+
+;*************************************************************************
+;*									 *
+;*		 Issue *HELP to ROMS					 *
+;*									 *
+;*************************************************************************
+_OSCLI_HELP:		ldx	#SERVICE_9_HELP			; 
+			lda	#OSBYTE_143_SERVICE_CALL
+			cop	COP_06_OPOSB			; 
+			cop	COP_01_OPWRS			; print following message routine return after BRK
+			.byte	$0d,$0a				; carriage return
+			.byte	"MODEL C MOS 6.00"		; help message
+			.byte	$0d,$0a				; carriage return
+			.byte 	0
+			rtl					; 
