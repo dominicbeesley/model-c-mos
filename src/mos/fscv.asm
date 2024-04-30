@@ -15,7 +15,7 @@
 		.i8
 
 		; TODO: FSCV
-		cmp	#$7
+		cmp	#$6
 		bcs	@rtl
 		jml	brkBadCommand
 

@@ -159,4 +159,7 @@ BUFFER_SND3_SIZE			:= $0010
 BUFFER_SPCH_START			:= $09C0
 BUFFER_SPCH_SIZE			:= $0040
 
+swrom_wksp_tab				:= $0DF0
+
+
 .endif

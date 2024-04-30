@@ -13,9 +13,19 @@ EVENT_08_NET				:=	8
 EVENT_09_USER				:=	9
 
 
-FSCV_02_RUN				:=	2
-FSCV_03_FSCMD				:=	3
-FSCV_08_CLI_INIT			:=	8
+FSCV_00_OPT				:=	$00
+FSCV_01_EOF				:=	$01
+FSCV_02_RUN				:=	$02
+FSCV_03_FSCMD				:=	$03
+FSCV_04_RUN				:=	$04
+FSCV_05_CAT				:=	$05
+FSCV_06_NEWFS				:=	$06
+FSCV_07_FHRANGE				:=	$07
+FSCV_08_CLI_INIT			:=	$08
+FSCV_09_EX				:=	$09
+FSCV_0A_INFO				:=	$0A
+FSCV_0B_RUN				:=	$0B
+FSCV_0C_RENAME				:=	$0C
 
 
 OSBYTE_0_HOST_OS			:=	0
