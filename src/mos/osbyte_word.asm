@@ -234,7 +234,7 @@ _OSBYTE_TABLE:	.faraddr	_OSBYTE_0-1			; OSBYTE   0  (&E821)
 		.faraddr	_OSBYTE_158-1			; OSBYTE 158  (&EE6D)
 		.faraddr	_OSBYTE_159-1			; OSBYTE 159  (&EE7F)
 		.faraddr	_OSBYTE_160-1			; OSBYTE 160  (&E9C0)
-		.faraddr	_OSBYTE_166_255-1			; OSBYTE 166+
+		.faraddr	_OSBYTE_166_255-1		; OSBYTE 166+
 		.faraddr	_OSCLI_USERV-1			; OSWORD &E0+
 
 
@@ -304,7 +304,6 @@ _OSBYTE_157:
 _OSBYTE_158:
 _OSBYTE_159:
 _OSBYTE_160:
-_OSBYTE_166_255:
 _OSCLI_USERV:
 		; not implemented!
 		sep	#$40
@@ -548,3 +547,21 @@ _OSBYTE_130:
 		ldx	#$FF
 		txy
 		rtl
+
+;*************************************************************************
+;*									 *
+;*	 OSBYTE	 A6-FF	 ENTRY POINT					 *
+;*									 *
+;*	 READ/ WRITE SYSTEM VARIABLE OSBYTE NO. +&190			 *
+;*									 *
+;*************************************************************************
+
+_OSBYTE_166_255:	tay					; Y=A
+			lda	$0190,Y				; i.e. A=&190 +osbyte call!
+			tax					; preserve this
+			and	dp_mos_OSBW_Y			; new value = OLD value AND Y EOR X!
+			eor	dp_mos_OSBW_X			; 
+			sta	$0190,Y				; store it
+			lda	$0191,Y				; get value of next byte into A
+			tay					; Y=A
+_BE9AC:			rtl					; and exit
