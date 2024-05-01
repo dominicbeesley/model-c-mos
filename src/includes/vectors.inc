@@ -1,6 +1,7 @@
 .ifndef __VECTORS_INC__
 __VECTORS_INC__:
 
+		.include "nat-layout.inc"
 
 ;------------------------------- New Vectors---------------------------------
 
@@ -146,5 +147,38 @@ EXT_IND3V		:= BBC_EXT_VEC_BASE + 3*IX_IND3V	; Spare
 ; NOTE: the native vector entry points are not listed here as they are not part of the OS
 ; API, instead API calls should be used to call/manipulate the native OS vectors
 ; the layout of the native vectors is in nat-layout.inc
+
+
+; NOTE: that the native vectors are 3 byte each, the 3rd byte of each is unused and reserved
+
+NAT_USERV					:=	NAT_OS_VECS+3*IX_USERV	; User vector, called by *LINE, *CODE, OSWORD >=&E0
+NAT_BRKV					:=	NAT_OS_VECS+3*IX_BRKV	; The BRK vector
+NAT_IRQ1V					:=	NAT_OS_VECS+3*IX_IRQ1V	; Main interrupt vector
+NAT_IRQ2V					:=	NAT_OS_VECS+3*IX_IRQ2V	; Secondary interrupt vector
+NAT_CLIV					:=	NAT_OS_VECS+3*IX_CLIV	; Command Line Interpreter vector
+NAT_BYTEV					:=	NAT_OS_VECS+3*IX_BYTEV	; OSBYTE (*FX) calls
+NAT_WORDV					:=	NAT_OS_VECS+3*IX_WORDV	; OSWORD calls
+NAT_WRCHV					:=	NAT_OS_VECS+3*IX_WRCHV	; Send character to current output stream
+NAT_RDCHV					:=	NAT_OS_VECS+3*IX_RDCHV	; Wait for a character from current input stream
+NAT_FILEV					:=	NAT_OS_VECS+3*IX_FILEV	; Operate on a whole file, eg loading/saving/delete/etc
+NAT_ARGSV					:=	NAT_OS_VECS+3*IX_ARGSV	; Read/Write arguments on an open file
+NAT_BGETV					:=	NAT_OS_VECS+3*IX_BGETV	; Read a byte from an open file
+NAT_BPUTV					:=	NAT_OS_VECS+3*IX_BPUTV	; Write a byte to an open file
+NAT_GBPBV					:=	NAT_OS_VECS+3*IX_GBPBV	; Read/Write block of data from/to open file or device
+NAT_FINDV					:=	NAT_OS_VECS+3*IX_FINDV	; Open or close a file
+NAT_FSCV					:=	NAT_OS_VECS+3*IX_FSCV	; Various filing system control calls
+NAT_EVNTV					:=	NAT_OS_VECS+3*IX_EVNTV	; Event handler
+NAT_UPTV					:=	NAT_OS_VECS+3*IX_UPTV	; User Print vector
+NAT_NETV					:=	NAT_OS_VECS+3*IX_NETV	; Network Print vector
+NAT_VDUV					:=	NAT_OS_VECS+3*IX_VDUV	; Unrecognised VDU commands
+NAT_KEYV					:=	NAT_OS_VECS+3*IX_KEYV	; Read the keyboard
+NAT_INSV					:=	NAT_OS_VECS+3*IX_INSV	; Insert characters into a buffer
+NAT_REMV					:=	NAT_OS_VECS+3*IX_REMV	; Remove characters from a buffer
+NAT_CNPV					:=	NAT_OS_VECS+3*IX_CNPV	; Count or Purge a buffer
+NAT_IND1V					:=	NAT_OS_VECS+3*IX_IND1V	; Spare 
+NAT_IND2V					:=	NAT_OS_VECS+3*IX_IND2V	; Spare
+NAT_IND3V					:=	NAT_OS_VECS+3*IX_IND3V	; Spare
+NAT_N_P100V					:=	NAT_OS_VECS+3*IX_N_P100V; 100Hz poll vector
+
 
 .endif

@@ -2,6 +2,8 @@
 
 		.export utilsAisAlpha
 
+		.code
+
 		; ENTRY	 character in A
 		; exit with carry set if non-Alpha character
 _LE4E3:	
@@ -21,3 +23,5 @@ _BE4EF:		pla					; get back original value of A
 		plp
 		clc
 		rts					; and Return
+
+

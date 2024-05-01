@@ -13,7 +13,19 @@ EVENT_08_NET				:=	8
 EVENT_09_USER				:=	9
 
 
-
+FSCV_00_OPT				:=	$00
+FSCV_01_EOF				:=	$01
+FSCV_02_RUN				:=	$02
+FSCV_03_FSCMD				:=	$03
+FSCV_04_RUN				:=	$04
+FSCV_05_CAT				:=	$05
+FSCV_06_NEWFS				:=	$06
+FSCV_07_FHRANGE				:=	$07
+FSCV_08_CLI_INIT			:=	$08
+FSCV_09_EX				:=	$09
+FSCV_0A_INFO				:=	$0A
+FSCV_0B_RUN				:=	$0B
+FSCV_0C_RENAME				:=	$0C
 
 
 OSBYTE_0_HOST_OS			:=	0
@@ -46,6 +58,7 @@ COP_01_OPWRS				:=	$01		; Write string immediate
 COP_02_OPWRA				:=	$02		; Write string BHA
 COP_03_OPNLI				:=	$03		; Write LF/CR
 COP_04_OPRDC				:=	$04		; Wait for and read a char from input stream
+COP_05_OPCLI				:=	$05		; OPCLI  - execute *command at BYX [deprecated]
 COP_06_OPOSB				:=	$06		; OBYTE
 COP_07_OPOSW				:=	$06		; OBWORD
 
@@ -54,6 +67,11 @@ COP_08_OPCAV				:=	$08		; Call A Vector - !*bad call on Communicator
 COP_0A_OPBGT				:=	$0A		; OSBGET
 
 COP_0D_OPFND				:=	$0D		; OSFIND - deprecated on Commy - not sure need to work out for MOS/16 bit handles?
+COP_0E_OPCOM				:=	$0E		; OPCOM  - execute *command at BHA
+
+COP_15_OPASC				:=	$15		; OPASC = OSASCI - write characte, translate newlines
+
+COP_26_OPBHA				:=	$26		; OPBHA - return address of immediate string in BHA
 
 COP_2F_OPIIQ				:=	$2F		; Add an IRQ handler
 COP_30_OPRIQ				:=	$30		; Remove and IRQ handler

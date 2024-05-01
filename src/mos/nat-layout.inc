@@ -7,27 +7,28 @@ DPBBC			:= $0000
 STACKBBC		:= $0100
 STACKBBC_TOP		:= $01FF
 
+SOFTKEYS		:= $0B00
 
-HANDLER_TRAMPOLINES	:= $0B00			; set in .cfg file - Repurposes Soft Keys expansion buffer
 
-TEST_AREA		:= $1000
+B0B_BASE		:= $00A000
+B0B_END			:= $00BCF8
 
-SOFTKEYS		:= $2000			; moved WRT to BBC mos was 0B00
-DEICEBSS		:= $2100
-STACKNAT		:= $2600
-STACKNAT_TOP		:= $2A00
-NAT_OS_VECS 		:= $8000
+
+;---- C000 - E000 must be left free for Hazel overlay
+
+STACKNAT		:= $00F700
+STACKNAT_TOP		:= $00FB00
+HANDLER_TRAMPOLINES	:= $00FB00			; set in .cfg file - Repurposes Soft Keys expansion buffer
+DEICEBSS		:= $00FC00
+NAT_OS_VECS 		:= $00FD00
 NAT_OS_VECS_COUNT 	:= IX_VEC_MAX+1
-
-B0B_BASE		:= $00E000
-B0B_END			:= $00FCF8
-
 B0LL_FREE_BLOCKS	:= $00FE00
 B0LL_FREE_BLOCKS_END	:= $00FE02
 B0LL_IRQ_BLOCKS		:= $00FE06
 B0_IRQ_STACK		:= $00FE10
 B0_EMU_STACK		:= $00FE12
 B0_NAT_STACK		:= $00FE14
+WINDOW_CUR		:= $00FE16			; current value of the window registers
 
 EXSYS			:= $00FF00
 EXSYS_FpHandles		:= $00FF02
@@ -79,36 +80,5 @@ B0B_SIZE		:= 12
 .assert .sizeof(b0b_ll_free) = 12, error
 .assert .sizeof(b0b_ll_irq_pri) = 12, error
 .assert .sizeof(b0b_ll_irq_sec) = 12, error
-
-; NOTE: that the native vectors are 3 byte each, the 3rd byte of each is unused and reserved
-
-NAT_USERV					:=	NAT_OS_VECS+3*IX_USERV	; User vector, called by *LINE, *CODE, OSWORD >=&E0
-NAT_BRKV					:=	NAT_OS_VECS+3*IX_BRKV	; The BRK vector
-NAT_IRQ1V					:=	NAT_OS_VECS+3*IX_IRQ1V	; Main interrupt vector
-NAT_IRQ2V					:=	NAT_OS_VECS+3*IX_IRQ2V	; Secondary interrupt vector
-NAT_CLIV					:=	NAT_OS_VECS+3*IX_CLIV	; Command Line Interpreter vector
-NAT_BYTEV					:=	NAT_OS_VECS+3*IX_BYTEV	; OSBYTE (*FX) calls
-NAT_WORDV					:=	NAT_OS_VECS+3*IX_WORDV	; OSWORD calls
-NAT_WRCHV					:=	NAT_OS_VECS+3*IX_WRCHV	; Send character to current output stream
-NAT_RDCHV					:=	NAT_OS_VECS+3*IX_RDCHV	; Wait for a character from current input stream
-NAT_FILEV					:=	NAT_OS_VECS+3*IX_FILEV	; Operate on a whole file, eg loading/saving/delete/etc
-NAT_ARGSV					:=	NAT_OS_VECS+3*IX_ARGSV	; Read/Write arguments on an open file
-NAT_BGETV					:=	NAT_OS_VECS+3*IX_BGETV	; Read a byte from an open file
-NAT_BPUTV					:=	NAT_OS_VECS+3*IX_BPUTV	; Write a byte to an open file
-NAT_GBPBV					:=	NAT_OS_VECS+3*IX_GBPBV	; Read/Write block of data from/to open file or device
-NAT_FINDV					:=	NAT_OS_VECS+3*IX_FINDV	; Open or close a file
-NAT_FSCV					:=	NAT_OS_VECS+3*IX_FSCV	; Various filing system control calls
-NAT_EVNTV					:=	NAT_OS_VECS+3*IX_EVNTV	; Event handler
-NAT_UPTV					:=	NAT_OS_VECS+3*IX_UPTV	; User Print vector
-NAT_NETV					:=	NAT_OS_VECS+3*IX_NETV	; Network Print vector
-NAT_VDUV					:=	NAT_OS_VECS+3*IX_VDUV	; Unrecognised VDU commands
-NAT_KEYV					:=	NAT_OS_VECS+3*IX_KEYV	; Read the keyboard
-NAT_INSV					:=	NAT_OS_VECS+3*IX_INSV	; Insert characters into a buffer
-NAT_REMV					:=	NAT_OS_VECS+3*IX_REMV	; Remove characters from a buffer
-NAT_CNPV					:=	NAT_OS_VECS+3*IX_CNPV	; Count or Purge a buffer
-NAT_IND1V					:=	NAT_OS_VECS+3*IX_IND1V	; Spare 
-NAT_IND2V					:=	NAT_OS_VECS+3*IX_IND2V	; Spare
-NAT_IND3V					:=	NAT_OS_VECS+3*IX_IND3V	; Spare
-
 
 .endif

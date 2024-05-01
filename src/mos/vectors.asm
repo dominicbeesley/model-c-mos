@@ -11,6 +11,7 @@
 		.export AddToVector
 
 ;TODO: how should a vector signal "claimed" and not pass on to next?
+;TODO: currently can store 0 on stack above return address to cancel [TODO: API: DOCUMENT]
 
 
 		.segment "BBCCODE"
@@ -157,6 +158,7 @@ vector_next:	rep	#$38			; ensure 16 bit regs and no decimal
 
 		lda	4,S
 		tcd				; get back LL pointer
+		beq	vec_done2		; vector handler has cancelled [API:!:!: TODO: DOCUMENT]
 		lda	2,S
 		sta	4,S
 	; stack
@@ -174,6 +176,24 @@ vector_next:	rep	#$38			; ensure 16 bit regs and no decimal
 	;	+1..2	A
 
 		bra	vector_loop
+
+vec_done2:
+		lda	2,S
+		sta	4,S
+	; stack
+	;	+5	Flags
+	;	+3..4	-spare-
+	;	+1..2	A
+
+		pla
+	; stack
+	;	+3	Flags
+	;	+1..2	-spare-
+		sta	1,S
+	; stack
+	;	+3	Flags
+	;	+1..2	A
+
 
 vec_done:	pla
 		plp
@@ -406,7 +426,7 @@ AddToVector:	php
 		; store return bank
 		phk
 		pla
-		sta	f:b0b_ll_nat_vec::handler+2,X
+		sta	f:b0b_ll_nat_vec::return+2,X
 		rep	#$30
 		.a16
 		.i16

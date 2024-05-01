@@ -96,8 +96,13 @@ debug_printf:
 	tsc
 	tcd
 
-	phk
-	plb		; Assume strings are in our bank!
+;;	phk
+;;	plb		; Assume strings are in our bank!
+
+	pea	$7D00
+	plb
+	plb
+
 	ldy	#0
 @lp:	lda 	(8),Y
 	beq	@end
