@@ -9,7 +9,12 @@
 		.export utilReadDigits8bit
 		.export utilSkipComma
 
+; TODO: this is called direct from emu mode- make a nat mode and wrappers
+; What to do about pointers: 24bit, not hard-coded i.e. multiple GSINIT..READs in play at once
+; Environment variable expansion
 
+			.a8
+			.i8
 
 ;*************************************************************************
 ;*	 GSINIT	 string initialisation					 *
@@ -24,7 +29,7 @@
 _LEA1D:			clc					; clear carry
 
 _GSINIT:		ror	dp_mos_GSREAD_quoteflag		; Rotate moves carry to &E4
-			jsl	utilSkipSpace			; get character from text
+			jsr	utilSkipSpace			; get character from text
 			iny					; increment Y to point at next character
 			cmp	#$22				; check to see if its '"'
 			beq	_BEA2A				; if so EA2A (carry set)
@@ -32,7 +37,7 @@ _GSINIT:		ror	dp_mos_GSREAD_quoteflag		; Rotate moves carry to &E4
 			clc					; clear carry
 _BEA2A:			ror	dp_mos_GSREAD_quoteflag		; move bit 7 to bit 6 and put carry in bit 7
 			cmp	#$0d				; check to see if its CR to set Z
-			rtl					; and return
+			rts					; and return
 
 
 ;*************************************************************************
@@ -65,9 +70,9 @@ _BEA4B:			cmp	#$22				; is it '"'
 			cmp	#$22				; is it '"'
 			beq	_BEA89				; if so then EA89
 
-_BEA5A:			jsl	utilSkipSpace			; read a byte from text
+_BEA5A:			jsr	utilSkipSpace			; read a byte from text
 			sec					; and return with
-			rtl					; carry set
+			rts					; carry set
 								;
 _BEA5F:			cmp	#$7c				; is it '|'
 			bne	_BEA89				; if not EA89
@@ -95,7 +100,7 @@ _BEA89:			clv					; clear V
 _BEA8A:			iny					; increment Y
 			ora	dp_mos_GSREAD_characc			; 
 			clc					; clear carry
-			rtl					; Return
+			rts					; Return
 								;
 _LEA8F:			brk					; 
 			.byte	$fd				; error number
@@ -109,45 +114,45 @@ utilSkipSpace:		lda	(dp_mos_txtptr),Y
 			cmp	#$20				
 			beq	utilNextSkipSpace		
 __compare_newline:	cmp	#$0d				
-			rtl					
+			rts					
 
-utilSkipComma:		jsl	utilSkipSpace			
+utilSkipComma:		jsr	utilSkipSpace			
 			cmp	#$2c				
 			bne	__compare_newline		
 			iny					
-			rtl					
+			rts					
 
 _LE04E:
 .proc utilReadDigits8bit
-			jsl	utilSkipSpace			
+			jsr	utilSkipSpace			
 			jsr	_CHECK_FOR_DIGIT		
-			bcc	@clcrtl			
+			bcc	@clcrts			
 @lp:			sta	dp_mos_OS_wksp				
 			jsr	_CHECK_FOR_DIGIT_NXT		
 			bcc	@nodig				
 			tax					
 			lda	dp_mos_OS_wksp				
 			asl	A				
-			bcs	@clcrtl			
+			bcs	@clcrts			
 			asl	A				
-			bcs	@clcrtl			
+			bcs	@clcrts			
 			adc	dp_mos_OS_wksp				
-			bcs	@clcrtl			
+			bcs	@clcrts			
 			asl	A				
-			bcs	@clcrtl			
+			bcs	@clcrts			
 			sta	dp_mos_OS_wksp				
 			txa					
 			adc	dp_mos_OS_wksp				
-			bcs	@clcrtl			
+			bcs	@clcrts			
 			bcc	@lp				
 @nodig:			ldx	dp_mos_OS_wksp				
 			cmp	#$0d				
 			sec					
-			rtl					
+			rts
 
-			jsl	utilSkipComma			
-@clcrtl:		clc					
-			rtl					
+			jsr	utilSkipComma			
+@clcrts:		clc					
+			rts					
 
 
 .endproc
@@ -176,7 +181,7 @@ _CHECK_FOR_HEX:		jsr	_CHECK_FOR_DIGIT
 			plp					
 __check_hex_done:	iny					
 			rts	
-__next_field:		jsl	utilSkipComma			
+__next_field:		jsr	utilSkipComma			
 			clc					
 			rts
 

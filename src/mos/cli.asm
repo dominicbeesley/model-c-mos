@@ -39,12 +39,12 @@ crlp:		lda	(dp_mos_txtptr),Y
 
 ; String is terminated - skip prepended spaces and '*'s
 sktermok:	ldy	#$ff				
-spclp:		jsl	utilNextSkipSpace		; Skip any spaces
+spclp:		jsr	utilNextSkipSpace		; Skip any spaces
 		beq	exitrtl			; Exit if at CR
 		cmp	#'*'				; Is this character '*'?
 		beq	spclp				; Loop back to skip it, and check for spaces again
 
-		jsl	utilSkipSpace			; Skip any more spaces
+		jsr	utilSkipSpace			; Skip any more spaces
 		beq	exitrtl			; Exit if at CR
 		cmp	#'|'				; Is it '|' - a comment
 		beq	exitrtl			; Exit if so
@@ -74,7 +74,7 @@ matlp:		eor	f:_OSCLI_TABLE,X
 tbllp:		bcs	hadDot					; skip forward if '.'
 		inx					
 		lda	(dp_mos_txtptr),Y			
-		jsl	utilsAisAlpha				
+		jsr	utilsAisAlpha				
 		bcc	matlp				
 
 tbllpfirst:	lda	f:_OSCLI_TABLE,X			
@@ -103,7 +103,7 @@ hadDot:		dex
 		pha					
 		lda	f:_OSCLI_TABLE + 1,X		
 		pha					
-		jsl	utilSkipSpace			
+		jsr	utilSkipSpace			
 		clc					
 		php					
 		jsr	_LE004				
@@ -221,7 +221,7 @@ _OSCLI_HELP:		ldx	#SERVICE_9_HELP			;
 ;	A=number
 
 .proc _OSCLI_FX:far
-		jsl	utilReadDigits8bit		; convert the number to binary
+		jsr	utilReadDigits8bit		; convert the number to binary
 		bcs	_ok
 ::_badCmd:	jmp	brkBadCommand			; if bad number call bad command
 _ok:		txa					; save X
@@ -245,17 +245,17 @@ _ok:		txa					; save X
 		lda	#$00				; clear &E4/E5
 		sta	dp_mos_GSREAD_characc		; 
 		sta	dp_mos_GSREAD_quoteflag		; 
-		jsl	_LE043				; skip commas and check for newline (CR)
+		jsr	_LE043				; skip commas and check for newline (CR)
 		beq	_BE36C				; if CR found E36C
-		jsl	utilReadDigits8bit		; convert character to binary
+		jsr	utilReadDigits8bit		; convert character to binary
 		bcc	_badCmd				; if bad character bad command error
 		stx	dp_mos_GSREAD_characc		; else save it
-		jsl	utilSkipComma			; skip comma and check CR
+		jsr	utilSkipComma			; skip comma and check CR
 		beq	_BE36C				; if CR then E36C
-		jsl	utilReadDigits8bit		; get another parameter
+		jsr	utilReadDigits8bit		; get another parameter
 		bcc	_badCmd				; if bad error
 		stx	dp_mos_GSREAD_quoteflag		; else store in E4
-		jsl	utilSkipSpace			; now we must have a newline
+		jsr	utilSkipSpace			; now we must have a newline
 		bne	_badCmd				; if none then output an error
 
 _BE36C:		ldy	dp_mos_GSREAD_quoteflag		; Y=third osbyte parameter
@@ -268,5 +268,5 @@ _BE36C:		ldy	dp_mos_GSREAD_quoteflag		; Y=third osbyte parameter
 .endproc 
 
 _LE043:		bcc	@ss
-		jml	utilSkipComma
-@ss:		jml	utilSkipSpace			
+		jmp	utilSkipComma
+@ss:		jmp	utilSkipSpace			

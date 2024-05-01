@@ -2,7 +2,7 @@
 
 		.export utilsAisAlpha
 
-		.segment "BMOS_NAT_CODE"
+		.code
 
 		; ENTRY	 character in A
 		; exit with carry set if non-Alpha character
@@ -18,10 +18,10 @@ utilsAisAlpha:	php
 _BE4EE:		pla
 		plp
 		sec					; else clear carry
-		rtl
+		rts
 _BE4EF:		pla					; get back original value of A
 		plp
 		clc
-		rtl					; and Return
+		rts					; and Return
 
 
