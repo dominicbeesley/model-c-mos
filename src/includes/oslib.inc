@@ -77,6 +77,9 @@ COP_2F_OPIIQ				:=	$2F		; Add an IRQ handler
 COP_30_OPRIQ				:=	$30		; Remove and IRQ handler
 COP_31_OPMIQ				:=	$31		; Modify and IRQ handler
 
+
+COP_34_OPMOD				:=	$34		; Different API to commy - c.f. OS_Module on Risc OS
+
 ;;;; Service calls
 
 SERVICE_0_NOP				:=	$0

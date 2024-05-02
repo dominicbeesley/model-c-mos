@@ -18,11 +18,14 @@ TARGETS_B = $(addprefix $(BUILD)/,$(TARGETS))
 
 
 
-.PHONY: all clean
+.PHONY: all clean modules
 
 all:	$(TARGETS_B)
 
-ssd:	all $(SSD)
+modules:
+		make -C modules all
+
+ssd:	all $(SSD) modules
 
 deploy: ssd
 	mkdir -p $(DEPLOY)
@@ -60,5 +63,5 @@ clean:
 	-rm $(foreach t, $(TARGETS), $(foreach e,.map .sy2 .1.noi .2.noi .noi .dbg, $(addsuffix $(e), $(addprefix $(BUILD)/,$(t))))) 2>/dev/null
 	-rm $(foreach t, $(TARGETS), $(foreach o, $(OBJS_$(t)), $(foreach e,.lst .o, $(addsuffix $(e), $(addprefix $(BUILD)/,$(o)))))) 2>/dev/null
 	-rm $(SSD)
-
+	make -C modules clean
 
