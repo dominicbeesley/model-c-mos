@@ -575,6 +575,16 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		cli
 
+		pea	$7D7D
+		plb
+		plb
+		lda	#$4000
+		ldy	$4000 + 12
+		cop	COP_32_OPSUM
+
+		wdm 0
+
+
 ;		cop	COP_26_OPBHA
 ;		.byte	"HELP",13,0
 ;		cop	COP_0E_OPCOM

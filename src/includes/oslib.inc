@@ -76,7 +76,7 @@ COP_26_OPBHA				:=	$26		; OPBHA - return address of immediate string in BHA
 COP_2F_OPIIQ				:=	$2F		; Add an IRQ handler
 COP_30_OPRIQ				:=	$30		; Remove and IRQ handler
 COP_31_OPMIQ				:=	$31		; Modify and IRQ handler
-
+COP_32_OPSUM				:=	$32		; Cary-round checksum of memory area
 
 COP_34_OPMOD				:=	$34		; Different API to commy - c.f. OS_Module on Risc OS
 

@@ -260,7 +260,7 @@ tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
 
 		.word   .loword(COP_30)		;OPRIQ - remove interrupt handler
 		.word   .loword(COP_31)		;OPMIQ - modify interrupt handler
-		.word   .loword(COP_NotImpl)	;32
+		.word   .loword(COP_32)		;OPSUM - do carry-round checksum of memory area
 		.word   .loword(COP_NotImpl)	;33
 		.word   .loword(COP_NotImpl)	;34
 		.word   .loword(COP_NotImpl)	;34
@@ -577,3 +577,70 @@ COP_0E:         phd
                 pla
                 sta   DPCOP_B
                 rtl
+
+
+;	********************************************************************************
+;	* COP 32 - OPSUM - compute end-around-carry sum                                *
+;	*                                                                              *
+;	* Action: Gives a sum of all the bits in a block whose start is pointed to by  *
+;	* BHA and whose length in bytes is in Y.                                       *
+;	*                                                                              *
+;	* On entry: BHA points to thestartof the block to be summed.                   *
+;	*           Y = length of block in bytes.                                      *
+;	* On exit:  If C = 0 then thesum has been computed and the result is in HA.    *
+;	*           If C = 1 then either the length was zero (Y = 0)                   *
+;	*           DXY preserved                                                      *
+;	*                                                                              *
+;	* API change: Also returns Z if the word after the block contains a matching   *
+;       * checksum but NOT if all the bytes in the block are zeroes                    *
+;	*                                                                              *
+;	********************************************************************************
+		.i16
+		.a16
+
+COP_32:         tyx                   ;byte count into X
+                beq   @retzsec
+                lda   #$0000          ;sum
+                tay                   ;zero offset
+                clc
+@lp:            dex
+                bne   @nla            ;if zero here then 1 byte left
+                pha
+                lda   [DPCOP_AH],y
+                iny
+                and   #$00ff
+                adc   $01,S           ;add to low part of stacked A
+                sta   $01,S
+                pla                   ;pop A
+                bra   @fin	      ;and return
+
+@nla:           adc   [DPCOP_AH],y
+                iny
+                iny
+                dex
+                bne   @lp
+@fin:        	adc   #$0000          ;add last carry in
+                tax			; we're going to update DPCOP_AH but still want a pointer
+                eor   [DPCOP_AH],y    ;this looks to additionally check against any checksum after the block
+                stx   DPCOP_AH
+                eor	#0		; set Z flag based on compare result
+                clc
+                jmp	rtlflags
+
+@retzsec:       stz   DPCOP_AH
+                sec
+                jmp	rtlflags
+
+
+
+rtlflags:	sep	#$30
+		.a8
+		.i8
+		php
+		lda	1,S
+		eor	DPCOP_P
+		and	#$CF			; keep original M/X flags
+		eor	DPCOP_P			; get back Caller's flags and nothing else
+		sta	DPCOP_P			; set flags but keep M/X from caller
+		plp
+		rtl
