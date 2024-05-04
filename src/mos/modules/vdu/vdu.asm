@@ -4019,54 +4019,7 @@ _BD8C6:			sta	dp_mos_vdu_gra_char_cell+1			; store it in &D7
 _BD8CB:			lda	#$00				; point	 A=0
 			rts					; And exit
 								;
-.proc vdu_LD8CE_COPYCURS:far
-			pha					; Push A
-			lda	#$a0				; A=&A0
-			ldx	sysvar_VDU_Q_LEN		; X=number of items in VDU queque
-			bne	_BD916				; if not 0 D916
-			bit	dp_mos_vdu_status		; else check VDU status byte
-			bne	_BD916				; if either VDU is disabled or plot to graphics
-								; cursor enabled then D916
-			bvs	_BD8F5				; if cursor editing enabled D8F5
-			lda	vduvar_CUR_START_PREV		; else get 6845 register start setting
-			and	#$9f				; clear bits 5 and 6
-			ora	#$40				; set bit 6 to modify last cursor size setting
-			jsr	_LC954				; change write cursor format
-			ldx	#$18				; X=&18
-			ldy	#$64				; Y=&64
-			jsr	_LD482				; set text input cursor from text output cursor
-			jsr	_LCD7A				; modify character at cursor poistion
-			lda	#$02				; A=2
-			jsr	OR_VDU_STATUS			; bit 1 of VDU status is set to bar scrolling
-
-
-_BD8F5:			lda	#$bf				; A=&BF
-			jsr	AND_VDU_STATUS			; bit 6 of VDU status =0
-			pla					; Pull A
-			and	#$7f				; clear hi bit (7)
-			jsr	_VDUCHR_NAT			; entire VDU routine !!
-			lda	#$40				; A=&40
-			jsr	OR_VDU_STATUS			; exit
-			rtl
-.endproc
-
-
-.proc vdu_LD905_COPY:far
-			lda	#$20				; A=&20
-			bit	dp_mos_vdu_status		; if bit 6 cursor editing is set
-			bvc	rltA0				; 
-			bne	rltA0				; or bit 5 is set exit &D8CB
-			jsl	_OSBYTE_135			; read a character from the screen
-			beq	_BD917				; if A=0 on return exit via D917
-			pha					; else store A
-			jsr	_VDU_9				; perform cursor right
-
-::_BD916:		pla					; restore A
-::_BD917:		rtl					; and exit
-rltA0:			lda	#0
-			rtl
-.endproc
-								;
+							;
 _LD918:			lda	#$bd				; zero bits 2 and 6 of VDU status
 			jsr	AND_VDU_STATUS				; 
 			jsr	_LC951				; set normal cursor

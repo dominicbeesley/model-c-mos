@@ -430,3 +430,15 @@ _BDD3D:		ldy	#EVENT_04_VSYNC			; Y=4 and call E494 to check and implement vertic
 _LDE6E:		sta	sheila_SYSVIA_ifr		; 
 		clc
 		rtl					; and return
+
+
+; TODO: this is copied from VDU/OSBYTE 154, chain irq into VDU module? 
+vduSetULACTL:		php					; save flags
+			sep	#$24				; set 8 bit mode and disable interrupts
+			.a8
+			sta	f:sysvar_VIDPROC_CTL_COPY	; save RAM copy of new parameter
+			sta	f:sheila_VIDULA_ctl		; write to control register
+			lda	f:sysvar_FLASH_MARK_PERIOD	; read	space count
+			sta	f:sysvar_FLASH_CTDOWN		; set flash counter to this value
+			plp					; get back status
+			rtl					; and return

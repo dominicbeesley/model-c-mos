@@ -119,6 +119,8 @@ _BE7C8:		php					; push flags
 _BE7CA:		pla					; pull flags
 		pla					; pull flags
 		
+		;NOTE: this must be a direct call to _OSBYTE_143 to avoid
+		; overwriting the osbyte DP registers!
 		jsl	_OSBYTE_143			; offer paged ROMS service 7/8 unrecognised osbyte/word
 
 		bne	_BE7D6				; if roms don't recognise it then E7D6
@@ -130,7 +132,6 @@ _BE7D6:		plp					; else pull flags (settings C)
 		sep	#$40				; set V
 		rtl					; and return
 
-_LF058:		jmp	(dp_mos_OS_wksp2)			; 
 
 
 ;**************************************************************************
@@ -264,6 +265,13 @@ _OSWORD_5:
 _OSWORD_6:
 _OSWORD_7:
 _OSWORD_8:
+_OSWORD_9:
+_OSWORD_10:
+_OSWORD_11:
+_OSWORD_12:
+_OSWORD_13:
+
+
 _OSBYTE_0:
 _OSBYTE_1_6:
 _OSBYTE_2:
@@ -281,12 +289,17 @@ _OSBYTE_16:
 _OSBYTE_17:
 _OSBYTE_18:
 _OSBYTE_19:
+_OSBYTE_20:
 _OSBYTE_117:
 _OSBYTE_119:
 _OSBYTE_123:
 _OSBYTE_127:
 _OSBYTE_128:
 _OSBYTE_129:
+_OSBYTE_132:
+_OSBYTE_133:
+_OSBYTE_134:
+_OSBYTE_135:
 _OSBYTE_136:
 _OSBYTE_137:
 _OSBYTE_139:
@@ -299,19 +312,25 @@ _OSBYTE_149:
 _OSBYTE_150:
 _OSBYTE_151:
 _OSBYTE_152:
+_OSBYTE_154:
+_OSBYTE_155:
 _OSBYTE_156:
 _OSBYTE_157:
 _OSBYTE_158:
 _OSBYTE_159:
 _OSBYTE_160:
 _OSCLI_USERV:
+
+	; consume return address from stack and jump back to 
+
 		; not implemented!
 		sep	#$40
 		rtl
 
-
-
-
+; TODO: pass on unregistered OSBYTES but avoid loops?
+;;		pla
+;;		brl	_BE7CA
+;;
 
 
 

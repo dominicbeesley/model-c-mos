@@ -6,15 +6,17 @@ mod_start:	brl	start
 		brl	init
 		brl	fini
 		brl	serv
-		.word	__MODULE_LAST__-__MODULE_START__	
+		.dword	__MODULE_LAST__-__MODULE_START__	
 					; module length
-		.word   $0		; flags
+		.dword  $0		; flags
+		.dword  $0		; flags
+		.dword  $0		; flags
 		.word	title-mod_start	; title offset
 		.word   $0001		; version number BCD
 		.word	help-mod_start	; help string
 		.word	$0000		; commands
-		.word   .loword(-1)	; COP base
-		.word   .loword(-1)	; COP top
+		.dword  .loword(-1)	; COP base
+		.dword  .loword(-1)	; COP top
 
 		.code 
 

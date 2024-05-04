@@ -22,11 +22,9 @@ sub error($) {
 }
 
 sub checkbounds($$$$) {
-	my ($base, $adj, $offset, $l) = @_;
+	my ($addr, $base, $offset, $l) = @_;
 
-	my $bb = $base + $adj;
-
-	$offset >= (0x26-$bb) && $offset < $l-1-$bb || error("BRL Offset out of bounds at offset $base")
+	$offset >= (26-$base) && $offset < $l-1-$base || error("offset ($offset) out of bounds at offset $addr")
 }
 
 sub bytearound($) {
@@ -44,6 +42,17 @@ sub bytearound($) {
 	return $ret;
 }
 
+sub decodever($) {
+	my ($verbcd) = @_;
+	my $verh = sprintf("%04x", $verbcd);
+	$verh =~ /^[0-9A-F]{4}$/ || error("Invalid version bcd ($verh)");
+	$verh = substr($verh, 0, 2) . "." . substr($verh, 2, 2);
+	if (substr($verh,0,1) == "0") {
+		$verh = substr($verh, 1);
+	}
+	return $verh;
+}
+
 my $fn_bin = shift or usage(*STDERR, "Missing bin file argument");
 my $fn_mod = shift or usage(*STDERR, "Missing mod file argument");
 
@@ -59,24 +68,35 @@ $bin_len >= 0x20    || error("Binary file too small");
 
 # sanity check header
 
-my ($b1, $o1, $b2, $o2, $b3, $o3, $b4, $o4, $l, $fl, $ot, $vn, $ohel, $ocom, $copl, $coph) = unpack("C s C s C s C s S S L S S S S S L L", $bin);
+my ($b1, $o1, $b2, $o2, $b3, $o3, $b4, $o4, $l, $r1, $fl1, $fl2, $fl3, $ot, $vn, $ohel, $ocom) = unpack("C s C s C s C s S S L L L S S S S", $bin);
 
 $l == $bin_len || error("Binary file length doesn't match header $bin_len <> $l");
 $b1 == 0x82 || error("Expecting BRL instruction at offset 0");
 $b2 == 0x82 || error("Expecting BRL instruction at offset 3");
 $b3 == 0x82 || error("Expecting BRL instruction at offset 6");
 $b4 == 0x82 || error("Expecting BRL instruction at offset 9");
-checkbounds(0x00, 2, $o1, $l);
-checkbounds(0x03, 2, $o2, $l);
-checkbounds(0x06, 2, $o3, $l);
-checkbounds(0x09, 2, $o4, $l);
+checkbounds(0, 0x00+2, $o1, $l);
+checkbounds(3, 0x03+2, $o2, $l);
+checkbounds(6, 0x06+2, $o3, $l);
+checkbounds(9, 0x09+2, $o4, $l);
 
+$r1 == 0 || error("Reserved word at offset 14 not zero ($r1)");
+
+checkbounds(30, 0, $ot, $l);
+$ohel && checkbounds(34, 0, $ohel, $l);
+$ocom && checkbounds(36, 0, $ocom, $l);
+
+my $tit = unpack("Z*", substr($bin, $ot));
+
+$tit =~ /^[0-9A-Z!\.]+$/ || error("Invalid title \"$tit\"");
 
 close $fh_bin;
 
 my $cksum = bytearound(substr($bin, 0, $l));
 
-printf "Module: len=%d, cksum=%04x\n", $l, $cksum;
+my $ver = decodever($vn);
+
+printf "Module: title=\"%s\", ver=%s, len=%d, cksum=%04x\n", $tit, $ver, $l, $cksum;
 
 open(my $fh_mod, ">:raw:", $fn_mod) or usage(*STDERR, "Cannot open \"$fn_mod\" for output : $!");
 

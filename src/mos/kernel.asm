@@ -520,7 +520,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		jsl	AddToVector
 
 		DEBUG_PRINTF "buffers\n"
-		jsr	initBuffers
+		jsl	initBuffers
 	
 		sep	#$30
 		.i8
@@ -535,9 +535,21 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		jsr	hardwareInit
 
 
-		DEBUG_PRINTF "VDU\n"
-		lda	#0
-		jsl	VDU_INIT
+;		DEBUG_PRINTF "VDU\n"
+;		lda	#0
+;		jsl	VDU_INIT
+
+		pea	DPBBC
+		pld
+		ldx	#IX_WRCHV
+		lda	#.bankbyte(debug_printA)
+		pha
+		plb
+		lda	#>.loword(debug_printA)
+		xba
+		lda	#<.loword(debug_printA)
+		jsl	AddToVector
+		
 
 		rep	#$10
 		.i16
@@ -575,13 +587,13 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		cli
 
-		pea	$7D7D
-		plb
-		plb
-		lda	#$4000
-		ldy	$4000 + 12
-		cop	COP_32_OPSUM
-
+;;		pea	$7D7D
+;;		plb
+;;		plb
+;;		lda	#$4000
+;;		ldy	$4000 + 12
+;;		cop	COP_32_OPSUM
+;;
 		wdm 0
 
 

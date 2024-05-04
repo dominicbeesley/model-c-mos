@@ -76,6 +76,15 @@ B0B_SIZE		:= 12
 	type    .byte		; 11	= 14
 .endstruct
 
+.struct b0b_ll_mod
+	next	.word		; 0..1	next entry in the "free" chain
+	resv	.word		; 2..3	reserved
+	addr	.faraddr	; 4..6  module base address
+	pri	.dword		; 7..10 module instance private space
+	type	.byte		; 11	= 12
+.endstruct
+
+
 .assert .sizeof(b0b_ll_nat_vec) = 12, error
 .assert .sizeof(b0b_ll_free) = 12, error
 .assert .sizeof(b0b_ll_irq_pri) = 12, error
