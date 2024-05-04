@@ -464,10 +464,10 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 
 		DEBUG_PRINTF "initHandles\n"
-		jsr	initHandles
+		jsl	initHandles
 
 		DEBUG_PRINTF "initB0Blocks\n"
-		jsr	initB0Blocks
+		jsl	initB0Blocks
 
 ; Set up the BBC/emulation mode OS vectors to point at their defaults
 ; which are the entry points in bbc-nat-vectors
@@ -583,6 +583,13 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		DEBUG_PRINTF "scan ROMs\n"
 		jsl	roms_scanroms			; only on ctrl-break, but always for now...
 		jsl	roms_init_services		; call initialisation service calls
+
+		DEBUG_PRINTF "insert VDU module\n"
+		ldx	#10
+		pea	$007D
+		plb
+		lda	#$4000
+		cop	COP_34_OPMOD
 
 
 		cli

@@ -190,13 +190,13 @@ COP_2F:		cpy	#$0000
 		brl	@retSec
 
 @YnZ:		lda	#B0B_TYPE_LL_IRQ
-		jsr	allocB0Block
+		jsl	allocB0Block
 		bcc	@skok1
 		brl	@retSec
 
 @skok1:		phx
 		lda	#B0B_TYPE_LL_IRQ
-		jsr	allocB0Block
+		jsl	allocB0Block
 		bcc	@skok2
 		brl	@retSec2
 
@@ -295,15 +295,15 @@ COP_2F:		cpy	#$0000
 		pld
 		plx        				; discard stacked Y (priority)
 		tax
-		jsr	allocHandle			;allocate a handle
+		jsl	allocHandle			;allocate a handle
 		sty	DPCOP_Y         		;return in Y
 		bcc	@retY				; success
 		phx        				; fail, save X (pointer to 1st block)
 		lda	f:b0b_ll_irq_pri::psec,x	;get second block
 		tax
-		jsr	freeB0Block			; free second block
+		jsl	freeB0Block			; free second block
 @retSec2:	plx        				; pop pointer to 1st block
-		jsr	freeB0Block ;free 1st block
+		jsl	freeB0Block ;free 1st block
 @retSec:	sec        				; return fail
 		stz	DPCOP_Y         		; zero Y
 @retY:		lda	DPCOP_Y
@@ -333,7 +333,7 @@ LFD06_anFF:	.byte	$ff
 ;	*           C = 1 means that the interrupt intercept was not modified.         *
 ;	*           No registers preserved                                             *
 ;	********************************************************************************
-COP_31:		jsr	getHandleYtoX			; look up handle
+COP_31:		jsl	getHandleYtoX			; look up handle
 		bcs	@retsec				; fail
 		phx					; save pointer to 1st block
 		lda	f:b0b_ll_irq_pri::psec,x	; get second block pointer
@@ -377,7 +377,7 @@ COP_31:		jsr	getHandleYtoX			; look up handle
 ;	* intercept                                                                    *
 ;	*           No registers preserved                                             *
 ;	********************************************************************************
-COP_30:		jsr	getHandleYtoX			; get block address from handle
+COP_30:		jsl	getHandleYtoX			; get block address from handle
 		bcs	@retsec
 		phx        				; save X
 		php        				; save mode before disable interrupts
@@ -394,13 +394,13 @@ COP_30:		jsr	getHandleYtoX			; get block address from handle
 		sta	f:b0b_ll_irq_pri::next,x	; store in the previous item's next pointer (or front of list)
 		plp        				; restore interrupt state
 		plx        				; get back X
-		jsr	freeHandleForB0BlockX		; free the handle for this block (TODO: why not use Y to index here?)P
+		jsl	freeHandleForB0BlockX		; free the handle for this block (TODO: why not use Y to index here?)P
 		phx					; save X
 		lda	f:b0b_ll_irq_pri::psec,x	; get pointer to secondary block
 		tax
-		jsr	freeB0Block 			; free secondary block
+		jsl	freeB0Block 			; free secondary block
 		plx        				; get back address of primary block
-		jsr	freeB0Block 			; free it
+		jsl	freeB0Block 			; free it
 		clc        				; indicate success
 		rtl
 

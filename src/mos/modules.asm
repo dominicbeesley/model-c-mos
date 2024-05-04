@@ -33,7 +33,7 @@ TBLCOP34MAX     := 10
 
                 .a16
                 .i16
-COP_34:         lda     DPCOP_AH
+COP_34:         lda     DPCOP_X
                 cmp     #TBLCOP34MAX+1
                 bcs     @rtl
                 asl     A
@@ -79,8 +79,9 @@ tblCOP_34_10:
                 ldy     #modhdr::brlserv
 @lpbrl:         lda     [DPCOP_AH], Y
                 cmp     #$82
-                bne     @retBadModule
-                dey
+                beq     @skokbrl
+                brl     @retBadModule
+@skokbrl:       dey
                 dey
                 dey
                 bpl     @lpbrl
@@ -95,13 +96,11 @@ tblCOP_34_10:
                 beq     @sknexlpoffs
 
                 clc
-                adc     #3                      ; add 1 + BRL offset
+                adc     #2                      ; add 1 + BRL offset - 1
                 adc     DPCOP_X                 ; add BRL location
                 ldy     #modhdr::length         
                 cmp     [DPCOP_AH],Y            ; compare with module length
-                bcs     @retBadModule
-
-
+                bcs     @retBadModule        
 
 
 @sknexlpoffs:   dec     DPCOP_X
@@ -110,8 +109,78 @@ tblCOP_34_10:
                 bpl     @lpoffs
 
 
+                ; TODO check title etc
+
+                cop     COP_32_OPSUM
+                bcs     @retBadModule
 
 
+                ; TODO check for duplicate module (by name)
+
+                ; make module B0Block
+                lda     #B0B_TYPE_LL_MODULE
+                jsl     allocB0Block
+                bcs     @retMemorySpace
+
+                lda     DPCOP_AH
+                sta     f:b0b_ll_mod::addr,X
+                lda     DPCOP_AH+2
+                sta     f:b0b_ll_mod::addr+2,X
+
+                phd                             ; save DP
+                phx
+                txa
+                tcd
+
+                lda     #0
+                sta     z:b0b_ll_mod::next
+                sta     z:b0b_ll_mod::resv
+                sta     z:b0b_ll_mod::pri
+                sta     z:b0b_ll_mod::pri+2
+
+                ; call the module's init entry before adding to the list
+
+                phk
+                per     @rc-1                   ; return here after init
+
+                pei     (b0b_ll_mod::addr+1)    ; top of call address
+                plb                             ; discard high byte
+                lda     b0b_ll_mod::addr
+                clc
+                adc     #modhdr::brlinit-1      ; adjust to call init entry, adjust for an RTL
+                pha
+
+                ldx     #0                      ; TODO: count other instances
+                tdc
+                adc     #b0b_ll_mod::pri        ; point at private word
+                tcd
+                rtl                             ; call entry point
+                        
+
+@rc:            wdm     0
+                
+
+                ; find end of linked list and insert there
+                lda     f:B0LL_MODULES
+                tax
+@llloop:        lda     f:0,X
+                beq     @skend
+
+                tax
+                bra     @llloop
+
+@skend:         ; X points at list end pointer
+                
+
+
+
+
+;TODO: harmonize errors API
+@retMemorySpace:rep     #$20
+                .a16
+                cop     COP_26_OPBHA
+                .byte   "Out of Memory",0
+                bra     @retsecX1
 
 @retBadModule:  rep     #$20
                 .a16
@@ -186,14 +255,11 @@ COP_32:         tyx                   ;byte count into X
 
 @retzsec:       stz   DPCOP_AH
                 sec
-                jmp	rtlflags
 
-
-
-rtlflags:	sep	#$30
+rtlflags:	php
+                sep	#$30
 		.a8
-		.i8
-		php
+		.i8		
 		lda	1,S
 		eor	DPCOP_P
 		and	#$CF			; keep original M/X flags

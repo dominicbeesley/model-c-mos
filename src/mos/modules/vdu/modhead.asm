@@ -1,4 +1,4 @@
-
+		.include "oslib.inc"
 
 
 		.segment "MODHEAD"
@@ -27,6 +27,8 @@ help:		.byte "VDU\t\t0.01\t(01 May 2024)x",0
 
 
 start:		rtl
-init:		rtl
+init:		cop	COP_01_OPWRS
+		.byte	"VDU MODULE INIT",0
+		rtl
 fini:		rtl
 serv:		rtl

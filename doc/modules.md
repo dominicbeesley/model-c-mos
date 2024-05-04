@@ -58,3 +58,23 @@ On Exit:
 	X	Error Block
 
 
+## Module Code
+
+### Initialisation entry point
+
+This entry point is called when the module is first initialised or when a new 
+instance is created.
+
+On Entry:
+	B   K of this module
+	X	# of _other_ instances (0)
+	DP	private word pointer in bank 0
+
+On Exit:
+	V=1 Set V to indicate error
+	BHA	Error block
+
+	V=0	Clear V for success
+
+On Exit:
+

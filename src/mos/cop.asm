@@ -275,7 +275,7 @@ tblCOPDispatch:	.faraddr	COP_00		;OPWRC 00 = OSWRCH
 		.faraddr	COP_31		;OPMIQ - modify interrupt handler
 		.faraddr	COP_32		;OPSUM - do carry-round checksum of memory area
 		.faraddr	COP_NotImpl	;33
-		.faraddr	COP_NotImpl	;34
+		.faraddr	COP_34		;OPMOD - module management functions
 		.faraddr	COP_NotImpl	;34
 		.faraddr	COP_NotImpl	;36
 		.faraddr	COP_NotImpl	;37
