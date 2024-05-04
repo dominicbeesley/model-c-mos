@@ -7,8 +7,16 @@
 
                 .export COP_32
                 .export COP_34
+                .export modules_init
 
                 .segment "BMOS_NAT_CODE"
+
+                .i16
+                .a16
+modules_init:
+                lda     #0
+                sta     f:B0LL_MODULES
+                rtl
 
 
 ;       ********************************************************************************
@@ -156,12 +164,19 @@ tblCOP_34_10:
                 tcd
                 rtl                             ; call entry point
                         
+@rc:            bvc     @okinit
+                plx                             ; get back module pointer
+                pld                             ; get back COPDP
+                ; bha should already be an error block
+                bra     @retsecX1
 
-@rc:            wdm     0
+@okinit:        ply                             ; block
+                pld
+                php
+                sei                             ; turn off interrupts while updating ll
                 
-
                 ; find end of linked list and insert there
-                lda     f:B0LL_MODULES
+                lda     #B0LL_MODULES
                 tax
 @llloop:        lda     f:0,X
                 beq     @skend
@@ -170,9 +185,14 @@ tblCOP_34_10:
                 bra     @llloop
 
 @skend:         ; X points at list end pointer
-                
+                tya
+                sta     f:0,X                   ; update ll to point to our block
 
+                plp                             ; restore interrupts
 
+                ldx     #0
+                stx     DPCOP_X
+                rtl
 
 
 ;TODO: harmonize errors API

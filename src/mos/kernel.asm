@@ -584,6 +584,9 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		jsl	roms_scanroms			; only on ctrl-break, but always for now...
 		jsl	roms_init_services		; call initialisation service calls
 
+		DEBUG_PRINTF "Init modules\n"
+		jsl	modules_init
+
 		DEBUG_PRINTF "insert VDU module\n"
 		ldx	#10
 		pea	$007D
