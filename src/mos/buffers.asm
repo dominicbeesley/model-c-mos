@@ -28,36 +28,36 @@
 initBuffers:
 		pea	DPBBC
 		pld
-		ldx	#IX_INSV
-		phk
-		plb
-		lda	#.loword(_INSBV)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_INSV
+		cop	COP_27_OPBHI
+		.faraddr _INSBV
+		cop	COP_09_OPADV
 
 		pea	DPBBC
 		pld
-		ldx	#IX_REMV
-		phk
-		plb
-		lda	#.loword(_REMVB)
-		jsl	AddToVector
-
-		pea	DPBBC
-		pld
-		ldx	#IX_CNPV
-		phk
-		plb
-		lda	#.loword(_CNPV)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_REMV
+		cop	COP_27_OPBHI
+		.faraddr _REMVB
+		cop	COP_09_OPADV
 
 
 		pea	DPBBC
 		pld
-		ldx	#IX_RDCHV
-		phk
-		plb
-		lda	#.loword(_NVRDCH)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_CNPV
+		cop	COP_27_OPBHI
+		.faraddr _CNPV
+		cop	COP_09_OPADV
+
+		pea	DPBBC
+		pld
+		ldx	#0
+		ldy	#IX_RDCHV
+		cop	COP_27_OPBHI
+		.faraddr _NVRDCH
+		cop	COP_09_OPADV
 
 		rtl
 

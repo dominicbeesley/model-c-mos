@@ -21,21 +21,21 @@ initKeyboard:	php
 
 		sei
 
-		phk
-		plb
-		lda	#.loword(_KEYV)		; Main keyboard vector
 		pea	DPBBC
 		pld
-		ldx	#IX_KEYV			; KEYB
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_KEYV
+		cop	COP_27_OPBHI
+		.faraddr _KEYV
+		cop	COP_09_OPADV
 
-		phk
-		plb
-		lda	#.loword(keyPoll100)		; keyboard poll 100Hz
 		pea	DPBBC
 		pld
-		ldx	#IX_N_P100V			; 100Hz poll vector
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_N_P100V
+		cop	COP_27_OPBHI
+		.faraddr keyPoll100
+		cop	COP_09_OPADV
 
 		lda	#.loword(keyScanIRQ_CA2)
 		sep	#$30

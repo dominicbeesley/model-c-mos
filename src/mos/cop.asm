@@ -229,7 +229,7 @@ tblCOPDispatch:	.faraddr	COP_00		;OPWRC 00 = OSWRCH
 		.faraddr	COP_06		;OPOSB 06 = OSBYTE
 		.faraddr	COP_07		;OPOSW 07 = OSWORD
 		.faraddr	COP_08		;OPCAV 08 = Call A Vector **NEW**
-		.faraddr	COP_NotImpl	;9
+		.faraddr	COP_09		;OPCAV 08 = Add to Vector **NEW**
 		.faraddr	COP_NotImpl	;A
 		.faraddr	COP_NotImpl	;B
 		.faraddr	COP_NotImpl	;C
@@ -261,7 +261,7 @@ tblCOPDispatch:	.faraddr	COP_00		;OPWRC 00 = OSWRCH
 		.faraddr	COP_NotImpl	;24
 		.faraddr	COP_NotImpl	;24
 		.faraddr	COP_26		;OPBHA - return address of immediate string in BHA
-		.faraddr	COP_NotImpl	;27
+		.faraddr	COP_27		;OPBHI - return immediate far address in BHA ** NEW
 		.faraddr	COP_NotImpl	;28
 		.faraddr	COP_NotImpl	;29
 		.faraddr	COP_NotImpl	;2A
@@ -534,6 +534,21 @@ COP_26:	        lda   DPCOP_PC+1
                 bne   @copExitImmedStr
                 rtl
 
+; ********************************************************************************
+; * COP 27 - OPBHI                                                               *
+; *                                                                              *
+; * returns the immediate far address following the cop call as BHA              *
+; ********************************************************************************
+                .a16
+                .i16
+COP_27:	        inc	DPCOP_PC
+		lda	[DPCOP_PC]
+		sta	DPCOP_AH
+		inc	DPCOP_PC
+		lda	[DPCOP_PC]
+		sta	DPCOP_AH+1
+		inc	DPCOP_PC
+                rtl
 
 ; ********************************************************************************
 ; * COP 05 - OPCLI - execute command line                                        *

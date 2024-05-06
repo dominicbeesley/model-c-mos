@@ -488,36 +488,35 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		; set up OSBYTE/WORD native vector handlers
 		pea	DPBBC
 		pld
-		ldx	#IX_BYTEV
-		phk
-		plb
-		lda	#.loword(doOSBYTE)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_BYTEV
+		cop	COP_27_OPBHI
+		.faraddr doOSBYTE
+		cop	COP_09_OPADV
 
 		pea	DPBBC
 		pld
-		ldx	#IX_WORDV
-		phk
-		plb
-		lda	#.loword(doOSWORD)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_WORDV
+		cop	COP_27_OPBHI
+		.faraddr doOSWORD
+		cop	COP_09_OPADV
 
 		pea	DPBBC
 		pld
-		ldx	#IX_CLIV
-		pea	doCLIV >> 8
-		plb
-		plb
-		lda	#.loword(doCLIV)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_CLIV
+		cop	COP_27_OPBHI
+		.faraddr doCLIV
+		cop	COP_09_OPADV
 
 		pea	DPBBC
 		pld
-		ldx	#IX_FSCV
-		phk
-		plb
-		lda	#.loword(doFSCV)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_FSCV
+		cop	COP_27_OPBHI
+		.faraddr doFSCV
+		cop	COP_09_OPADV
 
 		DEBUG_PRINTF "buffers\n"
 		jsl	initBuffers
@@ -541,14 +540,11 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		pea	DPBBC
 		pld
-		ldx	#IX_WRCHV
-		lda	#.bankbyte(debug_printA)
-		pha
-		plb
-		lda	#>.loword(debug_printA)
-		xba
-		lda	#<.loword(debug_printA)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_WRCHV
+		cop	COP_27_OPBHI
+		.faraddr debug_printA
+		cop	COP_09_OPADV
 		
 
 		rep	#$10
