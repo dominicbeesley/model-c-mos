@@ -8,7 +8,7 @@ LD=ld65
 INCS=$(wildcard $(TOP)/includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) 
 TARGETS=vdu.mod
-OBJS_vdu.mod=	modhead
+OBJS_vdu.mod=	modhead vdu
 SCRIPTS=$(TOP)/../scripts
 
 TARGETS_B = $(addprefix $(BUILD)/,$(TARGETS))

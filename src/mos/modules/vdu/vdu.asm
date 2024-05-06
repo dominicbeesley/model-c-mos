@@ -5,8 +5,6 @@
 		.include "hardware.inc"
 		.include "vectors.inc"
 		.include "oslib.inc"
-		.include "debug.inc"
-
 
 		.export VDU_INIT
 		.export _NVWRCH
@@ -25,11 +23,6 @@
 		.export _OSWORD_11
 		.export _OSWORD_12
 		.export _OSWORD_13
-
-		.export vdu_LD8CE_COPYCURS:far
-		.export vdu_LD905_COPY:far
-
-		.segment "BMOS_NAT_CODE"
 
 
 	.macro BANK_SCR
@@ -1574,7 +1567,6 @@ _BC985:			pha
 			sta	f:sheila_CRTC_reg		; else set CRTC address register
 			pla
 			sta	f:sheila_CRTC_rw		; and poke new value to register Y
-;;			DEBUG_PRINTF "CRTC %Y=%A  %F\n"
 _BC98B:			rts					; exit
 
 
@@ -1680,7 +1672,6 @@ SET_CRTCY_AXDIV8:	pha					; Push A
 _BCA27:			sbc	#$74				; mode 7 subtract &74
 			eor	#$20				; EOR with &20
 SET_CRTC_YeqAX:		
-;;			DEBUG_PRINTF "CRTC %Y=%A %X %F\n"
 			pha
 			tya
 			sta	f:sheila_CRTC_reg		; write to CRTC address file register
@@ -1884,19 +1875,19 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 			stx	vduvar_MO7_CUR_CHAR		; MODE 7 copy cursor character (could have set this at CB1E)
 			jsr	setMode
 
-			; setup WRCHV vector native mode
-			rep	#$30
+			php
+			rep	#$20
 			.a16
-			.i16
-			phb
-			pea	0
-			pld				
+
+			; TODO: move WRCHV and associated out of VDU into Kernel/Buffers?
+			pea	DPBBC
+			pld
+			ldx	#0
+			ldy	#IX_WRCHV
 			phk
 			plb
 			lda	#.loword(_NVWRCH)
-			ldx	#IX_WRCHV
-			jsl	AddToVector
-			plb			
+			cop	COP_09_OPADV
 
 			plp
 			rtl
@@ -1907,7 +1898,6 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 ;********* enter here from VDU 22,n - MODE *******************************
 
 setMode:		
-;;			DEBUG_PRINTF "MODE %A\n"
 
 			bit	sysvar_RAM_AVAIL		; Check available RAM
 			bmi	_BCB3A				; If 32K, use all MODEs
