@@ -457,10 +457,12 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		jsr	cfgGetMosBase
 		DEBUG_PRINTF "MOS_BASE =%H%A\n"
 
-		
 		rep	#$30
 		.i16
 		.a16
+
+		DEBUG_PRINTF "IRQdisp\n"
+		jsr	initIRQdispatcher
 
 
 		DEBUG_PRINTF "initHandles\n"
@@ -526,9 +528,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.a8
 		lda	#$80
 		sta	sysvar_RAM_AVAIL
-
-		DEBUG_PRINTF "IRQdisp\n"
-		jsr	initIRQdispatcher
 
 		DEBUG_PRINTF "hardware\n"
 		jsr	hardwareInit
