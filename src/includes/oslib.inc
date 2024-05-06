@@ -63,7 +63,7 @@ COP_06_OPOSB				:=	$06		; OBYTE
 COP_07_OPOSW				:=	$06		; OBWORD
 
 COP_08_OPCAV				:=	$08		; Call A Vector - !*bad call on Communicator
-COP_09_OPADV				:=	$08		; Add to vector - ?
+COP_09_OPADV				:=	$09		; Add to vector - ?
 
 COP_0A_OPBGT				:=	$0A		; OSBGET
 
