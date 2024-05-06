@@ -151,7 +151,7 @@ default_IVIRQ:	rep   #$30
 
 @interruptBad:
 		sei
-		DEBUG_PRINTF "Unhandled interrupt"
+		DEBUG_PRINTF "Unhandled interrupt\r"
 here:		jmp	here
 
 ;	********************************************************************************
