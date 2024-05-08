@@ -898,9 +898,10 @@ tblMosLocs:	.word	$FFC0	; map 0, mosram dis
 
 
 	; Move event stuff to a module?
-kernelRaiseEvent:
+.proc kernelRaiseEvent:far
 		sec
-		rts
+		rtl
+.endproc 
 
 ;;;;;;;;;;;;;;;;;; TODO: split this up into relevant modules?
 

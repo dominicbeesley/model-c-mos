@@ -329,7 +329,7 @@ _BDDED:		inc	oswksp_OSWORD3_CTDOWN-1,X	; increment byte and if
 		dex					; else decrement pointer
 		bne	_BDDED				; and if not 0 do it again
 		ldy	#EVENT_05_INTERVAL		; process EVENT 5 interval timer
-		jsr	kernelRaiseEvent		; 
+		jsl	kernelRaiseEvent		; 
 
 _BDDFA:	
 		; TODO: get rid of phb/plb?
@@ -418,7 +418,7 @@ _BDD34:		rol					; restore bit
 		stx	sysvar_FLASH_CTDOWN		; &0251=X resetting the counter
 
 _BDD3D:		ldy	#EVENT_04_VSYNC			; Y=4 and call E494 to check and implement vertical
-		jsr	kernelRaiseEvent		; sync event (4) if necessary
+		jsl	kernelRaiseEvent		; sync event (4) if necessary
 		
 		lda	#VIA_IFR_BIT_CA1		; A=2
 		jmp	_LDE6E				; clear interrupt 1 and exit

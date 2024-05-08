@@ -240,7 +240,7 @@ _BE47E:		sta	mosbuf_buf_start,X		; set buffer output pointer
 		bne	_BE48F				; if not the same buffer is not empty so E48F
 
 		ldy	#EVENT_00_OUTPUT_BUF_EMPTY	; buffer is empty so Y=0
-		jsr	kernelRaiseEvent		; and enter EVENT routine to signal EVENT 0 buffer
+		jsl	kernelRaiseEvent		; and enter EVENT routine to signal EVENT 0 buffer
 							; becoming empty
 
 _BE48F:		pla					; get back byte from buffer
@@ -258,7 +258,7 @@ _BE491:		plp					; get back flags
 
 _BE4A8:		tya					; A=Y
 		ldy	#EVENT_02_INPUT_BUF_ENTER	; Y=2
-		jsr	kernelRaiseEvent		; check event
+		jsl	kernelRaiseEvent		; check event
 		tay					; Y=A
 
 		; drop through to _OSBYTE_138
@@ -321,7 +321,7 @@ _INSBV:			php					; save flags
 			bcs	plpSecRtl				; then E4E0
 
 			ldy	#$01				; else Y=1
-			jsr	kernelRaiseEvent		; to service input buffer full event
+			jsl	kernelRaiseEvent		; to service input buffer full event
 			pha
 
 plaPlpSecRtl:		pla
@@ -386,7 +386,7 @@ _OSBYTE_153:		txa					; A=buffer number
 			tya					; get character back in A
 			bcs	@clcrtl				; and if escape disabled exit with carry clear
 			ldy	#EVENT_06_ESCAPE		; else signal EVENT 6 Escape pressed
-			jsr	kernelRaiseEvent		; 
+			jsl	kernelRaiseEvent		; 
 			bcc	@clcrtl				; if event handles ESCAPE then exit with carry clear
 			jsl	_OSBYTE_125			; else set ESCAPE flag
 @clcrtl:		clc					; clear carry
