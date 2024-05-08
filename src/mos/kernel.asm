@@ -609,6 +609,11 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		sep	#$30
 		.a8
 		.i8
+		pea	0
+		pld
+		phd
+		plb
+		plb
 		ldx	sysvar_ROMNO_BASIC
 		lda	#OSBYTE_142_ENTER_LANGUAGE
 		cop	COP_06_OPOSB
