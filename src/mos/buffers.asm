@@ -731,6 +731,55 @@ _OSBYTE_21:		cpx	#$09				; is X<9?
 
 ;;TODO:================ move the following to VDU module?
 
+
+	.macro BANK_SCR
+		pea	$F3F3
+		plb
+		plb
+	.endmacro
+
+	.macro STA_SCR_DP_Y dp
+
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		sta	(dp),Y
+		plb
+		plp
+
+	.endmacro
+
+	.macro LDA_SCR_DP_Y dp
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		lda	(dp),Y
+		plb
+		plp
+
+	.endmacro
+
+	.macro ORA_SCR_DP_Y dp
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		ora	(dp),Y
+		plb
+		plp
+
+	.endmacro
+
+
+
 .proc vdu_LD8CE_COPYCURS
 			pha					; Push A
 			lda	#$a0				; A=&A0
@@ -773,11 +822,11 @@ _BD8F5:			lda	#$bf				; A=&BF
 			cop	COP_06_OPOSB
 			beq	_BD917				; if A=0 on return exit via D917
 			pha					; else store A
-			lda	#0				; perform cursor right
+			lda	#9				; perform cursor right
 			cop	COP_00_OPWRC			; TODO: make this a non-vectored VDU call?
 
 ::_BD916:		pla					; restore A
-::_BD917:		rtl					; and exit
+::_BD917:		rts					; and exit
 rltA0:			lda	#0
 			rts
 .endproc
@@ -809,10 +858,10 @@ _LCD7A:			php					; push flags
 			ldy	vduvar_BYTES_PER_CHAR				; bytes per character
 			dey					; 
 			bne	_BCD8F				; if not mode 7
-			lda	(dp_mos_vdu_top_scanline),Y		; get cursor from top scan line
-			sta	vduvar_GRA_WKSP+8			; store it
-			lda	vduvar_MO7_CUR_CHAR			; mode 7 write cursor character
-			sta	(dp_mos_vdu_top_scanline),Y		; store it at scan line
+			LDA_SCR_DP_Y dp_mos_vdu_top_scanline	; get cursor from top scan line
+			sta	vduvar_GRA_WKSP+8		; store it
+			lda	vduvar_MO7_CUR_CHAR		; mode 7 write cursor character
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; store it at scan line
 			jmp	_LCD77				; and exit
 
 _BCD8F:			lda	#$ff				; A=&FF =cursor
@@ -823,9 +872,9 @@ _BCD8F:			lda	#$ff				; A=&FF =cursor
 ;********** produce white block write cursor *****************************
 
 _BCD97:			sta	dp_mos_vdu_wksp			; store it
-_BCD99:			lda	(dp_mos_vdu_top_scanline),Y		; get scan line byte
+_BCD99:			LDA_SCR_DP_Y dp_mos_vdu_top_scanline	; get scan line byte
 			eor	dp_mos_vdu_wksp			; invert it
-			sta	(dp_mos_vdu_top_scanline),Y		; store it on scan line
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; store it on scan line
 			dey					; decrement scan line counter
 			bpl	_BCD99				; do it again
 			bmi	_LCD77				; then jump to &CD77
