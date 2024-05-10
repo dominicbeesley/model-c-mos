@@ -81,7 +81,7 @@ B0B_SIZE		:= 12
 
 .struct b0b_ll_mod
 	next	.word		; 0..1	next entry in the "free" chain
-	resv	.word		; 2..3	reserved
+	resv	.word		; 2..3	reserved (secondary instances?)
 	addr	.faraddr	; 4..6  module base address
 	pri	.dword		; 7..10 module instance private space
 	type	.byte		; 11	= 12

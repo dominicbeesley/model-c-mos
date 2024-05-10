@@ -74,7 +74,7 @@ matlp:		eor	f:_OSCLI_TABLE,X
 tbllp:		bcs	hadDot					; skip forward if '.'
 		inx					
 		lda	(dp_mos_txtptr),Y			
-		jsr	utilsAisAlpha				
+		jsl	utilsAisAlpha				
 		bcc	matlp				
 
 tbllpfirst:	lda	f:_OSCLI_TABLE,X			
@@ -167,6 +167,7 @@ _OSCLI_TABLE:
 ;			OSCLTBL	"LOAD",	_OSCLI_LOAD	,$00	; *LOAD	    &E23C, A=0	   XY=>String
 ;			OSCLTBL	"LINE",	_OSCLI_USERV	,$01	; *LINE	    &E659, A=1	   USERV, XY=>String
 ;;			OSCLTBL	"MOTOR",_OSCLI_OSBYTE	,$89	; *MOTOR    &E348, A=&89   OSBYTE
+			OSCLTBL	"MODULES",_OSCLI_MODULES,$00	; *MODULES  !!!! NEW !!!!!
 			OSCLTBL	"OPT",	_OSCLI_OSBYTE	,$8b	; *OPT	    &E348, A=&8B   OSBYTE
 			OSCLTBL	"RUN",	_OSCLI_FSCV	,$04	; *RUN	    &E031, A=4	   FSCV, XY=>String
 ;;			OSCLTBL	"ROM",	_OSCLI_OSBYTE	,$8d	; *ROM	    &E348, A=&8D   OSBYTE
@@ -270,3 +271,8 @@ _BE36C:		ldy	dp_mos_GSREAD_quoteflag		; Y=third osbyte parameter
 _LE043:		bcc	@ss
 		jmp	utilSkipComma
 @ss:		jmp	utilSkipSpace			
+
+
+
+; List modules to output
+_OSCLI_MODULES:	jml	modules_list

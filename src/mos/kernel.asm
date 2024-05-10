@@ -637,47 +637,6 @@ str_basprog:	.byte "OLD",13,"RUN",13,0
 
 
 
-PrintHexA:
-	php
-	sep	#$20
-	.a8
-	pha
-	lsr	A
-	lsr	A
-	lsr	A
-	lsr	A
-	jsr	@nyb
-	pla
-	pha
-	jsr	@nyb
-	pla
-	plp
-	rts
-@nyb:	and	#$F
-	ora	#'0'
-	cmp	#$3A
-	bcc	@s
-	adc	#'A'-$3A-1
-@s:	cop	COP_00_OPWRC
-	rts
-
-PrintHexX:
-	php
-	rep	#$30
-	.i16
-	.a16
-	pha
-	txa
-	xba
-	jsr	PrintHexA
-	xba
-	jsr	PrintHexA
-	pla
-	plp
-	rts
-
-
-
 
 SERIAL_STATUS	:= sheila_ACIA_CTL
 RXRDY		:= ACIA_RDRF

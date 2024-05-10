@@ -8,6 +8,7 @@
                 .export COP_32
                 .export COP_34
                 .export modules_init
+                .export modules_list:far
 
                 .segment "BMOS_NAT_CODE"
 
@@ -320,3 +321,58 @@ isValidModNameStartChar:
                 rts
 
 
+.proc modules_list:far
+                php
+                rep     #$30
+                .a16
+                .i16
+
+                lda     #B0LL_MODULES
+                pha
+@lp:            pld
+                pei     (b0b_ll_mod::next)
+                pld
+                beq     @done
+                phd
+
+                ; module bank/addr
+                lda     b0b_ll_mod::addr+2
+                jsl     PrintHexA
+                ldx     b0b_ll_mod::addr
+                jsl     PrintHexX
+                
+                jsl     Print2Spc
+
+                sep     #$20
+                .a8
+
+                ; private data
+                ldx     #0
+@plp:           lda     b0b_ll_mod::pri,X
+                jsl     PrintHexA
+                jsl     PrintSpc
+                inx
+                cpx     #4
+                bcc     @plp
+                
+                jsl     Print2Spc
+
+
+                ldy     #modhdr::offtit
+                lda     [b0b_ll_mod::addr],Y
+                tay
+@lptit:         lda     [b0b_ll_mod::addr],Y
+                beq     @sktit
+                cop     COP_00_OPWRC
+                iny
+                bra     @lptit
+
+@sktit:         
+                cop     COP_03_OPNLI
+
+                bra     @lp
+
+@done:          plp
+                rtl
+
+.endproc
