@@ -206,6 +206,7 @@ cop_dispatch_int:
 		inc	A
 		tcd				; point DP at Stacked registers
 	; internal API Change cop handlers must set DPCOP_P explicitly
+	; TODO: use V as error flag here !?
 ;;		php
 ;;		ror	DPCOP_P
 ;;		plp
@@ -286,7 +287,7 @@ tblCOPDispatch:	.faraddr	COP_00		;OPWRC 00 = OSWRCH
 		.faraddr	COP_NotImpl	;3C
 		.faraddr	COP_NotImpl	;3D
 		.faraddr	COP_NotImpl	;3E
-		.faraddr	COP_NotImpl	;3F
+		.faraddr	COP_3F		;OPBWV - OS Byte/Word Vector
 
 tblCopDispatchLen := *-tblCOPDispatch
 
@@ -451,68 +452,6 @@ COP_04:         cop	COP_08_OPCAV
 
 
 
-;	********************************************************************************
-;	* COP 06 - OPOSB = OSBYTE                                                      *
-;	*                                                                              *
-;	* This call caries out various operations, the specific operation depending on *
-;	* the contents of A on entry. Other data can be passed in X and Y. If results  *
-;	* are generated, these are returned in X and Y.                                *
-;	*                                                                              *
-;	* On entry: A contains the reason code. The reason code determines the         *
-;	* function of the call.                                                        *
-;	*                                                                              *
-;	* On exit: X and Y will contain results if the call produces them.             *
-;	*                                                                              *
-;	* D preserved                                                                  *
-;	********************************************************************************
-COP_06:		ldx	DPCOP_X
-		ldy	DPCOP_Y
-		cop	COP_08_OPCAV
-		.byte	IX_BYTEV
-		sty	DPCOP_Y
-		stx	DPCOP_X
-		php
-		sep	#$30
-		.a8
-		.i8
-		txa
-		php
-		lda	1,S
-		eor	DPCOP_P
-		and	#$CF			; keep original M/X flags
-		eor	DPCOP_P			; get back Caller's flags and nothing else
-		sta	DPCOP_P			; set flags but keep M/X from caller
-		plp
-		plp		
-		rtl
-		.a16
-		.i16
-
-
-; TODO: - this must depend on whether called from EMU or NAT mode as b0 is 
-;	  different!
-;	********************************************************************************
-;	* COP 07 - OPOSW = OSWORD                                                      *
-;	*                                                                              *
-;	* Action: This call caries out various operations, the specific operation      *
-;	* depending on the contents of A on entry. 0YX points to a control block in    *
-;	* memory, and this block contains data for the call, and will contain results  *
-;	* from the call.                                                               *
-;	* On entry:                                                                    *
-;	* EITHER: 0YX points to a control block in memory                              *
-;	* OR: Y = 0 and X contains an offset from the direct page register D. The      *
-;	* start of the control block is in the direct page at address D+X.             *
-;	* A contains the reason code. The reason code determines the function of the   *
-;	* call.                                                                        *
-;	* On exit: D preserved                                                         *
-;	*                                                                              *
-;	* For OPOSW with A = 0 (read line from input)                                  *
-;	* Y = line length (including CR if applicable).                                *
-;	* If C = 0 then CR termimated input.                                           *
-;	* If C = 1 then ESCAPE terminated input                                        *
-;	********************************************************************************
-COP_07:		;TODO
-		rtl
 
 ; ********************************************************************************
 ; * COP 26 - OPBHA                                                               *

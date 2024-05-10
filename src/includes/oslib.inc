@@ -81,7 +81,7 @@ COP_31_OPMIQ				:=	$31		; Modify and IRQ handler
 COP_32_OPSUM				:=	$32		; Cary-round checksum of memory area
 
 COP_34_OPMOD				:=	$34		; Different API to commy - c.f. OS_Module on Risc OS
-
+COP_3F_OPBWV 				:=      $3F		; NEW OS Byte/Word Vector - add handler for OSBYTE/WORD
 ;;;; Service calls
 
 SERVICE_0_NOP				:=	$0

@@ -329,8 +329,8 @@ emu_handle_res:
 		; Enter auto-boot mode
 		lda	sheila_MEM_CTL
 		and	#<~BITS_MEM_CTL_BOOT_MASK
-		ora	#MEM_CTL_AUTOBOOT_THROT_MODE	; production mode - but no hoglet debugger
-;		ora	#MEM_CTL_AUTOBOOT_MODE
+;;		ora	#MEM_CTL_AUTOBOOT_THROT_MODE	; production mode - but no hoglet debugger
+		ora	#MEM_CTL_AUTOBOOT_MODE
 		sta	sheila_MEM_CTL
 
 ; Map the BLTURBO registers so that both native and emulation modes see the 
@@ -461,6 +461,9 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.i16
 		.a16
 
+		DEBUG_PRINTF "OSBYTEWORD init\n"
+		jsl	osByteWordInit
+
 		DEBUG_PRINTF "IRQdisp\n"
 		jsr	initIRQdispatcher
 
@@ -470,6 +473,10 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		DEBUG_PRINTF "initB0Blocks\n"
 		jsl	initB0Blocks
+
+		DEBUG_PRINTF "Init modules\n"
+		jsl	modules_init
+
 
 ; Set up the BBC/emulation mode OS vectors to point at their defaults
 ; which are the entry points in bbc-nat-vectors
@@ -537,17 +544,28 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 ;		lda	#0
 ;		jsl	VDU_INIT
 
-		pea	DPBBC
-		pld
-		ldx	#0
-		ldy	#IX_WRCHV
-		cop	COP_27_OPBHI
-		.faraddr debug_printA
-		cop	COP_09_OPADV
+;;		pea	DPBBC
+;;		pld
+;;		ldx	#0
+;;		ldy	#IX_WRCHV
+;;		cop	COP_27_OPBHI
+;;		.faraddr debug_printA
+;;		cop	COP_09_OPADV
 		
 
-		rep	#$10
+		rep	#$30
 		.i16
+		.a16
+
+		DEBUG_PRINTF "insert VDU module\n"
+		ldx	#10
+		pea	$007D
+		plb
+		lda	#$4000
+		cop	COP_34_OPMOD
+
+
+
 		sep	#$20
 		.a8
 
@@ -572,6 +590,8 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.i16
 
 
+
+
 		DEBUG_PRINTF "Keyb\n"
 		jsr	initKeyboard
 
@@ -579,15 +599,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		jsl	roms_scanroms			; only on ctrl-break, but always for now...
 		jsl	roms_init_services		; call initialisation service calls
 
-		DEBUG_PRINTF "Init modules\n"
-		jsl	modules_init
-
-		DEBUG_PRINTF "insert VDU module\n"
-		ldx	#10
-		pea	$007D
-		plb
-		lda	#$4000
-		cop	COP_34_OPMOD
 
 
 		cli
@@ -599,7 +610,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 ;;		ldy	$4000 + 12
 ;;		cop	COP_32_OPSUM
 ;;
-		wdm 0
+;;		wdm 0
 
 
 ;		cop	COP_26_OPBHA

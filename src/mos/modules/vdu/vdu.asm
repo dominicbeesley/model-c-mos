@@ -10,20 +10,6 @@
 		.export _NVWRCH
 		.export vduSetULACTL
 
-		.export _OSBYTE_20
-		.export _OSBYTE_132
-		.export _OSBYTE_133
-		.export _OSBYTE_134
-		.export _OSBYTE_135
-		.export _OSBYTE_154
-		.export _OSBYTE_155
-
-		.export _OSWORD_9
-		.export _OSWORD_10
-		.export _OSWORD_11
-		.export _OSWORD_12
-		.export _OSWORD_13
-
 
 	.macro BANK_SCR
 		pea	$F3F3
@@ -1875,8 +1861,8 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 			stx	vduvar_MO7_CUR_CHAR		; MODE 7 copy cursor character (could have set this at CB1E)
 			jsr	setMode
 
-			php
-			rep	#$20
+			rep	#$30
+			.i16
 			.a16
 
 			; TODO: move WRCHV and associated out of VDU into Kernel/Buffers?
@@ -1888,10 +1874,36 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 			plb
 			lda	#.loword(_NVWRCH)
 			cop	COP_09_OPADV
+		
+	.macro REGBYTE name, index
+
+		cop	COP_27_OPBHI
+		.faraddr .ident(.concat("_", name));
+		ldx	#index
+		cop	COP_3F_OPBWV
+	.endmacro
+
+			; register our OSBYTES
+
+		REGBYTE "OSBYTE_20", 20
+		REGBYTE "OSBYTE_132", 132
+		REGBYTE "OSBYTE_133", 133
+		REGBYTE "OSBYTE_134", 134
+		REGBYTE "OSBYTE_135", 135 
+		REGBYTE "OSBYTE_154", 154
+		REGBYTE "OSBYTE_155", 155
+
+		REGBYTE "OSWORD_9", $100 + 9
+		REGBYTE "OSWORD_10", $100 + 10
+		REGBYTE "OSWORD_11", $100 + 11
+		REGBYTE "OSWORD_12", $100 + 12
+		REGBYTE "OSWORD_13", $100 + 13
+
 
 			plp
 			rtl
-		
+
+
 			.a8
 			.i8
 
