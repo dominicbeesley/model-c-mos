@@ -1885,6 +1885,7 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 
 			; register our OSBYTES
 
+		REGBYTE "OSBYTE_19", 19
 		REGBYTE "OSBYTE_20", 20
 		REGBYTE "OSBYTE_132", 132
 		REGBYTE "OSBYTE_133", 133
@@ -1892,6 +1893,7 @@ __vdu_mode_init_loop:	sta	vduvars_start-1,X		; Zero VDU workspace at &300 to &37
 		REGBYTE "OSBYTE_135", 135 
 		REGBYTE "OSBYTE_154", 154
 		REGBYTE "OSBYTE_155", 155
+		REGBYTE "OSBYTE_160", 160
 
 		REGBYTE "OSWORD_9", $100 + 9
 		REGBYTE "OSWORD_10", $100 + 10
@@ -4216,3 +4218,43 @@ _WRITE_SYS_VIA_PORTB:	php					; push flags
 			rts					; and exit
 
 
+;*************************************************************************
+;*									 *
+;*	 OSBYTE	 &13   ENTRY POINT					 *
+;*									 *
+;*	 Wait for VSync							 *
+;*									 *
+;*************************************************************************
+
+_OSBYTE_19:		lda	sysvar_CFSTOCTR			; read vertical sync counter
+_BE9B9:			cli					; allow interrupts briefly
+			sei					; bar interrupts
+			cmp	sysvar_CFSTOCTR			; has it changed?
+			beq	_BE9B9				; no then E9B9
+; falls through and reads VDU variable X
+
+;*************************************************************************
+;*									 *
+;*	 OSBYTE	 160   ENTRY POINT					 *
+;*									 *
+;*	 READ VDU VARIABLE						 *
+;*									 *
+;*************************************************************************
+;X contains the variable number
+;0 =lefthand column in pixels current graphics window
+;2 =Bottom row in pixels current graphics window
+;4 =Right hand column in pixels current graphics window
+;6 =Top row in pixels current graphics window
+;8 =lefthand column in absolute characters current text window
+;9 =Bottom row in absolute characters current text window
+;10 =Right hand column in absolute characters current text window
+;11 =Top row in absolute characters current text window
+;12-15 current graphics origin in external coordinates
+;16-19 current graphics cursor in external coordina4es
+;20-23 old graphics cursor in internal coordinates
+;24 current text cursor in X and Y
+
+_OSBYTE_160:		ldy	vduvar_GRA_WINDOW_LEFT+1,X		; get VDU variable hi
+			lda	vduvar_GRA_WINDOW_LEFT,X			; low
+			tax					; X=low byte
+			rtl					; and exit
