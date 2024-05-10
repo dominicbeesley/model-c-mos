@@ -816,8 +816,8 @@ _BD8F5:			lda	#$bf				; A=&BF
 .proc vdu_LD905_COPY
 			lda	#$20				; A=&20
 			bit	dp_mos_vdu_status		; if bit 6 cursor editing is set
-			bvc	rltA0				; 
-			bne	rltA0				; or bit 5 is set exit &D8CB
+			bvc	retA0				; 
+			bne	retA0				; or bit 5 is set exit &D8CB
 			lda	#OSBYTE_135_GET_MODE		; read a character from the screen
 			cop	COP_06_OPOSB
 			beq	_BD917				; if A=0 on return exit via D917
@@ -827,7 +827,7 @@ _BD8F5:			lda	#$bf				; A=&BF
 
 ::_BD916:		pla					; restore A
 ::_BD917:		rts					; and exit
-rltA0:			lda	#0
+retA0:			lda	#0
 			rts
 .endproc
 	
