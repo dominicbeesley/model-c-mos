@@ -2,10 +2,10 @@
 
 
 		.segment "MODHEAD"
-mod_start:	brl	start
+mod_start:	brl	serv
+		brl	start
 		brl	init
 		brl	fini
-		brl	serv
 		.dword	__MODULE_LAST__-__MODULE_START__	
 					; module length
 		.dword  $0		; flags
@@ -25,10 +25,24 @@ title:		.byte "VDU",0
 help:		.byte "VDU\t\t0.01\t(01 May 2024)x",0
 
 
-
+		.a16
+		.i16
 start:		rtl
-init:		cop	COP_01_OPWRS
-		.byte	"VDU MODULE INIT",0
+
+		.a16
+		.i16
+init:		;cop	COP_01_OPWRS
+		;.byte	"VDU MODULE INIT",0
+
+		lda	#0
+		jsl	VDU_INIT
+
 		rtl
+
+		.a16
+		.i16
 fini:		rtl
+
+		.a16
+		.i16
 serv:		rtl

@@ -3,6 +3,9 @@ __MODULES__:
 
 
 .struct modhdr
+	brlserv		.byte
+	offserv		.word
+
 	brlstart	.byte
 	offstart	.word
 
@@ -11,9 +14,6 @@ __MODULES__:
 
 	brlfin		.byte
 	offfin		.word
-
-	brlserv		.byte
-	offserv		.word
 
 	length		.word
 	resv1		.word

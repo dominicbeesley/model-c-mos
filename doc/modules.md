@@ -17,10 +17,10 @@ The modules presented here are not compatible with any pre-existing format
 
 | Offset | Description                                   |
 |--------|-----------------------------------------------|	
-| 0      | BRL instruction to "start" code               |
-| 3      | BRL instruction to initialisation code        |
-| 6      | BRL instruction to finalisation code          |
-| 9      | BRL instruction to service call handler       |
+| 0      | BRL instruction to service call handler       |
+| 3      | BRL instruction to "start" code               |
+| 6      | BRL instruction to initialisation code        |
+| 9      | BRL instruction to finalisation code          |
 | 12     | Length of module (16bit) (offset to checksum) |
 | 14     | 0 - reserved                                  |
 | 18     | Flags                                         |
@@ -34,6 +34,10 @@ The modules presented here are not compatible with any pre-existing format
 | 40     | COP index max (or -1)                         |
 | ...    | code/data                                     |
 | Length | 16 bit checksum                               |
+
+
+Note: the order of BRL entries is different to Risc OS to make calling the 
+service entry more efficient.
 
 ## Module COP calls
 
