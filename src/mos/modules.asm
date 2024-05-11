@@ -9,6 +9,7 @@
                 .export COP_34
                 .export modules_init
                 .export modules_list:far
+                .export modules_help:far
 
                 .segment "BMOS_NAT_CODE"
 
@@ -321,6 +322,60 @@ isValidModNameStartChar:
                 rts
 
 
+.proc modules_help:far
+                php
+                rep     #$30
+                .a16
+                .i16
+
+                lda     #B0LL_MODULES
+                pha
+@lp:            pld
+                pei     (b0b_ll_mod::next)
+                pld
+                beq     @done
+                phd
+
+
+                ldy     #modhdr::offhelp
+                ldx     #0
+                lda     [b0b_ll_mod::addr],Y
+                tay
+                sep     #$20
+                .a8
+
+@lptit:         lda     [b0b_ll_mod::addr],Y
+                beq     @sktit
+                cmp     #9                      ; tab
+                bne     @skf
+@tt:            lda     #' '
+                cop     COP_00_OPWRC
+                inx
+                txa
+                and     #$7
+                bne     @tt
+                bra     @tt2
+
+@skf:           cop     COP_00_OPWRC
+                inx
+@tt2:           iny
+                bra     @lptit
+
+@sktit:         
+                cop     COP_03_OPNLI
+
+                rep     #$30
+                .a16
+                .i16
+
+                bra     @lp
+
+@done:          plp
+                rtl
+
+.endproc
+
+
 .proc modules_list:far
                 php
                 rep     #$30
@@ -357,10 +412,14 @@ isValidModNameStartChar:
                 
                 jsl     Print2Spc
 
-
+                rep     #$20
+                .a16
                 ldy     #modhdr::offtit
                 lda     [b0b_ll_mod::addr],Y
                 tay
+                sep     #$20
+                .a8
+
 @lptit:         lda     [b0b_ll_mod::addr],Y
                 beq     @sktit
                 cop     COP_00_OPWRC
@@ -369,6 +428,10 @@ isValidModNameStartChar:
 
 @sktit:         
                 cop     COP_03_OPNLI
+
+                rep     #$30
+                .a16
+                .i16
 
                 bra     @lp
 

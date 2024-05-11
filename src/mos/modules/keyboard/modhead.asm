@@ -22,7 +22,7 @@ mod_start:	brl	serv
 
 
 title:		.byte "Keyboard",0
-help:		.byte "Keyboard\t\t0.01\t(10 May 2024)x",0
+help:		.byte "Keyboard\t0.01\t(10 May 2024)",0
 
 
 		.a16

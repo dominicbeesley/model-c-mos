@@ -22,7 +22,7 @@ mod_start:	brl	serv
 
 
 title:		.byte "VDU",0
-help:		.byte "VDU\t\t0.01\t(01 May 2024)x",0
+help:		.byte "VDU\t\t0.01\t(01 May 2024)",0
 
 
 		.a16

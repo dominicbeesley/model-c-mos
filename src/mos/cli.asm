@@ -203,16 +203,93 @@ _OSCLI_BASIC:		ldx	sysvar_ROMNO_BASIC	; Get BASIC ROM number
 ;*		 Issue *HELP to ROMS					 *
 ;*									 *
 ;*************************************************************************
-_OSCLI_HELP:		ldx	#SERVICE_9_HELP			; 
-			lda	#OSBYTE_143_SERVICE_CALL
-			cop	COP_06_OPOSB			; 
+.proc _OSCLI_HELP:far
+		phy						; save Y for later passing to modules
+keys:			
+		sty	dp_mos_OS_wksp
+		ldx	#$00				
+		beq	tbllpfirst				
+
+matlp:		eor	f:tblHELP,X			
+		and	#$df				
+		bne	skNotMatch				
+		iny					
+		clc					
+
+tbllp:		bcs	hadDot					; skip forward if '.'
+		inx					
+tbllpfirst:	lda	(dp_mos_txtptr),Y			
+		jsl	utilsAisAlpha				
+		bcc	matlp				
+
+		lda	f:tblHELP,X			
+		beq	endstr				
+		lda	(dp_mos_txtptr),Y			
+		cmp	#'.'				
+		beq	skDot				
+skNotMatch:	clc					
+		ldy	dp_mos_OS_wksp				
+		dey					
+skDot:		iny					
+		inx					
+		inx
+skaddlp:	inx					
+		lda	f:tblHELP - 4,X		
+		beq	tbllp
+		inc	A
+		beq	doSvc4
+		bra	skaddlp			; skip forwards to pointer
+
+endstr:		inx					
+		inx					
+		inx					
+		inx					
+
+hadDot:		dex					
+		dex					
+		dex		
+
+		; save pointer
+		phy
+		; push return address
+		phk
+		per	@ret-1
+
+		; push routine pointer
+		lda	f:tblHELP + 2,X
+		pha					
+		lda	f:tblHELP + 1,X		
+		pha					
+		lda	f:tblHELP,X		
+		pha					
+		php					
+		rti					; Jump to routine
+
+@ret:		ply
+		bra	keys
+
+
+doSvc4:
+		ply
+		ldx	#SERVICE_9_HELP			; 
+		lda	#OSBYTE_143_SERVICE_CALL
+		cop	COP_06_OPOSB			; 
+
+
 			cop	COP_01_OPWRS			; print following message routine return after BRK
 			.byte	$0d,$0a				; carriage return
 			.byte	"MODEL C MOS 6.00"		; help message
 			.byte	$0d,$0a				; carriage return
 			.byte 	0
 			rtl					; 
+.endproc
+		.macro HENT keyword, fn
+		.asciiz keyword
+		.faraddr fn
+		.endmacro
 
+tblHELP:	HENT "MODULES", modules_help
+		.byte $FF
 
 ;*************************************************************************
 ;*									 *
