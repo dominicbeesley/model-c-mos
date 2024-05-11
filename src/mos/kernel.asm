@@ -564,6 +564,13 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		lda	#$4000
 		cop	COP_34_OPMOD
 
+		DEBUG_PRINTF "insert KEYBOARD module\n"
+		ldx	#10
+		pea	$007D
+		plb
+		lda	#$8000
+		cop	COP_34_OPMOD
+
 
 
 		sep	#$20
@@ -592,8 +599,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 
 
-		DEBUG_PRINTF "Keyb\n"
-		jsr	initKeyboard
 
 		DEBUG_PRINTF "scan ROMs\n"
 		jsl	roms_scanroms			; only on ctrl-break, but always for now...

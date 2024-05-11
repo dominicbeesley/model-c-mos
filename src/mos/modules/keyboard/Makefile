@@ -1,4 +1,4 @@
-# VDU Module makefile
+# keyboard Module makefile
 
 		include ../../../Makefile.defs
 
@@ -7,23 +7,21 @@ ASFLAGS=--auto-import -I $(TOP)/includes -I $(BUILD) --cpu 65816 -D__DEBUG=1 --f
 LD=ld65
 INCS=$(wildcard $(TOP)/includes/*.inc) $(filter-out version-date.inc, $(wildcard *.inc))
 DEPS=$(INCS) 
-TARGETS=vdu.mod
-OBJS_vdu.mod=	modhead vdu
+TARGETS=keyboard.mod
+OBJS_keyboard.mod=	modhead keyboard ../../utils
 SCRIPTS=$(TOP)/../scripts
-BEEBN=X.VDU
+BEEBN=X.KEYBRD
 
 TARGETS_B = $(addprefix $(BUILD)/,$(TARGETS))
 
-LOAD_ADDR = 7D4000
+LOAD_ADDR = 7D8000
 
 .PHONY: all clean
 .PRECIOUS: $(subst %.mod, %.bin, $(TARGETS_B))
 
 all:	$(TARGETS_B)
 
-UC=$(shell echo '$1'|tr '[:lower:]' '[:upper:]')
-
-$(BUILD)/vdu.bin:$(addprefix $(BUILD)/, $(addsuffix .o, $(OBJS_vdu.mod)))
+$(BUILD)/keyboard.bin:$(addprefix $(BUILD)/, $(addsuffix .o, $(OBJS_keyboard.mod)))
 
 $(BUILD)/%.mod: $(BUILD)/%.bin
 	$(SCRIPTS)/makemod.pl $< $@

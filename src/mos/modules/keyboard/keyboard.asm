@@ -1,5 +1,4 @@
 		.include "dp_bbc.inc"
-		.include "debug.inc"
 		.include "vectors.inc"
 		.include "nat-layout.inc"
 		.include "oslib.inc"
@@ -7,10 +6,6 @@
 		.include "vduvars.inc"
 		.include "hardware.inc"
 
-		.export _OSBYTE_120
-		.export _OSBYTE_121
-		.export _OSBYTE_122
-		.export _OSBYTE_118
 		.export initKeyboard
 
 		
@@ -49,7 +44,47 @@ initKeyboard:	php
 		lda	#$81
 		sta	sheila_SYSVIA_ier
 
+
+	.macro REGBYTE name, index
+
+		cop	COP_27_OPBHI
+		.faraddr .ident(.concat("_", name));
+		ldx	#index
+		cop	COP_3F_OPBWV
+	.endmacro
+
+			; register our OSBYTES
+
+		REGBYTE "OSBYTE_120", 120
+		REGBYTE "OSBYTE_121", 121
+		REGBYTE "OSBYTE_122", 122
+		REGBYTE "OSBYTE_118", 118
+
+
 		plp
+		rts
+
+
+OPIIQ_SYSVIA_IRQ:
+		phk
+		plb
+		phx
+		ldx	#$00
+		pea	DPBBC
+		pld
+		cop	COP_2F_OPIIQ
+		.faraddr sheila_SYSVIA_ifr
+		.byte	$00
+
+		plx
+		pea	^sheila_SYSVIA_ier<<8
+		plb
+		plb
+		lda	#>sheila_SYSVIA_ier
+		xba
+		lda	#<sheila_SYSVIA_ier
+		cop	COP_31_OPMIQ
+
 		rts
 
 

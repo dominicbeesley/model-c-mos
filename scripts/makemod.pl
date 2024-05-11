@@ -88,7 +88,7 @@ $ocom && checkbounds(36, 0, $ocom, $l);
 
 my $tit = unpack("Z*", substr($bin, $ot));
 
-$tit =~ /^[0-9A-Z!\.]+$/ || error("Invalid title \"$tit\"");
+$tit =~ /^[0-9A-Z!\.]+$/i || error("Invalid title \"$tit\"");
 
 close $fh_bin;
 
