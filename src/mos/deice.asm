@@ -402,7 +402,7 @@ TARGET_STAT:
 		sta	z:<COMBUF+1
 		ldy	#COMBUF+2
 		ldx	#.loword(TSTG)
-		mvn	#^*,^COMBUF
+		mvn	#^*,#^COMBUF
 ;
 ;  Compute checksum on buffer, and send to master, then return
 		jmp	SEND
@@ -462,12 +462,12 @@ GLP90:		jmp	SEND
 ;
 WRITE_MEM:
 
+		phb				; save our bank
 		lda	z:<COMBUF+1
 		sec
 		sbc	#4
 		beq	WLP50			; nothing to do
 		sta	z:<TMP
-		phb				; save our bank
 		lda	z:<COMBUF+3		; src bank
 		pha
 		plb
