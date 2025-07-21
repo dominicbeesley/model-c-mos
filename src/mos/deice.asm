@@ -149,7 +149,7 @@ deice_printStrzX:
 ;		
 ; Note: this shim attempts to only re-use the stack that is already used
 ; for pushing the interrupt return
-; Note: this shim expects the native to emu switch to already have occurred!
+; Note: this shim expects the emu to native switch to already have occurred!
 deice_enter_emu:
 		.a8
 		.i8
@@ -270,6 +270,10 @@ deice_enter_nat:
 		.a8
 deice_enter:	ldx	#DEICESTACKTOP-1
 		txs
+
+		; make sure of modes
+		sep	#$24		; I=1 .a8
+		rep	#$18		; D=0 .i16
 
 ;;		lda	z:<deice_reg_status
 ;;		cmp	#DEICE_STATE_BP
@@ -468,7 +472,7 @@ WRITE_MEM:
 		sbc	#4
 		beq	WLP50			; nothing to do
 		sta	z:<TMP
-		lda	z:<COMBUF+3		; src bank
+		lda	z:<COMBUF+3		; dest bank
 		pha
 		plb
 		lda	z:<COMBUF+4		; get dest pointer high
