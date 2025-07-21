@@ -259,6 +259,24 @@ while (<>) {
 	s/\bKEY_ROLLOVER_2\b/mosvar_KEYB_TWOKEY_ROLLOVER+1/g;
 	s/\bSOUND_SEMAPHORE\b/mosvar_SOUND_SEMAPHORE/g;
 
+	s/\bOSFILE_CB\b/osfile_ctlblk/g;
+	s/\bOSFILE_CB_1\b/osfile_ctlblk + 1/g;
+	s/\bOSFILE_CB_2\b/osfile_ctlblk + 2/g;
+	s/\bOSFILE_CB_3\b/osfile_ctlblk + 3/g;
+	s/\bOSFILE_CB_4\b/osfile_ctlblk + 4/g;
+	s/\bOSFILE_CB_5\b/osfile_ctlblk + 5/g;
+	s/\bOSFILE_CB_6\b/osfile_ctlblk + 6/g;
+	s/\bOSFILE_CB_7\b/osfile_ctlblk + 7/g;
+	s/\bOSFILE_CB_8\b/osfile_ctlblk + 8/g;
+	s/\bOSFILE_CB_9\b/osfile_ctlblk + 9/g;
+	s/\bOSFILE_CB_10\b/osfile_ctlblk + 10/g;
+	s/\bOSFILE_CB_11\b/osfile_ctlblk + 11/g;
+	s/\bOSFILE_CB_12\b/osfile_ctlblk + 12/g;
+	s/\bOSFILE_CB_13\b/osfile_ctlblk + 13/g;
+	s/\bOSFILE_CB_14\b/osfile_ctlblk + 14/g;
+	s/\bOSFILE_CB_15\b/osfile_ctlblk + 15/g;
+	s/\bOSFILE_CB_16\b/osfile_ctlblk + 16/g;
+	s/\bOSFILE_CB_17\b/osfile_ctlblk + 17/g;
 
 	s/\bBUFFER_0_BUSY\b/mosbuf_buf_busy/g;
 	s/\bBUFFER_1_BUSY\b/mosbuf_buf_busy+1/g;
