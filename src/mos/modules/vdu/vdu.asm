@@ -31,6 +31,21 @@
 
 	.endmacro
 
+	.macro STA_SCR_DP dp
+
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		sta	(dp)
+		plb
+		plp
+
+	.endmacro
+
+
 	.macro LDA_SCR_DP_Y dp
 
 		php
@@ -2604,7 +2619,7 @@ __mode7_xlate_loop:	cmp	_TELETEXT_CHAR_TAB,Y		; compare with teletext conversion
 			dey					; else Y=Y-1
 			bpl	__mode7_xlate_loop		; and if +ve CFDE
 
-__mode7_out_char:	sta	(dp_mos_vdu_top_scanline)	; if not write byte to screen
+__mode7_out_char:	STA_SCR_DP dp_mos_vdu_top_scanline	; if not write byte to screen
 			plb
 			rts					; and exit
 
