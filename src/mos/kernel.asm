@@ -44,7 +44,7 @@ emu_handle_abort:
 		lda	#DEICE_STATE_ABORT
 		clc
 		xce				; switch to native mode
-		bra	enter_deice
+		bra	deice_enter_emu
 
 ; deice - all 65816 entries are initially ABORT
 ; entry point inspects instruction and changes to BP if WDM instruction
