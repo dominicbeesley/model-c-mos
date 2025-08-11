@@ -99,7 +99,7 @@ debug_printf:
 ;;	phk
 ;;	plb		; Assume strings are in our bank!
 
-	pea	$7D00
+	pea	__KERNEL_BASE__ >> 8
 	plb
 	plb
 

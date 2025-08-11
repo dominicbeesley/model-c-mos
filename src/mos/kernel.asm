@@ -44,7 +44,7 @@ emu_handle_abort:
 		lda	#DEICE_STATE_ABORT
 		clc
 		xce				; switch to native mode
-		bra	deice_enter_emu
+		jml	deice_enter_emu
 
 ; deice - all 65816 entries are initially ABORT
 ; entry point inspects instruction and changes to BP if WDM instruction
@@ -455,7 +455,11 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 
 		jsr	cfgGetMosBase
-		DEBUG_PRINTF "MOS_BASE =%H%A\n"
+		DEBUG_PRINTF "MOS_BASE =%H%A00\n"
+		lda	#.bankbyte(__KERNEL_BASE__)
+		xba
+		lda	#.hibyte(__KERNEL_BASE__)
+		DEBUG_PRINTF "MOS_BASE =%H%A00 (code)\n"
 
 		rep	#$30
 		.i16
@@ -534,7 +538,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.i8
 		.a8
 		lda	#$80
-		sta	sysvar_RAM_AVAIL
+		sta	f:sysvar_RAM_AVAIL
 
 		DEBUG_PRINTF "hardware\n"
 		jsr	hardwareInit
@@ -559,14 +563,16 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		DEBUG_PRINTF "insert VDU module\n"
 		ldx	#10
-		pea	$007D
+		pea	__KERNEL_BASE__ >> 8
+		plb
 		plb
 		lda	#$4000
 		cop	COP_34_OPMOD
 
 		DEBUG_PRINTF "insert KEYBOARD module\n"
 		ldx	#10
-		pea	$007D
+		pea	__KERNEL_BASE__ >> 8
+		plb
 		plb
 		lda	#$8000
 		cop	COP_34_OPMOD
