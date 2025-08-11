@@ -113,7 +113,7 @@ _LE004:		lda	f:_OSCLI_TABLE + 2,X		; Get table parameter
 		bmi	exitrts				; If >=&80, number follow
 		; else string follows
 
-_LE009:		pha					; Pass Y line offset to A for later
+_LE009:		phy					; Pass Y line offset to A for later
 		lda	f:_OSCLI_TABLE + 2,X		; Get looked-up parameter from table
 		tay
 		pla
