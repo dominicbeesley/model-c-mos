@@ -175,6 +175,7 @@ _OSCLI_TABLE:
 ;			OSCLTBL	"SPOOL",_OSCLI_SPOOL	,$00	; *SPOOL    &E281, A=0	   XY=>String
 			OSCLTBL	"TAPE",	_OSCLI_OSBYTE	,$8c	; *TAPE	    &E348, A=&8C   OSBYTE
 			OSCLTBL	"TV",	_OSCLI_OSBYTE	,$90	; *TV	    &E348, A=&90   OSBYTE
+			OSCLTBL "GO",	_OSCLI_GO	,$80	; *GO (NEW)
 			OSCLTBL	"",	_OSCLI_FSCV	,$03	; Unmatched &E031, A=3	   FSCV, XY=>String
 			.byte	$00				; Table end marker
 
@@ -343,12 +344,86 @@ _BE36C:		ldy	dp_mos_GSREAD_quoteflag		; Y=third osbyte parameter
 		bvs	_badCmd				; if V set on return then error
 		rtl					; else RETURN
 
-.endproc 
-
 _LE043:		bcc	@ss
 		jmp	utilSkipComma
 @ss:		jmp	utilSkipSpace			
 
+.endproc 
+
+.proc	clearhex32:near
+		lda	#0
+		sta	f:osfile_ctlblk + 0,X
+		sta	f:osfile_ctlblk + 1,X
+		sta	f:osfile_ctlblk + 2,X
+		sta	f:osfile_ctlblk + 3,X
+		rts
+.endproc
+
+.proc	asl32:near
+		pha
+		lda	f:osfile_ctlblk + 0,X
+		asl	A
+		sta	f:osfile_ctlblk + 0,X
+		lda	f:osfile_ctlblk + 1,X
+		rol	A
+		sta	f:osfile_ctlblk + 1,X
+		lda	f:osfile_ctlblk + 2,X
+		rol	A
+		sta	f:osfile_ctlblk + 2,X
+		lda	f:osfile_ctlblk + 3,X
+		rol	A
+		sta	f:osfile_ctlblk + 3,X
+		pla
+		rts
+.endproc
+
+.proc addnibble32:near
+		jsr	asl32
+		bcs	@retsec
+		jsr	asl32
+		bcs	@retsec
+		jsr	asl32
+		bcs	@retsec
+		jsr	asl32
+		bcs	@retsec
+
+		ora	f:osfile_ctlblk + 0, X
+		sta	f:osfile_ctlblk + 0, X
+
+@retsec:	rts
+.endproc
+
+
+.proc loadsave_readhex32:near
+		jsr	utilSkipSpace
+		jsr	clearhex32
+		jsr	_CHECK_FOR_HEX
+		bcc	@retclc
+@lp:		jsr	addnibble32
+		bcs	@retclc			; overflow
+		jsr	_CHECK_FOR_HEX
+		bcs	@lp
+		sec
+		rts
+
+@retclc:	clc
+		rts
+.endproc
+
+brkBadAddress:	brk					; 
+		.byte	$fc				; 
+		.byte	"Bad address"			; error
+		brk					; 
+
+.proc _OSCLI_GO:far
+		ldx	#2				; use LOAD address space
+		jsr	loadsave_readhex32
+		bcc	brkBadAddress
+		phk
+		pea	@rtl-1
+		jml	[osfile_ctlblk + 2]		; jump indirect, assume rtl and native
+@rtl:		rtl
+.endproc
 
 
 ; List modules to output
