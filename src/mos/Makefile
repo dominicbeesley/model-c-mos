@@ -7,9 +7,9 @@ INCS=$(wildcard $(TOP)/includes/*.inc) $(filter-out version-date.inc, $(wildcard
 DEPS=$(INCS) 
 TARGETS=boot.mos
 OBJS_boot.mos=	kernel deice boot-vecs font roms debug vectors bbc-ext-vectors \
-				bbc-nat-vectors b0blocks vdu cop irqs hardware bbcmosapi osbyte_word \
-				buffers keyboard utils window cli brk fscv gsread
-SSD_EXTRAS=_21BOOT.txt.inf
+				bbc-nat-vectors b0blocks cop irqs hardware bbcmosapi osbyte_word \
+				buffers utils window cli brk fscv gsread modules
+SSD_EXTRAS=$(BUILD)/_21BOOT.txt.inf
 SSD=$(SSDS)/model-c-mos.ssd
 DEPLOY=$(DEPLOY_TOP)/model-c-mos
 SCRIPTS=../../scripts
@@ -18,11 +18,14 @@ TARGETS_B = $(addprefix $(BUILD)/,$(TARGETS))
 
 
 
-.PHONY: all clean
+.PHONY: all clean modules
 
 all:	$(TARGETS_B)
 
-ssd:	all $(SSD)
+modules:
+		make -C modules all
+
+ssd:	all $(SSD) modules
 
 deploy: ssd
 	mkdir -p $(DEPLOY)
@@ -49,16 +52,23 @@ $(BUILD)/%.rom: %.cfg
 $(BUILD)/%.o: 	%.asm $(DEPS) 
 	$(AS) $(ASFLAGS) -o $@ -g -l $(basename $@).lst $<
 
+$(BUILD)/_21BOOT.txt.inf $(BUILD)/_21BOOT.txt: modules _21BOOT.txt _21BOOT.txt.inf $(BUILD)/modules/loadscript.txt
+	cp _21BOOT.txt.inf $(BUILD)
+	cp _21BOOT.txt $(BUILD)
+	cat $(BUILD)/modules/loadscript.txt >> $(BUILD)/_21BOOT.txt
+	unix2mac $(BUILD)/_21BOOT.txt
+
 $(SSD):	$(TARGETS_B) $(SSD_EXTRAS)
 	dfs form -80 $(SSD)
 	dfs title $(SSD) "model-c-mos"
 	dfs opt4 -3 $(SSD)
 	dfs add $(SSD) $(addprefix $(BUILD)/, $(addsuffix .inf, $(TARGETS))) $(SSD_EXTRAS)
+	dfs add $(SSD) $(shell find $(BUILD)/modules -iname "*.mod.inf")
 
 clean:
 	-rm $(TARGETS_B) 2>/dev/null
-	-rm $(foreach t, $(TARGETS), $(foreach e,.map .sy2 .1.noi .2.noi .noi .dbg, $(addsuffix $(e), $(addprefix $(BUILD)/,$(t))))) 2>/dev/null
-	-rm $(foreach t, $(TARGETS), $(foreach o, $(OBJS_$(t)), $(foreach e,.lst .o, $(addsuffix $(e), $(addprefix $(BUILD)/,$(o)))))) 2>/dev/null
+	-rm $(foreach t, $(basename $(TARGETS)), $(foreach e,.map .sy2 .1.noi .2.noi .noi .dbg .mos.inf .da.s, $(addsuffix $(e), $(addprefix $(BUILD)/,$(t))))) 2>/dev/null
+	-rm $(foreach t, $(TARGETS), $(foreach o, $(OBJS_$(t)), $(foreach e,.lst .o .lst.rel, $(addsuffix $(e), $(addprefix $(BUILD)/,$(o)))))) 2>/dev/null
 	-rm $(SSD)
-
+	make -C modules clean
 

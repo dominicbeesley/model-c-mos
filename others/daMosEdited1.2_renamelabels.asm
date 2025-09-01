@@ -270,24 +270,24 @@
 .export CFS_BLOCK_FLAG		:= $02ec
 .export CFS_LAST_INPUT		:= $02ed
 
-.export OSFILE_CB		:= $02ee
-.export OSFILE_CB_1		:= $02ef
-.export OSFILE_CB_2		:= $02f0
-.export OSFILE_CB_3		:= $02f1
-.export OSFILE_CB_4		:= $02f2
-.export OSFILE_CB_5		:= $02f3
-.export OSFILE_CB_6		:= $02f4
-.export OSFILE_CB_7		:= $02f5
-.export OSFILE_CB_8		:= $02f6
-.export OSFILE_CB_9		:= $02f7
-.export OSFILE_CB_10		:= $02f8
-.export OSFILE_CB_11		:= $02f9
-.export OSFILE_CB_12		:= $02fa
-.export OSFILE_CB_13		:= $02fb
-.export OSFILE_CB_14		:= $02fc
-.export OSFILE_CB_15		:= $02fd
-.export OSFILE_CB_16		:= $02fe
-.export OSFILE_CB_17		:= $02ff
+.export osfile_ctlblk		:= $02ee
+.export osfile_ctlblk + 1		:= $02ef
+.export osfile_ctlblk + 2		:= $02f0
+.export osfile_ctlblk + 3		:= $02f1
+.export osfile_ctlblk + 4		:= $02f2
+.export osfile_ctlblk + 5		:= $02f3
+.export osfile_ctlblk + 6		:= $02f4
+.export osfile_ctlblk + 7		:= $02f5
+.export osfile_ctlblk + 8		:= $02f6
+.export osfile_ctlblk + 9		:= $02f7
+.export osfile_ctlblk + 10		:= $02f8
+.export osfile_ctlblk + 11		:= $02f9
+.export osfile_ctlblk + 12		:= $02fa
+.export osfile_ctlblk + 13		:= $02fb
+.export osfile_ctlblk + 14		:= $02fc
+.export osfile_ctlblk + 15		:= $02fd
+.export osfile_ctlblk + 16		:= $02fe
+.export osfile_ctlblk + 17		:= $02ff
 
 .export vduvars_start		:= $0300
 .export vduvar_GRA_WINDOW_LEFT		:= $0300
@@ -7383,10 +7383,10 @@ __buffer_save_done:	rts					; then return
 
 _CLEAR_OSFILE_CB:	pha					; push A
 			lda	#$00				; A=0
-			sta	OSFILE_CB,X			; clear osfile control block workspace
-			sta	OSFILE_CB_1,X			; 
-			sta	OSFILE_CB_2,X			; 
-			sta	OSFILE_CB_3,X			; 
+			sta	osfile_ctlblk,X			; clear osfile control block workspace
+			sta	osfile_ctlblk + 1,X			; 
+			sta	osfile_ctlblk + 2,X			; 
+			sta	osfile_ctlblk + 3,X			; 
 			pla					; get back A
 			rts					; and exit
 
@@ -7399,10 +7399,10 @@ _LE21F:			sty	dp_mos_OS_wksp				; &E6=Y
 			rol					; *16
 			ldy	#$04				; Y=4
 _BE227:			rol					; A=A*32
-			rol	OSFILE_CB,X			; shift bit 7 of A into shift register
-			rol	OSFILE_CB_1,X			; and
-			rol	OSFILE_CB_2,X			; shift
-			rol	OSFILE_CB_3,X			; along
+			rol	osfile_ctlblk,X			; shift bit 7 of A into shift register
+			rol	osfile_ctlblk + 1,X			; and
+			rol	osfile_ctlblk + 2,X			; shift
+			rol	osfile_ctlblk + 3,X			; along
 			bcs	_LE267				; if carry set on exit then register has overflowed
 								; so bad address error
 			dey					; decrement Y
@@ -7429,13 +7429,13 @@ _OSCLI_LOAD:		lda	#$ff				; signal that load is being performed
 
 _OSCLI_SAVE:		stx	dp_mos_txtptr			; store address of rest of command line
 			sty	dp_mos_txtptr+1			; 
-			stx	OSFILE_CB			; x and Y are stored in OSfile control block
-			sty	OSFILE_CB_1			; 
+			stx	osfile_ctlblk			; x and Y are stored in OSfile control block
+			sty	osfile_ctlblk + 1			; 
 			pha					; Push A
 			ldx	#$02				; X=2
 			jsr	_CLEAR_OSFILE_CB		; clear the shift register
 			ldy	#$ff				; Y=255
-			sty	OSFILE_CB_6			; store im 2F4
+			sty	osfile_ctlblk + 6			; store im 2F4
 			iny					; increment Y
 			jsr	_LEA1D				; and call GSINIT to prepare for reading text line
 _BE257:			jsr	_GSREAD				; read a code from text line if OK read next
@@ -7490,7 +7490,7 @@ _BE28F:			ldy	dp_mos_OS_wksp				; get back original Y
 _BE29F:			rts					; and exit
 
 _BE2A0:			bne	brkBadCommand				; if NE then BAD COMMAND error
-			inc	OSFILE_CB_6			; increment 2F4 to 00
+			inc	osfile_ctlblk + 6			; increment 2F4 to 00
 _BE2A5:			ldx	#$ee				; X=&EE
 			ldy	#$02				; Y=&02
 			pla					; get back A
@@ -7540,9 +7540,9 @@ _BE2E1:			lda	$01fc,X				; and add length data to start address
 			bne	_BE2E1				; repeat until X=0
 
 _BE2ED:			ldx	#$03				; X=3
-_BE2EF:			lda	OSFILE_CB_10,X			; copy start adddress to load and execution addresses
-			sta	OSFILE_CB_6,X			; 
-			sta	OSFILE_CB_2,X			; 
+_BE2EF:			lda	osfile_ctlblk + 10,X			; copy start adddress to load and execution addresses
+			sta	osfile_ctlblk + 6,X			; 
+			sta	osfile_ctlblk + 2,X			; 
 			dex					; 
 			bpl	_BE2EF				; 
 			plp					; get back flag

@@ -58,14 +58,13 @@
 		ldy	WINDOW_CUR		; preserve current WINDOW
 
 
-	;TODO: this assumes MOS at 7D0000
 		lda	2,S			; A = BH
 		and	#$FFC0
 		cmp	#$FFC0
 		bne	@sk1
 		lda	2,S
 		and	#$003F
-		ora	#$7D00
+		ora	#__KERNEL_BASE__ >> 8
 		bra	@sk2
 @sk1:		lda	2,S			; A = BH
 @sk2:		and	#$FFF8			; mask off 2K block boundary

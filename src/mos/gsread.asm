@@ -8,6 +8,7 @@
 		.export utilNextSkipSpace
 		.export utilReadDigits8bit
 		.export utilSkipComma
+		.export _CHECK_FOR_HEX
 
 ; TODO: this is called direct from emu mode- make a nat mode and wrappers
 ; What to do about pointers: 24bit, not hard-coded i.e. multiple GSINIT..READs in play at once

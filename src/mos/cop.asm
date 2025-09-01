@@ -156,12 +156,14 @@ cop_dispatch_int:
 		dec	DPCOP_PC        	;decrement 16 bit return pointer to point at the signature byte
 		lda	[DPCOP_PC]      	;get signature byte
 		asl	A               	;multiply by 2 to get index
+		clc
+		adc	[DPCOP_PC]
 		and	#$00ff          	;mask off whatever we fetched in high byte
 		cmp	#tblCopDispatchLen	;compare to end of cop table
 		bcs	@ret_unimplemented	;jump forward for high COPs
 		tax				;transfer index to X
-		lda	DPCOP_AH		;restore A from stack
 		phk
+		pea	@ret-1
 ; The callee stack will now look like this:
 ; 
 ; +16   PBR
@@ -184,7 +186,18 @@ cop_dispatch_int:
 ; +5    A
 ; +3    X
 ; +1    Y
-		jsr   (.loword(tblCOPDispatch),x)	;long jump to handler in dispatch table
+		phk
+		plb
+		lda	tblCOPDispatch+1,X
+		pha
+		lda	tblCOPDispatch-1,X
+		and	#$FF00
+		pha
+		plb
+		php
+		lda	DPCOP_AH		;restore A from stack
+		rti
+		
 @ret:		rep   #$30
 		.a16
 		.i16
@@ -193,6 +206,7 @@ cop_dispatch_int:
 		inc	A
 		tcd				; point DP at Stacked registers
 	; internal API Change cop handlers must set DPCOP_P explicitly
+	; TODO: use V as error flag here !?
 ;;		php
 ;;		ror	DPCOP_P
 ;;		plp
@@ -207,73 +221,73 @@ cop_dispatch_int:
 		tsb	DPCOP_P			;return error/V/Cy
 		bra   @ret
 
-tblCOPDispatch:	.word	.loword(COP_00)		;OPWRC 00 = OSWRCH
-		.word	.loword(COP_01)		;OPWRS 01 = Write String Immediate
-		.word	.loword(COP_02)		;OPWRA 02 = Write string at BHA
-		.word	.loword(COP_03)		;OPNLI 03 = OSNEWL - write CR/LF
-		.word   .loword(COP_04)		;OPRDC 04 = OSRDCH - read a char
-		.word   .loword(COP_05)		;OPCLI 05 = OPCLI - execute command at BYX [deprecated]
-		.word   .loword(COP_06)		;OPOSB 06 = OSBYTE
-		.word   .loword(COP_07)		;OPOSW 07 = OSWORD
-		.word   .loword(COP_08)		;OPCAV 08 = Call A Vector **NEW**
-		.word   .loword(COP_NotImpl)	;9
-		.word   .loword(COP_NotImpl)	;A
-		.word   .loword(COP_NotImpl)	;B
-		.word   .loword(COP_NotImpl)	;C
-		.word   .loword(COP_NotImpl)	;D
-		.word   .loword(COP_0E)		;OPCOM 0E = OPCOM - execute command at BHA
-		.word   .loword(COP_NotImpl)	;F
+tblCOPDispatch:	.faraddr	COP_00		;OPWRC 00 = OSWRCH
+		.faraddr	COP_01		;OPWRS 01 = Write String Immediate
+		.faraddr	COP_02		;OPWRA 02 = Write string at BHA
+		.faraddr	COP_03		;OPNLI 03 = OSNEWL - write CR/LF
+		.faraddr	COP_04		;OPRDC 04 = OSRDCH - read a char
+		.faraddr	COP_05		;OPCLI 05 = OPCLI - execute command at BYX [deprecated]
+		.faraddr	COP_06		;OPOSB 06 = OSBYTE
+		.faraddr	COP_07		;OPOSW 07 = OSWORD
+		.faraddr	COP_08		;OPCAV 08 = Call A Vector **NEW**
+		.faraddr	COP_09		;OPCAV 08 = Add to Vector **NEW**
+		.faraddr	COP_NotImpl	;A
+		.faraddr	COP_NotImpl	;B
+		.faraddr	COP_NotImpl	;C
+		.faraddr	COP_NotImpl	;D
+		.faraddr	COP_0E		;OPCOM 0E = OPCOM - execute command at BHA
+		.faraddr	COP_NotImpl	;F
 
-		.word   .loword(COP_NotImpl)	;10
-		.word   .loword(COP_NotImpl)	;11
-		.word   .loword(COP_NotImpl)	;12
-		.word   .loword(COP_NotImpl)	;13
-		.word   .loword(COP_NotImpl)	;14
-		.word   .loword(COP_15)		;OPASC = OSASCI - write and expand <CR> to <LF><CR>
-		.word   .loword(COP_NotImpl)	;16
-		.word   .loword(COP_NotImpl)	;17
-		.word   .loword(COP_NotImpl)	;18
-		.word   .loword(COP_NotImpl)	;19
-		.word   .loword(COP_NotImpl)	;1A
-		.word   .loword(COP_NotImpl)	;1B
-		.word   .loword(COP_NotImpl)	;1C
-		.word   .loword(COP_NotImpl)	;1D
-		.word   .loword(COP_NotImpl)	;1E
-		.word   .loword(COP_NotImpl)	;1F
+		.faraddr	COP_NotImpl	;10
+		.faraddr	COP_NotImpl	;11
+		.faraddr	COP_NotImpl	;12
+		.faraddr	COP_NotImpl	;13
+		.faraddr	COP_NotImpl	;14
+		.faraddr	COP_15		;OPASC = OSASCI - write and expand <CR> to <LF><CR>
+		.faraddr	COP_NotImpl	;16
+		.faraddr	COP_NotImpl	;17
+		.faraddr	COP_NotImpl	;18
+		.faraddr	COP_NotImpl	;19
+		.faraddr	COP_NotImpl	;1A
+		.faraddr	COP_NotImpl	;1B
+		.faraddr	COP_NotImpl	;1C
+		.faraddr	COP_NotImpl	;1D
+		.faraddr	COP_NotImpl	;1E
+		.faraddr	COP_NotImpl	;1F
 
-		.word   .loword(COP_NotImpl)	;20
-		.word   .loword(COP_NotImpl)	;21
-		.word   .loword(COP_NotImpl)	;22
-		.word   .loword(COP_NotImpl)	;23
-		.word   .loword(COP_NotImpl)	;24
-		.word   .loword(COP_NotImpl)	;24
-		.word   .loword(COP_26)		;OPBHA - return address of immediate string in BHA
-		.word   .loword(COP_NotImpl)	;27
-		.word   .loword(COP_NotImpl)	;28
-		.word   .loword(COP_NotImpl)	;29
-		.word   .loword(COP_NotImpl)	;2A
-		.word   .loword(COP_NotImpl)	;2B
-		.word   .loword(COP_NotImpl)	;2C
-		.word   .loword(COP_NotImpl)	;2D
-		.word   .loword(COP_NotImpl)	;2E
-		.word   .loword(COP_2F)		;OPIIQ - insert interrupt handler
+		.faraddr	COP_NotImpl	;20
+		.faraddr	COP_NotImpl	;21
+		.faraddr	COP_NotImpl	;22
+		.faraddr	COP_NotImpl	;23
+		.faraddr	COP_NotImpl	;24
+		.faraddr	COP_NotImpl	;24
+		.faraddr	COP_26		;OPBHA - return address of immediate string in BHA
+		.faraddr	COP_27		;OPBHI - return immediate far address in BHA ** NEW
+		.faraddr	COP_NotImpl	;28
+		.faraddr	COP_NotImpl	;29
+		.faraddr	COP_NotImpl	;2A
+		.faraddr	COP_NotImpl	;2B
+		.faraddr	COP_NotImpl	;2C
+		.faraddr	COP_NotImpl	;2D
+		.faraddr	COP_NotImpl	;2E
+		.faraddr	COP_2F		;OPIIQ - insert interrupt handler
 
-		.word   .loword(COP_30)		;OPRIQ - remove interrupt handler
-		.word   .loword(COP_31)		;OPMIQ - modify interrupt handler
-		.word   .loword(COP_NotImpl)	;32
-		.word   .loword(COP_NotImpl)	;33
-		.word   .loword(COP_NotImpl)	;34
-		.word   .loword(COP_NotImpl)	;34
-		.word   .loword(COP_NotImpl)	;36
-		.word   .loword(COP_NotImpl)	;37
-		.word   .loword(COP_NotImpl)	;38
-		.word   .loword(COP_NotImpl)	;39
-		.word   .loword(COP_NotImpl)	;3A
-		.word   .loword(COP_NotImpl)	;3B
-		.word   .loword(COP_NotImpl)	;3C
-		.word   .loword(COP_NotImpl)	;3D
-		.word   .loword(COP_NotImpl)	;3E
-		.word   .loword(COP_NotImpl)	;3F
+		.faraddr	COP_30		;OPRIQ - remove interrupt handler
+		.faraddr	COP_31		;OPMIQ - modify interrupt handler
+		.faraddr	COP_32		;OPSUM - do carry-round checksum of memory area
+		.faraddr	COP_NotImpl	;33
+		.faraddr	COP_34		;OPMOD - module management functions
+		.faraddr	COP_NotImpl	;34
+		.faraddr	COP_NotImpl	;36
+		.faraddr	COP_NotImpl	;37
+		.faraddr	COP_NotImpl	;38
+		.faraddr	COP_NotImpl	;39
+		.faraddr	COP_NotImpl	;3A
+		.faraddr	COP_NotImpl	;3B
+		.faraddr	COP_NotImpl	;3C
+		.faraddr	COP_NotImpl	;3D
+		.faraddr	COP_NotImpl	;3E
+		.faraddr	COP_3F		;OPBWV - OS Byte/Word Vector
 
 tblCopDispatchLen := *-tblCOPDispatch
 
@@ -438,68 +452,6 @@ COP_04:         cop	COP_08_OPCAV
 
 
 
-;	********************************************************************************
-;	* COP 06 - OPOSB = OSBYTE                                                      *
-;	*                                                                              *
-;	* This call caries out various operations, the specific operation depending on *
-;	* the contents of A on entry. Other data can be passed in X and Y. If results  *
-;	* are generated, these are returned in X and Y.                                *
-;	*                                                                              *
-;	* On entry: A contains the reason code. The reason code determines the         *
-;	* function of the call.                                                        *
-;	*                                                                              *
-;	* On exit: X and Y will contain results if the call produces them.             *
-;	*                                                                              *
-;	* D preserved                                                                  *
-;	********************************************************************************
-COP_06:		ldx	DPCOP_X
-		ldy	DPCOP_Y
-		cop	COP_08_OPCAV
-		.byte	IX_BYTEV
-		sty	DPCOP_Y
-		stx	DPCOP_X
-		php
-		sep	#$30
-		.a8
-		.i8
-		txa
-		php
-		lda	1,S
-		eor	DPCOP_P
-		and	#$CF			; keep original M/X flags
-		eor	DPCOP_P			; get back Caller's flags and nothing else
-		sta	DPCOP_P			; set flags but keep M/X from caller
-		plp
-		plp		
-		rtl
-		.a16
-		.i16
-
-
-; TODO: - this must depend on whether called from EMU or NAT mode as b0 is 
-;	  different!
-;	********************************************************************************
-;	* COP 07 - OPOSW = OSWORD                                                      *
-;	*                                                                              *
-;	* Action: This call caries out various operations, the specific operation      *
-;	* depending on the contents of A on entry. 0YX points to a control block in    *
-;	* memory, and this block contains data for the call, and will contain results  *
-;	* from the call.                                                               *
-;	* On entry:                                                                    *
-;	* EITHER: 0YX points to a control block in memory                              *
-;	* OR: Y = 0 and X contains an offset from the direct page register D. The      *
-;	* start of the control block is in the direct page at address D+X.             *
-;	* A contains the reason code. The reason code determines the function of the   *
-;	* call.                                                                        *
-;	* On exit: D preserved                                                         *
-;	*                                                                              *
-;	* For OPOSW with A = 0 (read line from input)                                  *
-;	* Y = line length (including CR if applicable).                                *
-;	* If C = 0 then CR termimated input.                                           *
-;	* If C = 1 then ESCAPE terminated input                                        *
-;	********************************************************************************
-COP_07:		;TODO
-		rtl
 
 ; ********************************************************************************
 ; * COP 26 - OPBHA                                                               *
@@ -521,6 +473,21 @@ COP_26:	        lda   DPCOP_PC+1
                 bne   @copExitImmedStr
                 rtl
 
+; ********************************************************************************
+; * COP 27 - OPBHI                                                               *
+; *                                                                              *
+; * returns the immediate far address following the cop call as BHA              *
+; ********************************************************************************
+                .a16
+                .i16
+COP_27:	        inc	DPCOP_PC
+		lda	[DPCOP_PC]
+		sta	DPCOP_AH
+		inc	DPCOP_PC
+		lda	[DPCOP_PC]
+		sta	DPCOP_AH+1
+		inc	DPCOP_PC
+                rtl
 
 ; ********************************************************************************
 ; * COP 05 - OPCLI - execute command line                                        *
@@ -577,3 +544,6 @@ COP_0E:         phd
                 pla
                 sta   DPCOP_B
                 rtl
+
+
+

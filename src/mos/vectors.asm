@@ -8,7 +8,7 @@
 		.export bbcEmu2NatVectorEntry
 		.export vector_next
 		.export COP_08
-		.export AddToVector
+		.export COP_09
 
 ;TODO: how should a vector signal "claimed" and not pass on to next?
 ;TODO: currently can store 0 on stack above return address to cancel [TODO: API: DOCUMENT]
@@ -392,36 +392,48 @@ COP_08:
 
 
 
-	;BHA contains vector handler address
-	;X   contains vector index
-	;DP  contains handler DP
-	;TODO: use DP instead of f:,X for smaller code?
-AddToVector:	php
-		rep	#$30
-		.a16
+;		********************************************************************************
+;		* COP 09 - OPADV - Add to vector                                               *
+;		*                                                                              *
+;		* Adds the routine to the indicated vector chain                               *
+;		*                                                                              *
+;		* Entry                                                                        *
+;		*   BHA   the address of the vector handler to add                             *
+;		*     X   A reason code - always 0 for add to front of list                    *
+;		*     Y   The index of the vector to update                                    *
+;		*    DP   For add reason codes the DP to assign to the handler                 *
+;		* Exit                                                                         *
+;		*    TODO: define other reasons, return parameters etc                         *
+;		*    TODO: proper error returns                                                *
+;		********************************************************************************
+COP_09:		.a16
 		.i16
-		phy
-		phx
+		ldx	DPCOP_X
+		bne	@retBadCall
+
+		; add to head of vector chain
+		ldx	DPCOP_Y
 		cpx	#IX_VEC_MAX+1
-		beq	@retsec
-		pha
+		beq	@retBadCall
+
+
 		lda	#B0B_TYPE_LL_NATVEC
-		jsr	allocB0Block
-		pla		
-		bcs	@retsec		
+		jsl	allocB0Block		
+		bcs	@retNoMem
+
 		; store vector pointer (low 16)
+		lda	DPCOP_AH
 		sta	f:b0b_ll_nat_vec::handler,X
 		; store return pointer (low 16)
 		lda	#.loword(vector_next-1)
 		sta	f:b0b_ll_nat_vec::return,X
 		; store handler DP
-		tdc
+		lda	DPCOP_DP
 		sta	f:b0b_ll_nat_vec::dp,X
 		sep	#$20
 		.a8
 		; store handler bank
-		phb
-		pla
+		lda	DPCOP_B
 		sta	f:b0b_ll_nat_vec::handler+2,X
 		; store return bank
 		phk
@@ -433,9 +445,9 @@ AddToVector:	php
 
 		txy
 		
-		lda 	1,S				; get back index
+		lda 	DPCOP_Y				; get back index
 		asl	A
-		adc	1,S
+		adc	DPCOP_Y
 		and	#$FF
 		adc	#NAT_OS_VECS
 		tax
@@ -457,15 +469,10 @@ AddToVector:	php
 		sta	f:b0b_ll_nat_vec::next,X	; store old pointer in our block
 		plp					; interrupts back on
 
-		plx
-		ply
-		plp
 		clc
 		rtl
 
-@retsec:	plx
-		ply
-		plp
-		sec
+@retNoMem:
+@retBadCall:	sec
 		rtl	
 		

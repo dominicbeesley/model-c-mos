@@ -15,7 +15,7 @@
 
 		.export	hardwareDetectHardReset
 		.export	hardwareInit
-		.export OPIIQ_SYSVIA_IRQ	; used in Keyboard - duplicate?
+		
 
 
 ;	********************************************************************************
@@ -329,7 +329,7 @@ _BDDED:		inc	oswksp_OSWORD3_CTDOWN-1,X	; increment byte and if
 		dex					; else decrement pointer
 		bne	_BDDED				; and if not 0 do it again
 		ldy	#EVENT_05_INTERVAL		; process EVENT 5 interval timer
-		jsr	kernelRaiseEvent		; 
+		jsl	kernelRaiseEvent		; 
 
 _BDDFA:	
 		; TODO: get rid of phb/plb?
@@ -418,7 +418,7 @@ _BDD34:		rol					; restore bit
 		stx	sysvar_FLASH_CTDOWN		; &0251=X resetting the counter
 
 _BDD3D:		ldy	#EVENT_04_VSYNC			; Y=4 and call E494 to check and implement vertical
-		jsr	kernelRaiseEvent		; sync event (4) if necessary
+		jsl	kernelRaiseEvent		; sync event (4) if necessary
 		
 		lda	#VIA_IFR_BIT_CA1		; A=2
 		jmp	_LDE6E				; clear interrupt 1 and exit
@@ -430,3 +430,15 @@ _BDD3D:		ldy	#EVENT_04_VSYNC			; Y=4 and call E494 to check and implement vertic
 _LDE6E:		sta	sheila_SYSVIA_ifr		; 
 		clc
 		rtl					; and return
+
+
+; TODO: this is copied from VDU/OSBYTE 154, chain irq into VDU module? 
+vduSetULACTL:		php					; save flags
+			sep	#$24				; set 8 bit mode and disable interrupts
+			.a8
+			sta	f:sysvar_VIDPROC_CTL_COPY	; save RAM copy of new parameter
+			sta	f:sheila_VIDULA_ctl		; write to control register
+			lda	f:sysvar_FLASH_MARK_PERIOD	; read	space count
+			sta	f:sysvar_FLASH_CTDOWN		; set flash counter to this value
+			plp					; get back status
+			rtl					; and return

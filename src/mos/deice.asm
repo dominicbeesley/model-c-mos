@@ -149,7 +149,7 @@ deice_printStrzX:
 ;		
 ; Note: this shim attempts to only re-use the stack that is already used
 ; for pushing the interrupt return
-; Note: this shim expects the native to emu switch to already have occurred!
+; Note: this shim expects the emu to native switch to already have occurred!
 deice_enter_emu:
 		.a8
 		.i8
@@ -270,6 +270,10 @@ deice_enter_nat:
 		.a8
 deice_enter:	ldx	#DEICESTACKTOP-1
 		txs
+
+		; make sure of modes
+		sep	#$24		; I=1 .a8
+		rep	#$18		; D=0 .i16
 
 ;;		lda	z:<deice_reg_status
 ;;		cmp	#DEICE_STATE_BP
@@ -402,7 +406,7 @@ TARGET_STAT:
 		sta	z:<COMBUF+1
 		ldy	#COMBUF+2
 		ldx	#.loword(TSTG)
-		mvn	#^*,^COMBUF
+		mvn	#^*,#^COMBUF
 ;
 ;  Compute checksum on buffer, and send to master, then return
 		jmp	SEND
@@ -431,7 +435,7 @@ TSTG_SIZE	:=	* - TSTG			; SIZE OF STRING
 READ_MEM:
 
 		lda	z:<COMBUF+6		; get length
-		beq	GLP90
+		beq	@GLP90
 		sta	z:<TMP
 		sta	z:<COMBUF+1
 		phb				; save our bank
@@ -444,16 +448,27 @@ READ_MEM:
 		tay				; src pointer
 		ldx	#<COMBUF+2
 @lp:		lda	a:0,Y
-		iny
 		sta	z:0,X
 		inx
-		dec	z:<TMP
+		iny
+		bne	@cb
+		jsr	incbank
+@cb:		dec	z:<TMP
 		bne	@lp
 
 		plb				; restore bank register
 
 ;  Compute checksum on buffer, and send to master, then return
-GLP90:		jmp	SEND
+@GLP90:		jmp	SEND
+
+incbank:	pha
+		phb
+		pla
+		inc	A
+		pha
+		plb
+		pla
+		rts
 
 
 ;===========================================================================
@@ -462,14 +477,15 @@ GLP90:		jmp	SEND
 ;
 WRITE_MEM:
 
+		phb				; save our bank
 		lda	z:<COMBUF+1
 		sec
 		sbc	#4
 		beq	WLP50			; nothing to do
 		sta	z:<TMP
-		phb				; save our bank
-		lda	z:<COMBUF+3		; src bank
+		lda	z:<COMBUF+3		; dest bank
 		pha
+		pha				; save bank for second pass
 		plb
 		lda	z:<COMBUF+4		; get dest pointer high
 		xba				; swap BE->LE
@@ -482,21 +498,26 @@ WRITE_MEM:
 		inx
 		sta	a:0,Y
 		iny
-		dec	z:<TMP
+		bne	@cb
+		jsr	incbank
+@cb:		dec	z:<TMP
 		bne	@lp
 
 		lda	z:<COMBUF+1
 		sec
 		sbc	#4
 		sta	z:<TMP			; get back count
-		ply
+		ply				; get back Y
+		plb				; reset bank
 		ldx	#<COMBUF+6
 @lp2:		lda	z:0,X
 		inx
 		cmp	a:0,Y
 		bne	WLP80
 		iny
-		dec	z:<TMP
+		bne	@cb2
+		jsr	incbank
+@cb2:		dec	z:<TMP
 		bne	@lp2
 
 WLP50:		lda	#0			; RETURN STATUS = 0
@@ -717,7 +738,9 @@ SEND:		jsr	CHECKSUM		; GET A=CHECKSUM, X->checksum location
 		sta	0,X			; STORE NEGATIVE OF CHECKSUM
 ;
 ;  Send buffer to master
-		ldx	#<COMBUF		; POINTER TO DATA
+		ldx	#<(COMBUF - deice_base)	; POINTER TO DATA
+		lda	#0
+		xba
 		lda	z:1,X			; LENGTH OF DATA
 		clc
 		adc	#3			; PLUS FUNCTION, LENGTH, CHECKSUM

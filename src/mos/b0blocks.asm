@@ -2,15 +2,15 @@
 		.include	"nat-layout.inc"
 
 
-		.export	initB0Blocks
-		.export	freeB0Block
-		.export	allocB0Block
+		.export	initB0Blocks:far
+		.export	freeB0Block:far
+		.export	allocB0Block:far
 
-		.export	initHandles
-		.export findHandleByAddr
-		.export allocHandle
-		.export getHandleYtoX
-		.export freeHandleForB0BlockX
+		.export	initHandles:far
+		.export findHandleByAddr:far
+		.export allocHandle:far
+		.export getHandleYtoX:far
+		.export freeHandleForB0BlockX:far
 
 	; b0blocks are 12 byte long blocks that are pre-allocated in bank 0 
 	; that can be allocated by the OS. They are typically used to contain
@@ -22,7 +22,8 @@
 	; These are inspired by the Communicator MOS blocks (See de/cdb5 on in MOS100)
 
 
-initB0Blocks:	php
+.proc initB0Blocks:far
+		php
 		rep  	 #$30
 		.a16
 		.i16
@@ -33,14 +34,15 @@ initB0Blocks:	php
 		lda	#B0B_BASE	
 @lp:		pha
 		tax
-		jsr	freeB0Block
+		jsl	freeB0Block
 		pla
 		clc
 		adc	#B0B_SIZE
 		cmp	#B0B_END
 		bcc	@lp
 		plp
-		rts
+		rtl
+.endproc
 
 ;	********************************************************************************
 ;	* Return the block pointed to X to the free list                               *
@@ -48,7 +50,8 @@ initB0Blocks:	php
 ;	* On Entry:                                                                    *
 ;	*    X   is a pointer to a B0Block                                             *
 ;	********************************************************************************
-freeB0Block:	phy
+.proc freeB0Block:far
+		phy
 		php
 		sei
 		rep	#$30
@@ -74,7 +77,8 @@ freeB0Block:	phy
 		plp
 		ply
 		clc
-		rts
+		rtl
+.endproc
 
 ;	********************************************************************************
 ;	* Allocate a B0Block from the free list                                        *
@@ -91,7 +95,8 @@ freeB0Block:	phy
 ;	*                                                                              *
 ;	*******************************************************************************
 
-allocB0Block:	php
+.proc allocB0Block:far
+		php
 		sei
 		rep	#$30
 		.a16
@@ -101,7 +106,7 @@ allocB0Block:	php
 		bne	 @ok
 		plp
 		sec
-		rts
+		rtl
 @ok:		phx
 		tax
 		cmp	f:B0LL_FREE_BLOCKS_END
@@ -129,11 +134,12 @@ allocB0Block:	php
 		txa
 		plp
 		clc
-		rts
+		rtl
+.endproc
 
 
 
-initHandles:	
+.proc initHandles:far
 		phd
 		; TODO: In the commy MOS this block is allocated with the MM functions
 		; see fe/b2fc
@@ -162,7 +168,8 @@ initHandles:
 ;;                sta	[<EXSYS_FpHandles],y
 
 		pld
-		rts
+		rtl
+.endproc
 
 
 ;	********************************************************************************
@@ -179,7 +186,8 @@ initHandles:
 ;	*                                                                              *
 ;	* Others preserved                                                             *
 ;	********************************************************************************
-allocHandle:	phd
+.proc allocHandle:far
+		phd
 		pha
 		pea	EXSYS
 		pld
@@ -198,12 +206,13 @@ allocHandle:	phd
 		pla
 		pld
 		clc
-		rts
+		rtl
 
 @retsec:	pla
 		pld
 		sec
-		rts
+		rtl
+.endproc
 
 ;	********************************************************************************
 ;	* Given a handle in Y returns the B0Block pointer. For odd numbered handles    *
@@ -220,7 +229,8 @@ allocHandle:	phd
 ;	*                                                                              *
 ;	* TODO: corrupts X unnecessarily, lots of tax etc that is unnecessary          *
 ;	********************************************************************************
-getHandleYtoX:	phd
+.proc getHandleYtoX:far
+		phd
 		pha
 		tya
 		beq	@retsec
@@ -255,13 +265,14 @@ getHandleYtoX:	phd
 @retsec:	pla
 		pld
 		sec
-		rts
+		rtl
 
 
 @retclc:	pla
 		pld
 		clc
-		rts
+		rtl
+.endproc
 
 
 ;;tblWellKnownHandlePointers:	.dd2 $fe04 ;HDMMM
@@ -288,7 +299,7 @@ getHandleYtoX:	phd
 ;	*                                                                              *
 ;	* TODO: why not use the find method below!                                     *
 ;	********************************************************************************
-freeHandleForB0BlockX:	
+.proc freeHandleForB0BlockX:far
 		phx
 		pea	EXSYS
 		pld
@@ -305,13 +316,14 @@ freeHandleForB0BlockX:
 		bne	@lp
 		plx
 		sec
-		rts
+		rtl
 
 @fnd:		lda	#$0000
 		sta	[<EXSYS_FpHandles],y ;zero out the entry and return clc
 		plx
 		clc
-		rts
+		rtl
+.endproc
 
 ;	********************************************************************************
 ;	* The [Handle Allocation Table] pointed to by long pointer at $FF02 is         *
@@ -331,7 +343,7 @@ freeHandleForB0BlockX:
 ;	*    X    preserved                                                            *
 ;	*    D,A  corrupted                                                            *
 ;	********************************************************************************
-findHandleByAddr:	
+.proc findHandleByAddr:far
 		pea	EXSYS
 		pld
 		ldy	#$0000
@@ -346,7 +358,8 @@ findHandleByAddr:
 		dey
 		bne	@lp
 		sec
-		rts
+		rtl
 @retclc:	clc
-		rts
+		rtl
+.endproc
 

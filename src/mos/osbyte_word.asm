@@ -1,5 +1,6 @@
 
 		.include "dp_bbc.inc"
+		.include "cop.inc"
 		.include "debug.inc"
 		.include "vectors.inc"
 		.include "nat-layout.inc"
@@ -9,11 +10,194 @@
 
 		.export doOSBYTE
 		.export doOSWORD
+		.export osByteWordInit:far
+		.export COP_06
+		.export COP_07
+		.export COP_3F
 
 
 ;	********************************************************************************
 ;	* Main OSBYTE and OSWORD dispatchers are executed in native mode               *
 ;	********************************************************************************
+
+
+.proc osByteWordInit:far
+		; copy the dispatch table to RAM so that modules
+		; can intercept
+		php
+		rep	#$30
+		.a16
+		.i16
+		lda	#_OSBYTE_TABLE_SIZE
+		ldx	#.loword(_OSBYTE_TABLE)
+		ldy	#.loword(OSBYTE_TABLE)
+		mvn	#^_OSBYTE_TABLE, #^OSBYTE_TABLE
+
+		plp
+		rtl
+
+
+.endproc
+
+;	********************************************************************************
+;	* COP 3F - OPBWV = Capture an OSBYTE/WORD                                      *
+;	*                                                                              *
+;	* This call allows modules to update the OSBYTE/WORD dispatch table by         *
+;	* supplying their own routines.                                                *
+;	*                                                                              *
+;	* Not all calls are passed through the dispatch table, if the number is        *
+;	* not in the covered range an error will be returned. Also, note that some     *
+;	* codes share a handler i.e. OSBYTES 166..255                                  *
+;	*                                                                              *
+;	* Not all OSBYTES/WORDS can be overridden in this way and this is very much    *
+;	* an OS internals routine                                                      *
+;	*                                                                              *
+;	* On entry:                                                                    *
+;	*    X    contains the OSBYTE index. For OSWORD add 256                        *
+;	*    BHA  contains the handler address                                         *
+;	*                                                                              *
+;	* On exit: 								       *
+;	*    Cy=1 indicates an error occurred                                          *
+;	*    BHA  points to an error block                                             *
+;	*                                                                              *
+;	*    Cy=0 indicates success                                                    *
+;	*    BHA  contains the old handler address or 0 if not handled                 *
+;	*                                                                              *
+;	* D preserved                                                                  *
+;	********************************************************************************
+		.a16
+		.i16
+COP_3F:		lda	DPCOP_X
+		cmp	#256
+		bcc	@byte
+		cmp	#256+256
+		bcs	@badIndex
+		cmp	#256+$E0
+		bcc	@skn
+		lda	#TBLIX_OSWORDEOPLUS
+		bra	@gotix
+@skn:		cmp	#256+14		; OSWORD max+1
+		bcs	@badIndex		
+		sbc	#TBLD_WORD-1
+@gotix:		pha
+		asl	A
+		adc	1,S
+		sta	1,S
+		plx
+		pea	^OSBYTE_TABLE<<8
+		plb
+		plb
+		php
+		sei
+		lda	OSBYTE_TABLE+1,X
+		pha
+		lda	OSBYTE_TABLE,X
+		pha
+		lda	DPCOP_AH+1
+		sta	OSBYTE_TABLE+1,X
+		lda	DPCOP_AH
+		dec	A			; make suitable for RTL
+		sta	OSBYTE_TABLE,X
+		pla
+		sta	DPCOP_AH
+		pla
+		sta	DPCOP_AH+1		
+		plp
+		ror	DPCOP_P
+		sec
+		rol	DPCOP_P
+		rtl
+
+
+@byte:		cmp	#22
+		bcc	@gotix
+		cmp	#117
+		bcc	@badIndex
+		cmp	#161
+		bcs	@skn2
+		sbc	#TBLD_BYTE_117_160-1
+		bra	@gotix
+@skn2:		cmp	#166
+		bcc	@badIndex
+		lda	#TBLIX_OSBYTE166PLUS
+		bra	@gotix
+
+
+@badIndex:	cop	COP_26_OPBHA
+		.byte	0, "Bad Index", 0
+		lda	#1
+		ror	DPCOP_P
+		sec
+		rol	DPCOP_P
+		rtl
+
+
+
+
+;	********************************************************************************
+;	* COP 06 - OPOSB = OSBYTE                                                      *
+;	*                                                                              *
+;	* This call caries out various operations, the specific operation depending on *
+;	* the contents of A on entry. Other data can be passed in X and Y. If results  *
+;	* are generated, these are returned in X and Y.                                *
+;	*                                                                              *
+;	* On entry: A contains the reason code. The reason code determines the         *
+;	* function of the call.                                                        *
+;	*                                                                              *
+;	* On exit: X and Y will contain results if the call produces them.             *
+;	*                                                                              *
+;	* D preserved                                                                  *
+;	********************************************************************************
+		.a16
+		.i16
+COP_06:		ldx	DPCOP_X
+		ldy	DPCOP_Y
+		cop	COP_08_OPCAV
+		.byte	IX_BYTEV
+		sty	DPCOP_Y
+		stx	DPCOP_X
+		php
+		sep	#$30
+		.a8
+		.i8
+		txa
+		php
+		lda	1,S
+		eor	DPCOP_P
+		and	#$CF			; keep original M/X flags
+		eor	DPCOP_P			; get back Caller's flags and nothing else
+		sta	DPCOP_P			; set flags but keep M/X from caller
+		plp
+		plp		
+		rtl
+		.a16
+		.i16
+
+
+; TODO: - this must depend on whether called from EMU or NAT mode as b0 is 
+;	  different!
+;	********************************************************************************
+;	* COP 07 - OPOSW = OSWORD                                                      *
+;	*                                                                              *
+;	* Action: This call caries out various operations, the specific operation      *
+;	* depending on the contents of A on entry. 0YX points to a control block in    *
+;	* memory, and this block contains data for the call, and will contain results  *
+;	* from the call.                                                               *
+;	* On entry:                                                                    *
+;	* EITHER: 0YX points to a control block in memory                              *
+;	* OR: Y = 0 and X contains an offset from the direct page register D. The      *
+;	* start of the control block is in the direct page at address D+X.             *
+;	* A contains the reason code. The reason code determines the function of the   *
+;	* call.                                                                        *
+;	* On exit: D preserved                                                         *
+;	*                                                                              *
+;	* For OPOSW with A = 0 (read line from input)                                  *
+;	* Y = line length (including CR if applicable).                                *
+;	* If C = 0 then CR termimated input.                                           *
+;	* If C = 1 then ESCAPE terminated input                                        *
+;	********************************************************************************
+COP_07:		;TODO
+		rtl
 
 
 
@@ -69,16 +253,18 @@ _BE793:		php
 		plp
 		bvs	_LE7BC				; if return with V set E7BC
 
-_BE7A2:		phk
-		plb
-		phb					; return address bank
+_BE7A2:		phk					; return address bank
 		per    	_OSBYTEWORD_EXIT_NAT-1
 
-		lda	_OSBYTE_TABLE + 2,Y		; get address from table
+		lda	#^OSBYTE_TABLE			; RAM copy of OSBYTE dispatch table
+		pha
+		plb
+
+		lda	.loword(OSBYTE_TABLE) + 2,Y	; get address from table
 		pha					; handler bank
-		lda	_OSBYTE_TABLE + 1,Y		; repeat for hi byte
+		lda	.loword(OSBYTE_TABLE) + 1,Y	; repeat for hi byte
 		pha					; handler bank
-		lda	_OSBYTE_TABLE,Y			; repeat for lo byte
+		lda	.loword(OSBYTE_TABLE),Y		; repeat for lo byte
 		pha					; handler bank
 		
 		pea	0				; always enter handler with B=0, DP=0, .a8, .i8
@@ -119,6 +305,8 @@ _BE7C8:		php					; push flags
 _BE7CA:		pla					; pull flags
 		pla					; pull flags
 		
+		;NOTE: this must be a direct call to _OSBYTE_143 to avoid
+		; overwriting the osbyte DP registers!
 		jsl	_OSBYTE_143			; offer paged ROMS service 7/8 unrecognised osbyte/word
 
 		bne	_BE7D6				; if roms don't recognise it then E7D6
@@ -130,7 +318,6 @@ _BE7D6:		plp					; else pull flags (settings C)
 		sep	#$40				; set V
 		rtl					; and return
 
-_LF058:		jmp	(dp_mos_OS_wksp2)			; 
 
 
 ;**************************************************************************
@@ -168,75 +355,77 @@ doOSWORD:	;;DEBUG_PRINTF "OSWORD #%A, X=%X, Y=%Y\n"
 
 
 ;TODO: consider making these far vectors in RAM somewhere to allow modules to implement?
-_OSBYTE_TABLE:	.faraddr	_OSBYTE_0-1			; OSBYTE   0  (&E821)
-		.faraddr	_OSBYTE_1_6-1			; OSBYTE   1  (&E988)
-		.faraddr	_OSBYTE_2-1			; OSBYTE   2  (&E6D3)
-		.faraddr	_OSBYTE_3_4-1			; OSBYTE   3  (&E997)
-		.faraddr	_OSBYTE_3_4-1			; OSBYTE   4  (&E997)
-		.faraddr	_OSBYTE_5-1			; OSBYTE   5  (&E976)
-		.faraddr	_OSBYTE_1_6-1			; OSBYTE   6  (&E988)
-		.faraddr	_OSBYTE_7-1			; OSBYTE   7  (&E68B)
-		.faraddr	_OSBYTE_8-1			; OSBYTE   8  (&E689)
-		.faraddr	_OSBYTE_9-1			; OSBYTE   9  (&E6B0)
-		.faraddr	_OSBYTE_10-1			; OSBYTE  10  (&E6B2)
-		.faraddr	_OSBYTE_11-1			; OSBYTE  11  (&E995)
-		.faraddr	_OSBYTE_12-1			; OSBYTE  12  (&E98C)
-		.faraddr	_OSBYTE_13-1			; OSBYTE  13  (&E6F9)
-		.faraddr	_OSBYTE_14-1			; OSBYTE  14  (&E6FA)
-		.faraddr	_OSBYTE_15-1			; OSBYTE  15  (&F0A8)
-		.faraddr	_OSBYTE_16-1			; OSBYTE  16  (&E706)
-		.faraddr	_OSBYTE_17-1			; OSBYTE  17  (&DE8C)
-		.faraddr	_OSBYTE_18-1			; OSBYTE  18  (&E9C8)
-		.faraddr	_OSBYTE_19-1			; OSBYTE  19  (&E9B6)
-		.faraddr	_OSBYTE_20-1			; OSBYTE  20  (&CD07)
-		.faraddr	_OSBYTE_21-1			; OSBYTE  21  (&F0B4)
-		.faraddr	_OSBYTE_117-1			; OSBYTE 117  (&E86C)
-		.faraddr	_OSBYTE_118-1			; OSBYTE 118  (&E9D9)
-		.faraddr	_OSBYTE_119-1			; OSBYTE 119  (&E275)
-		.faraddr	_OSBYTE_120-1			; OSBYTE 120  (&F045)
-		.faraddr	_OSBYTE_121-1			; OSBYTE 121  (&F0CF)
-		.faraddr	_OSBYTE_122-1			; OSBYTE 122  (&F0CD)
-		.faraddr	_OSBYTE_123-1			; OSBYTE 123  (&E197)
-		.faraddr	_OSBYTE_124-1			; OSBYTE 124  (&E673)
-		.faraddr	_OSBYTE_125-1			; OSBYTE 125  (&E674)
-		.faraddr	_OSBYTE_126-1			; OSBYTE 126  (&E65C)
-		.faraddr	_OSBYTE_127-1			; OSBYTE 127  (&E035)
-		.faraddr	_OSBYTE_128-1			; OSBYTE 128  (&E74F)
-		.faraddr	_OSBYTE_129-1			; OSBYTE 129  (&E713)
-		.faraddr	_OSBYTE_130-1			; OSBYTE 130  (&E729)
-		.faraddr	_OSBYTE_131-1			; OSBYTE 131  (&F085)
-		.faraddr	_OSBYTE_132-1			; OSBYTE 132  (&D923)
-		.faraddr	_OSBYTE_133-1			; OSBYTE 133  (&D926)
-		.faraddr	_OSBYTE_134-1			; OSBYTE 134  (&D647)
-		.faraddr	_OSBYTE_135-1			; OSBYTE 135  (&D7C2)
-		.faraddr	_OSBYTE_136-1			; OSBYTE 136  (&E657)
-		.faraddr	_OSBYTE_137-1			; OSBYTE 137  (&E67F)
-		.faraddr	_OSBYTE_138-1			; OSBYTE 138  (&E4AF)
-		.faraddr	_OSBYTE_139-1			; OSBYTE 139  (&E034)
-		.faraddr	_OSBYTE_140_141-1			; OSBYTE 140  (&F135)
-		.faraddr	_OSBYTE_140_141-1			; OSBYTE 141  (&F135)
-		.faraddr	_OSBYTE_142-1			; OSBYTE 142  (&DBE7)
-		.faraddr	_OSBYTE_143-1			; OSBYTE 143  (&F168)
-		.faraddr	_OSBYTE_144-1			; OSBYTE 144  (&EAE3)
-		.faraddr	_OSBYTE_145-1			; OSBYTE 145  (&E460)
-		.faraddr	_OSBYTE_146-1			; OSBYTE 146  (&FFAA)
-		.faraddr	_OSBYTE_147-1			; OSBYTE 147  (&EAF4)
-		.faraddr	_OSBYTE_148-1			; OSBYTE 148  (&FFAE)
-		.faraddr	_OSBYTE_149-1			; OSBYTE 149  (&EAF9)
-		.faraddr	_OSBYTE_150-1			; OSBYTE 150  (&FFB2)
-		.faraddr	_OSBYTE_151-1			; OSBYTE 151  (&EAFE)
-		.faraddr	_OSBYTE_152-1			; OSBYTE 152  (&E45B)
-		.faraddr	_OSBYTE_153-1			; OSBYTE 153  (&E4F3)
-		.faraddr	_OSBYTE_154-1			; OSBYTE 154  (&E9FF)
-		.faraddr	_OSBYTE_155-1			; OSBYTE 155  (&EA10)
-		.faraddr	_OSBYTE_156-1			; OSBYTE 156  (&E17C)
-		.faraddr	_OSBYTE_157-1			; OSBYTE 157  (&FFA7)
-		.faraddr	_OSBYTE_158-1			; OSBYTE 158  (&EE6D)
-		.faraddr	_OSBYTE_159-1			; OSBYTE 159  (&EE7F)
-		.faraddr	_OSBYTE_160-1			; OSBYTE 160  (&E9C0)
-		.faraddr	_OSBYTE_166_255-1		; OSBYTE 166+
-		.faraddr	_OSCLI_USERV-1			; OSWORD &E0+
-
+_OSBYTE_TABLE:	.faraddr	_OSBYTE_0-1			; OSBYTE   0  (&E821)	; 0 ; = 3*(ix)
+		.faraddr	_OSBYTE_1_6-1			; OSBYTE   1  (&E988)	; 1 ; = 3*(ix)
+		.faraddr	_OSBYTE_2-1			; OSBYTE   2  (&E6D3)	; 2 ; = 3*(ix)
+		.faraddr	_OSBYTE_3_4-1			; OSBYTE   3  (&E997)	; 3 ; = 3*(ix)
+		.faraddr	_OSBYTE_3_4-1			; OSBYTE   4  (&E997)	; 4 ; = 3*(ix)
+		.faraddr	_OSBYTE_5-1			; OSBYTE   5  (&E976)	; 5 ; = 3*(ix)
+		.faraddr	_OSBYTE_1_6-1			; OSBYTE   6  (&E988)	; 6 ; = 3*(ix)
+		.faraddr	_OSBYTE_7-1			; OSBYTE   7  (&E68B)	; 7 ; = 3*(ix)
+		.faraddr	_OSBYTE_8-1			; OSBYTE   8  (&E689)	; 8 ; = 3*(ix)
+		.faraddr	_OSBYTE_9-1			; OSBYTE   9  (&E6B0)	; 9 ; = 3*(ix)
+		.faraddr	_OSBYTE_10-1			; OSBYTE  10  (&E6B2)	; 10 ; = 3*(ix)
+		.faraddr	_OSBYTE_11-1			; OSBYTE  11  (&E995)	; 11 ; = 3*(ix)
+		.faraddr	_OSBYTE_12-1			; OSBYTE  12  (&E98C)	; 12 ; = 3*(ix)
+		.faraddr	_OSBYTE_13-1			; OSBYTE  13  (&E6F9)	; 13 ; = 3*(ix)
+		.faraddr	_OSBYTE_14-1			; OSBYTE  14  (&E6FA)	; 14 ; = 3*(ix)
+		.faraddr	_OSBYTE_15-1			; OSBYTE  15  (&F0A8)	; 15 ; = 3*(ix)
+		.faraddr	_OSBYTE_16-1			; OSBYTE  16  (&E706)	; 16 ; = 3*(ix)
+		.faraddr	_OSBYTE_17-1			; OSBYTE  17  (&DE8C)	; 17 ; = 3*(ix)
+		.faraddr	_OSBYTE_18-1			; OSBYTE  18  (&E9C8)	; 18 ; = 3*(ix)
+		.faraddr	_OSBYTE_19-1			; OSBYTE  19  (&E9B6)	; 19 ; = 3*(ix)
+		.faraddr	_OSBYTE_20-1			; OSBYTE  20  (&CD07)	; 20 ; = 3*(ix)
+		.faraddr	_OSBYTE_21-1			; OSBYTE  21  (&F0B4)	; 21 ; = 3*(ix)
+		.faraddr	_OSBYTE_117-1			; OSBYTE 117  (&E86C)	; 22 ; = 3*(ix-117+22)   
+		.faraddr	_OSBYTE_118-1			; OSBYTE 118  (&E9D9)	; 23 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_119-1			; OSBYTE 119  (&E275)	; 24 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_120-1			; OSBYTE 120  (&F045)	; 25 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_121-1			; OSBYTE 121  (&F0CF)	; 26 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_122-1			; OSBYTE 122  (&F0CD)	; 27 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_123-1			; OSBYTE 123  (&E197)	; 28 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_124-1			; OSBYTE 124  (&E673)	; 29 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_125-1			; OSBYTE 125  (&E674)	; 30 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_126-1			; OSBYTE 126  (&E65C)	; 31 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_127-1			; OSBYTE 127  (&E035)	; 32 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_128-1			; OSBYTE 128  (&E74F)	; 33 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_129-1			; OSBYTE 129  (&E713)	; 34 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_130-1			; OSBYTE 130  (&E729)	; 35 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_131-1			; OSBYTE 131  (&F085)	; 36 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_132-1			; OSBYTE 132  (&D923)	; 37 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_133-1			; OSBYTE 133  (&D926)	; 38 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_134-1			; OSBYTE 134  (&D647)	; 39 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_135-1			; OSBYTE 135  (&D7C2)	; 40 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_136-1			; OSBYTE 136  (&E657)	; 41 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_137-1			; OSBYTE 137  (&E67F)	; 42 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_138-1			; OSBYTE 138  (&E4AF)	; 43 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_139-1			; OSBYTE 139  (&E034)	; 44 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_140_141-1		; OSBYTE 140  (&F135)	; 45 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_140_141-1		; OSBYTE 141  (&F135)	; 46 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_142-1			; OSBYTE 142  (&DBE7)	; 47 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_143-1			; OSBYTE 143  (&F168)	; 48 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_144-1			; OSBYTE 144  (&EAE3)	; 49 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_145-1			; OSBYTE 145  (&E460)	; 50 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_146-1			; OSBYTE 146  (&FFAA)	; 51 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_147-1			; OSBYTE 147  (&EAF4)	; 52 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_148-1			; OSBYTE 148  (&FFAE)	; 53 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_149-1			; OSBYTE 149  (&EAF9)	; 54 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_150-1			; OSBYTE 150  (&FFB2)	; 55 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_151-1			; OSBYTE 151  (&EAFE)	; 56 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_152-1			; OSBYTE 152  (&E45B)	; 57 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_153-1			; OSBYTE 153  (&E4F3)	; 58 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_154-1			; OSBYTE 154  (&E9FF)	; 59 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_155-1			; OSBYTE 155  (&EA10)	; 60 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_156-1			; OSBYTE 156  (&E17C)	; 61 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_157-1			; OSBYTE 157  (&FFA7)	; 62 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_158-1			; OSBYTE 158  (&EE6D)	; 63 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_159-1			; OSBYTE 159  (&EE7F)	; 64 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_160-1			; OSBYTE 160  (&E9C0)	; 65 ; = 3*(ix-117+22)
+		.faraddr	_OSBYTE_166_255-1		; OSBYTE 166+		; 66 ; = 3*(66)
+		.faraddr	_OSCLI_USERV-1			; OSWORD &E0+		; 67 ; = 3*(67)
+TBLD_BYTE_117_160	:= 117-22
+TBLIX_OSBYTE166PLUS 	:= 66
+TBLIX_OSWORDEOPLUS 	:= 67
 
 ;*************************************************************************
 ;*			                                              *
@@ -244,26 +433,34 @@ _OSBYTE_TABLE:	.faraddr	_OSBYTE_0-1			; OSBYTE   0  (&E821)
 ;*			                                              *
 ;*************************************************************************
 
-		.faraddr	_OSWORD_0-1			; OSWORD   0  (&E902)
-		.faraddr	_OSWORD_1-1			; OSWORD   1  (&E8D5)
-		.faraddr	_OSWORD_2-1			; OSWORD   2  (&E8E8)
-		.faraddr	_OSWORD_3-1			; OSWORD   3  (&E8D1)
-		.faraddr	_OSWORD_4-1			; OSWORD   4  (&E8E4)
-		.faraddr	_OSWORD_5-1			; OSWORD   5  (&E803)
-		.faraddr	_OSWORD_6-1			; OSWORD   6  (&E80B)
-		.faraddr	_OSWORD_7-1			; OSWORD   7  (&E82D)
-		.faraddr	_OSWORD_8-1			; OSWORD   8  (&E8AE)
-		.faraddr	_OSWORD_9-1			; OSWORD   9  (&C735)
-		.faraddr	_OSWORD_10-1			; OSWORD  10  (&CBF3)
-		.faraddr	_OSWORD_11-1			; OSWORD  11  (&C748)
-		.faraddr	_OSWORD_12-1			; OSWORD  12  (&C8E0)
-		.faraddr	_OSWORD_13-1			; OSWORD  13  (&D5CE)
-
+TBLD_WORD		:= 68
+		.faraddr	_OSWORD_0-1			; OSWORD   0  (&E902)	; 68 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_1-1			; OSWORD   1  (&E8D5)	; 69 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_2-1			; OSWORD   2  (&E8E8)	; 70 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_3-1			; OSWORD   3  (&E8D1)	; 71 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_4-1			; OSWORD   4  (&E8E4)	; 72 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_5-1			; OSWORD   5  (&E803)	; 73 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_6-1			; OSWORD   6  (&E80B)	; 74 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_7-1			; OSWORD   7  (&E82D)	; 75 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_8-1			; OSWORD   8  (&E8AE)	; 76 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_9-1			; OSWORD   9  (&C735)	; 77 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_10-1			; OSWORD  10  (&CBF3)	; 78 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_11-1			; OSWORD  11  (&C748)	; 79 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_12-1			; OSWORD  12  (&C8E0)	; 80 ; = 3*(ix-256-68)
+		.faraddr	_OSWORD_13-1			; OSWORD  13  (&D5CE)	; 81 ; = 3*(ix-256-68)
+_OSBYTE_TABLE_SIZE := * - _OSBYTE_TABLE
 
 _OSWORD_5:
 _OSWORD_6:
 _OSWORD_7:
 _OSWORD_8:
+_OSWORD_9:
+_OSWORD_10:
+_OSWORD_11:
+_OSWORD_12:
+_OSWORD_13:
+
+
 _OSBYTE_0:
 _OSBYTE_1_6:
 _OSBYTE_2:
@@ -281,12 +478,21 @@ _OSBYTE_16:
 _OSBYTE_17:
 _OSBYTE_18:
 _OSBYTE_19:
+_OSBYTE_20:
 _OSBYTE_117:
+_OSBYTE_118:
 _OSBYTE_119:
+_OSBYTE_120:
+_OSBYTE_121:
+_OSBYTE_122:
 _OSBYTE_123:
 _OSBYTE_127:
 _OSBYTE_128:
 _OSBYTE_129:
+_OSBYTE_132:
+_OSBYTE_133:
+_OSBYTE_134:
+_OSBYTE_135:
 _OSBYTE_136:
 _OSBYTE_137:
 _OSBYTE_139:
@@ -299,19 +505,25 @@ _OSBYTE_149:
 _OSBYTE_150:
 _OSBYTE_151:
 _OSBYTE_152:
+_OSBYTE_154:
+_OSBYTE_155:
 _OSBYTE_156:
 _OSBYTE_157:
 _OSBYTE_158:
 _OSBYTE_159:
 _OSBYTE_160:
 _OSCLI_USERV:
+
+	; consume return address from stack and jump back to 
+
 		; not implemented!
 		sep	#$40
 		rtl
 
-
-
-
+; TODO: pass on unregistered OSBYTES but avoid loops?
+;;		pla
+;;		brl	_BE7CA
+;;
 
 
 

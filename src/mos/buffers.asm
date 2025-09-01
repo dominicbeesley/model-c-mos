@@ -4,6 +4,10 @@
 		.include "sysvars.inc"
 		.include "nat-layout.inc"
 		.include "oslib.inc"
+		; TODO: remove this dependency
+		.include "vduvars.inc"
+		; TODO: remove this dependency
+		.include "hardware.inc"
 
 
 		.export initBuffers
@@ -16,44 +20,46 @@
 		.export _OSBYTE_145
 		.export _OSBYTE_153
 
+		.segment "BMOS_NAT_CODE"
+
 
 		.i16
 		.a16
 initBuffers:
 		pea	DPBBC
 		pld
-		ldx	#IX_INSV
-		phk
-		plb
-		lda	#.loword(_INSBV)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_INSV
+		cop	COP_27_OPBHI
+		.faraddr _INSBV
+		cop	COP_09_OPADV
 
 		pea	DPBBC
 		pld
-		ldx	#IX_REMV
-		phk
-		plb
-		lda	#.loword(_REMVB)
-		jsl	AddToVector
-
-		pea	DPBBC
-		pld
-		ldx	#IX_CNPV
-		phk
-		plb
-		lda	#.loword(_CNPV)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_REMV
+		cop	COP_27_OPBHI
+		.faraddr _REMVB
+		cop	COP_09_OPADV
 
 
 		pea	DPBBC
 		pld
-		ldx	#IX_RDCHV
-		phk
-		plb
-		lda	#.loword(_NVRDCH)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_CNPV
+		cop	COP_27_OPBHI
+		.faraddr _CNPV
+		cop	COP_09_OPADV
 
-		rts
+		pea	DPBBC
+		pld
+		ldx	#0
+		ldy	#IX_RDCHV
+		cop	COP_27_OPBHI
+		.faraddr _NVRDCH
+		cop	COP_09_OPADV
+
+		rtl
 
 
 ; buffer tables - the buffer pointers are all calculated so that an offset
@@ -234,7 +240,7 @@ _BE47E:		sta	mosbuf_buf_start,X		; set buffer output pointer
 		bne	_BE48F				; if not the same buffer is not empty so E48F
 
 		ldy	#EVENT_00_OUTPUT_BUF_EMPTY	; buffer is empty so Y=0
-		jsr	kernelRaiseEvent		; and enter EVENT routine to signal EVENT 0 buffer
+		jsl	kernelRaiseEvent		; and enter EVENT routine to signal EVENT 0 buffer
 							; becoming empty
 
 _BE48F:		pla					; get back byte from buffer
@@ -252,7 +258,7 @@ _BE491:		plp					; get back flags
 
 _BE4A8:		tya					; A=Y
 		ldy	#EVENT_02_INPUT_BUF_ENTER	; Y=2
-		jsr	kernelRaiseEvent		; check event
+		jsl	kernelRaiseEvent		; check event
 		tay					; Y=A
 
 		; drop through to _OSBYTE_138
@@ -315,7 +321,7 @@ _INSBV:			php					; save flags
 			bcs	plpSecRtl				; then E4E0
 
 			ldy	#$01				; else Y=1
-			jsr	kernelRaiseEvent		; to service input buffer full event
+			jsl	kernelRaiseEvent		; to service input buffer full event
 			pha
 
 plaPlpSecRtl:		pla
@@ -380,7 +386,7 @@ _OSBYTE_153:		txa					; A=buffer number
 			tya					; get character back in A
 			bcs	@clcrtl				; and if escape disabled exit with carry clear
 			ldy	#EVENT_06_ESCAPE		; else signal EVENT 6 Escape pressed
-			jsr	kernelRaiseEvent		; 
+			jsl	kernelRaiseEvent		; 
 			bcc	@clcrtl				; if event handles ESCAPE then exit with carry clear
 			jsl	_OSBYTE_125			; else set ESCAPE flag
 @clcrtl:		clc					; clear carry
@@ -579,7 +585,7 @@ _BE551:			tay					; Y=A
 			txa					; A=X
 			pha					; Push X
 			tya					; get back Y
-			jsl	vdu_LD8CE_COPYCURS		; execute edit action
+			jsr	vdu_LD8CE_COPYCURS		; execute edit action
 
 			pla					; restore X
 			tax					; 
@@ -625,8 +631,7 @@ _BE594:			pla					; restore original code
 _BE5A6:			txa					; A=X
 			pha					; Push A
 
-;TODO: cursor editing - call OSBYTE 135
-			jsl	vdu_LD905_COPY			; read a character from the screen
+			jsr	vdu_LD905_COPY			; read a character from the screen
 			tay					; Y=A
 			beq	_BE534				; if not valid A=0 so BEEP
 			pla					; else restore X
@@ -722,3 +727,165 @@ _BF0AC:			cli					; allow interrupts
 _OSBYTE_21:		cpx	#$09				; is X<9?
 			bcc	_BF098				; if so flush buffer or else
 			rtl					; exit
+
+
+;;TODO:================ move the following to VDU module?
+
+
+	.macro BANK_SCR
+		pea	$F3F3
+		plb
+		plb
+	.endmacro
+
+	.macro STA_SCR_DP_Y dp
+
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		sta	(dp),Y
+		plb
+		plp
+
+	.endmacro
+
+	.macro LDA_SCR_DP_Y dp
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		lda	(dp),Y
+		plb
+		plp
+
+	.endmacro
+
+	.macro ORA_SCR_DP_Y dp
+
+		php
+		phb
+		pea	$FFFF
+		plb
+		plb
+		ora	(dp),Y
+		plb
+		plp
+
+	.endmacro
+
+
+
+.proc vdu_LD8CE_COPYCURS
+			pha					; Push A
+			lda	#$a0				; A=&A0
+			ldx	sysvar_VDU_Q_LEN		; X=number of items in VDU queque
+			bne	_BD916				; if not 0 D916
+			bit	dp_mos_vdu_status		; else check VDU status byte
+			bne	_BD916				; if either VDU is disabled or plot to graphics
+								; cursor enabled then D916
+			bvs	_BD8F5				; if cursor editing enabled D8F5
+			lda	vduvar_CUR_START_PREV		; else get 6845 register start setting
+			and	#$9f				; clear bits 5 and 6
+			ora	#$40				; set bit 6 to modify last cursor size setting
+			jsr	_LC954				; change write cursor format
+			ldx	#$18				; X=&18
+			ldy	#$64				; Y=&64
+			jsr	_LD482				; set text input cursor from text output cursor
+			jsr	_LCD7A				; modify character at cursor poistion
+			lda	#$02				; A=2
+			jsr	OR_VDU_STATUS			; bit 1 of VDU status is set to bar scrolling
+
+
+_BD8F5:			lda	#$bf				; A=&BF
+			jsr	AND_VDU_STATUS			; bit 6 of VDU status =0
+			pla					; Pull A
+			and	#$7f				; clear hi bit (7)
+			cop	COP_00_OPWRC			; TODO: make this a non-vectored VDU call?
+;;			jsr	_VDUCHR_NAT			; entire VDU routine !!
+			lda	#$40				; A=&40
+			jsr	OR_VDU_STATUS			; exit
+			rts
+.endproc
+
+
+.proc vdu_LD905_COPY
+			lda	#$20				; A=&20
+			bit	dp_mos_vdu_status		; if bit 6 cursor editing is set
+			bvc	retA0				; 
+			bne	retA0				; or bit 5 is set exit &D8CB
+			lda	#OSBYTE_135_GET_MODE		; read a character from the screen
+			cop	COP_06_OPOSB
+			beq	_BD917				; if A=0 on return exit via D917
+			pha					; else store A
+			lda	#9				; perform cursor right
+			cop	COP_00_OPWRC			; TODO: make this a non-vectored VDU call?
+
+::_BD916:		pla					; restore A
+::_BD917:		rts					; and exit
+retA0:			lda	#0
+			rts
+.endproc
+	
+
+OR_VDU_STATUS:		ora	dp_mos_vdu_status		; VDU status byte set bit 0 or bit 7
+			bne	STA_VDU_STATUS			; branch forward to store
+AND_VDU_STATUS:		and	dp_mos_vdu_status		; VDU status byte clear bit 0 or bit 2 of status
+STA_VDU_STATUS:		sta	dp_mos_vdu_status		; VDU status byte
+_BC5AC_rts:		rts					; exit
+
+
+_LC954:			ldy	#$0a				; Y=10 - cursor control register number
+			bne	_BC985				; jump to C985, Y=register, Y=value
+_BC985:			pha
+			tya
+			sta	f:sheila_CRTC_reg		; else set CRTC address register
+			pla
+			sta	f:sheila_CRTC_rw		; and poke new value to register Y
+;;			DEBUG_PRINTF "CRTC %Y=%A  %F\n"
+_BC98B:			rts					; exit
+
+_LCD77:			pla					; pull A
+_BCD78:			plp					; pull flags
+_BCD79:			rts					; and exit
+
+_LCD7A:			php					; push flags
+			pha					; push A
+			ldy	vduvar_BYTES_PER_CHAR				; bytes per character
+			dey					; 
+			bne	_BCD8F				; if not mode 7
+			LDA_SCR_DP_Y dp_mos_vdu_top_scanline	; get cursor from top scan line
+			sta	vduvar_GRA_WKSP+8		; store it
+			lda	vduvar_MO7_CUR_CHAR		; mode 7 write cursor character
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; store it at scan line
+			jmp	_LCD77				; and exit
+
+_BCD8F:			lda	#$ff				; A=&FF =cursor
+			cpy	#$1f				; except in mode 2 (Y=&1F)
+			bne	_BCD97				; if not CD97
+			lda	#$3f				; load cursor byte mask
+
+;********** produce white block write cursor *****************************
+
+_BCD97:			sta	dp_mos_vdu_wksp			; store it
+_BCD99:			LDA_SCR_DP_Y dp_mos_vdu_top_scanline	; get scan line byte
+			eor	dp_mos_vdu_wksp			; invert it
+			STA_SCR_DP_Y dp_mos_vdu_top_scanline	; store it on scan line
+			dey					; decrement scan line counter
+			bpl	_BCD99				; do it again
+			bmi	_LCD77				; then jump to &CD77
+
+_LD482:			lda	#$02				; A=2
+			bne	_VDU_VAR_COPY			; copy 2 bytes
+_VDU_VAR_COPY:		sta	dp_mos_vdu_wksp			; 
+__vdu_var_copy_next:	lda	vduvar_GRA_WINDOW_LEFT,X			; 
+			sta	vduvar_GRA_WINDOW_LEFT,Y			; 
+			inx					; 
+			iny					; 
+			dec	dp_mos_vdu_wksp			; 
+			bne	__vdu_var_copy_next		; 
+			rts					; and return

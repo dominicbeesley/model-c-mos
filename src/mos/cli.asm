@@ -74,7 +74,7 @@ matlp:		eor	f:_OSCLI_TABLE,X
 tbllp:		bcs	hadDot					; skip forward if '.'
 		inx					
 		lda	(dp_mos_txtptr),Y			
-		jsr	utilsAisAlpha				
+		jsl	utilsAisAlpha				
 		bcc	matlp				
 
 tbllpfirst:	lda	f:_OSCLI_TABLE,X			
@@ -113,7 +113,7 @@ _LE004:		lda	f:_OSCLI_TABLE + 2,X		; Get table parameter
 		bmi	exitrts				; If >=&80, number follow
 		; else string follows
 
-_LE009:		pha					; Pass Y line offset to A for later
+_LE009:		phy					; Pass Y line offset to A for later
 		lda	f:_OSCLI_TABLE + 2,X		; Get looked-up parameter from table
 		tay
 		pla
@@ -167,6 +167,7 @@ _OSCLI_TABLE:
 ;			OSCLTBL	"LOAD",	_OSCLI_LOAD	,$00	; *LOAD	    &E23C, A=0	   XY=>String
 ;			OSCLTBL	"LINE",	_OSCLI_USERV	,$01	; *LINE	    &E659, A=1	   USERV, XY=>String
 ;;			OSCLTBL	"MOTOR",_OSCLI_OSBYTE	,$89	; *MOTOR    &E348, A=&89   OSBYTE
+			OSCLTBL	"MODULES",_OSCLI_MODULES,$00	; *MODULES  !!!! NEW !!!!!
 			OSCLTBL	"OPT",	_OSCLI_OSBYTE	,$8b	; *OPT	    &E348, A=&8B   OSBYTE
 			OSCLTBL	"RUN",	_OSCLI_FSCV	,$04	; *RUN	    &E031, A=4	   FSCV, XY=>String
 ;;			OSCLTBL	"ROM",	_OSCLI_OSBYTE	,$8d	; *ROM	    &E348, A=&8D   OSBYTE
@@ -174,6 +175,7 @@ _OSCLI_TABLE:
 ;			OSCLTBL	"SPOOL",_OSCLI_SPOOL	,$00	; *SPOOL    &E281, A=0	   XY=>String
 			OSCLTBL	"TAPE",	_OSCLI_OSBYTE	,$8c	; *TAPE	    &E348, A=&8C   OSBYTE
 			OSCLTBL	"TV",	_OSCLI_OSBYTE	,$90	; *TV	    &E348, A=&90   OSBYTE
+			OSCLTBL "GO",	_OSCLI_GO	,$80	; *GO (NEW)
 			OSCLTBL	"",	_OSCLI_FSCV	,$03	; Unmatched &E031, A=3	   FSCV, XY=>String
 			.byte	$00				; Table end marker
 
@@ -202,16 +204,93 @@ _OSCLI_BASIC:		ldx	sysvar_ROMNO_BASIC	; Get BASIC ROM number
 ;*		 Issue *HELP to ROMS					 *
 ;*									 *
 ;*************************************************************************
-_OSCLI_HELP:		ldx	#SERVICE_9_HELP			; 
-			lda	#OSBYTE_143_SERVICE_CALL
-			cop	COP_06_OPOSB			; 
+.proc _OSCLI_HELP:far
+		phy						; save Y for later passing to modules
+keys:			
+		sty	dp_mos_OS_wksp
+		ldx	#$00				
+		beq	tbllpfirst				
+
+matlp:		eor	f:tblHELP,X			
+		and	#$df				
+		bne	skNotMatch				
+		iny					
+		clc					
+
+tbllp:		bcs	hadDot					; skip forward if '.'
+		inx					
+tbllpfirst:	lda	(dp_mos_txtptr),Y			
+		jsl	utilsAisAlpha				
+		bcc	matlp				
+
+		lda	f:tblHELP,X			
+		beq	endstr				
+		lda	(dp_mos_txtptr),Y			
+		cmp	#'.'				
+		beq	skDot				
+skNotMatch:	clc					
+		ldy	dp_mos_OS_wksp				
+		dey					
+skDot:		iny					
+		inx					
+		inx
+skaddlp:	inx					
+		lda	f:tblHELP - 4,X		
+		beq	tbllp
+		inc	A
+		beq	doSvc4
+		bra	skaddlp			; skip forwards to pointer
+
+endstr:		inx					
+		inx					
+		inx					
+		inx					
+
+hadDot:		dex					
+		dex					
+		dex		
+
+		; save pointer
+		phy
+		; push return address
+		phk
+		per	@ret-1
+
+		; push routine pointer
+		lda	f:tblHELP + 2,X
+		pha					
+		lda	f:tblHELP + 1,X		
+		pha					
+		lda	f:tblHELP,X		
+		pha					
+		php					
+		rti					; Jump to routine
+
+@ret:		ply
+		bra	keys
+
+
+doSvc4:
+		ply
+		ldx	#SERVICE_9_HELP			; 
+		lda	#OSBYTE_143_SERVICE_CALL
+		cop	COP_06_OPOSB			; 
+
+
 			cop	COP_01_OPWRS			; print following message routine return after BRK
 			.byte	$0d,$0a				; carriage return
 			.byte	"MODEL C MOS 6.00"		; help message
 			.byte	$0d,$0a				; carriage return
 			.byte 	0
 			rtl					; 
+.endproc
+		.macro HENT keyword, fn
+		.asciiz keyword
+		.faraddr fn
+		.endmacro
 
+tblHELP:	HENT "MODULES", modules_help
+		.byte $FF
 
 ;*************************************************************************
 ;*									 *
@@ -265,8 +344,87 @@ _BE36C:		ldy	dp_mos_GSREAD_quoteflag		; Y=third osbyte parameter
 		bvs	_badCmd				; if V set on return then error
 		rtl					; else RETURN
 
-.endproc 
-
 _LE043:		bcc	@ss
 		jmp	utilSkipComma
 @ss:		jmp	utilSkipSpace			
+
+.endproc 
+
+.proc	clearhex32:near
+		lda	#0
+		sta	f:osfile_ctlblk + 0,X
+		sta	f:osfile_ctlblk + 1,X
+		sta	f:osfile_ctlblk + 2,X
+		sta	f:osfile_ctlblk + 3,X
+		rts
+.endproc
+
+.proc	asl32:near
+		pha
+		lda	f:osfile_ctlblk + 0,X
+		asl	A
+		sta	f:osfile_ctlblk + 0,X
+		lda	f:osfile_ctlblk + 1,X
+		rol	A
+		sta	f:osfile_ctlblk + 1,X
+		lda	f:osfile_ctlblk + 2,X
+		rol	A
+		sta	f:osfile_ctlblk + 2,X
+		lda	f:osfile_ctlblk + 3,X
+		rol	A
+		sta	f:osfile_ctlblk + 3,X
+		pla
+		rts
+.endproc
+
+.proc addnibble32:near
+		jsr	asl32
+		bcs	@retsec
+		jsr	asl32
+		bcs	@retsec
+		jsr	asl32
+		bcs	@retsec
+		jsr	asl32
+		bcs	@retsec
+
+		ora	f:osfile_ctlblk + 0, X
+		sta	f:osfile_ctlblk + 0, X
+
+@retsec:	rts
+.endproc
+
+
+.proc loadsave_readhex32:near
+		jsr	utilSkipSpace
+		jsr	clearhex32
+		jsr	_CHECK_FOR_HEX
+		bcc	@retclc
+@lp:		jsr	addnibble32
+		bcs	@retclc			; overflow
+		jsr	_CHECK_FOR_HEX
+		bcs	@lp
+		sec
+		rts
+
+@retclc:	clc
+		rts
+.endproc
+
+brkBadAddress:	brk					; 
+		.byte	$fc				; 
+		.byte	"Bad address"			; error
+		brk					; 
+
+.proc _OSCLI_GO:far
+		ldx	#2				; use LOAD address space
+		jsr	loadsave_readhex32
+		bcc	brkBadAddress
+		phk
+		pea	@rtl-1
+		jml	[osfile_ctlblk + 2]		; jump indirect, assume rtl and native
+@rtl:		rtl
+.endproc
+
+
+; List modules to output
+_OSCLI_MODULES:	jml	modules_list

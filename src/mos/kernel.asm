@@ -44,7 +44,7 @@ emu_handle_abort:
 		lda	#DEICE_STATE_ABORT
 		clc
 		xce				; switch to native mode
-		bra	enter_deice
+		jml	deice_enter_emu
 
 ; deice - all 65816 entries are initially ABORT
 ; entry point inspects instruction and changes to BP if WDM instruction
@@ -329,8 +329,8 @@ emu_handle_res:
 		; Enter auto-boot mode
 		lda	sheila_MEM_CTL
 		and	#<~BITS_MEM_CTL_BOOT_MASK
-		ora	#MEM_CTL_AUTOBOOT_THROT_MODE	; production mode - but no hoglet debugger
-;		ora	#MEM_CTL_AUTOBOOT_MODE
+;;		ora	#MEM_CTL_AUTOBOOT_THROT_MODE	; production mode - but no hoglet debugger
+		ora	#MEM_CTL_AUTOBOOT_MODE
 		sta	sheila_MEM_CTL
 
 ; Map the BLTURBO registers so that both native and emulation modes see the 
@@ -455,19 +455,32 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 
 		jsr	cfgGetMosBase
-		DEBUG_PRINTF "MOS_BASE =%H%A\n"
+		DEBUG_PRINTF "MOS_BASE =%H%A00\n"
+		lda	#.bankbyte(__KERNEL_BASE__)
+		xba
+		lda	#.hibyte(__KERNEL_BASE__)
+		DEBUG_PRINTF "MOS_BASE =%H%A00 (code)\n"
 
-		
 		rep	#$30
 		.i16
 		.a16
 
+		DEBUG_PRINTF "OSBYTEWORD init\n"
+		jsl	osByteWordInit
+
+		DEBUG_PRINTF "IRQdisp\n"
+		jsr	initIRQdispatcher
+
 
 		DEBUG_PRINTF "initHandles\n"
-		jsr	initHandles
+		jsl	initHandles
 
 		DEBUG_PRINTF "initB0Blocks\n"
-		jsr	initB0Blocks
+		jsl	initB0Blocks
+
+		DEBUG_PRINTF "Init modules\n"
+		jsl	modules_init
+
 
 ; Set up the BBC/emulation mode OS vectors to point at their defaults
 ; which are the entry points in bbc-nat-vectors
@@ -488,59 +501,84 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		; set up OSBYTE/WORD native vector handlers
 		pea	DPBBC
 		pld
-		ldx	#IX_BYTEV
-		phk
-		plb
-		lda	#.loword(doOSBYTE)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_BYTEV
+		cop	COP_27_OPBHI
+		.faraddr doOSBYTE
+		cop	COP_09_OPADV
 
 		pea	DPBBC
 		pld
-		ldx	#IX_WORDV
-		phk
-		plb
-		lda	#.loword(doOSWORD)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_WORDV
+		cop	COP_27_OPBHI
+		.faraddr doOSWORD
+		cop	COP_09_OPADV
 
 		pea	DPBBC
 		pld
-		ldx	#IX_CLIV
-		pea	doCLIV >> 8
-		plb
-		plb
-		lda	#.loword(doCLIV)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_CLIV
+		cop	COP_27_OPBHI
+		.faraddr doCLIV
+		cop	COP_09_OPADV
 
 		pea	DPBBC
 		pld
-		ldx	#IX_FSCV
-		phk
-		plb
-		lda	#.loword(doFSCV)
-		jsl	AddToVector
+		ldx	#0
+		ldy	#IX_FSCV
+		cop	COP_27_OPBHI
+		.faraddr doFSCV
+		cop	COP_09_OPADV
 
 		DEBUG_PRINTF "buffers\n"
-		jsr	initBuffers
+		jsl	initBuffers
 	
 		sep	#$30
 		.i8
 		.a8
 		lda	#$80
-		sta	sysvar_RAM_AVAIL
-
-		DEBUG_PRINTF "IRQdisp\n"
-		jsr	initIRQdispatcher
+		sta	f:sysvar_RAM_AVAIL
 
 		DEBUG_PRINTF "hardware\n"
 		jsr	hardwareInit
 
 
-		DEBUG_PRINTF "VDU\n"
-		lda	#0
-		jsl	VDU_INIT
+;		DEBUG_PRINTF "VDU\n"
+;		lda	#0
+;		jsl	VDU_INIT
 
-		rep	#$10
+;;		pea	DPBBC
+;;		pld
+;;		ldx	#0
+;;		ldy	#IX_WRCHV
+;;		cop	COP_27_OPBHI
+;;		.faraddr debug_printA
+;;		cop	COP_09_OPADV
+		
+
+		rep	#$30
 		.i16
+		.a16
+
+		DEBUG_PRINTF "insert VDU module\n"
+		ldx	#10
+		pea	__KERNEL_BASE__ >> 8
+		plb
+		plb
+		lda	#$4000
+		cop	COP_34_OPMOD
+
+		DEBUG_PRINTF "insert KEYBOARD module\n"
+		ldx	#10
+		pea	__KERNEL_BASE__ >> 8
+		plb
+		plb
+		lda	#$8000
+		cop	COP_34_OPMOD
+
+
+
 		sep	#$20
 		.a8
 
@@ -565,15 +603,26 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.i16
 
 
-		DEBUG_PRINTF "Keyb\n"
-		jsr	initKeyboard
+
+
 
 		DEBUG_PRINTF "scan ROMs\n"
 		jsl	roms_scanroms			; only on ctrl-break, but always for now...
 		jsl	roms_init_services		; call initialisation service calls
 
 
+
 		cli
+
+;;		pea	$7D7D
+;;		plb
+;;		plb
+;;		lda	#$4000
+;;		ldy	$4000 + 12
+;;		cop	COP_32_OPSUM
+;;
+;;		wdm 0
+
 
 ;		cop	COP_26_OPBHA
 ;		.byte	"HELP",13,0
@@ -582,6 +631,11 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		sep	#$30
 		.a8
 		.i8
+		pea	0
+		pld
+		phd
+		plb
+		plb
 		ldx	sysvar_ROMNO_BASIC
 		lda	#OSBYTE_142_ENTER_LANGUAGE
 		cop	COP_06_OPOSB
@@ -591,47 +645,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 str_basprog:	.byte "OLD",13,"RUN",13,0
 		;;.byte "P.\"DOMISH\"",13,0
-
-
-
-PrintHexA:
-	php
-	sep	#$20
-	.a8
-	pha
-	lsr	A
-	lsr	A
-	lsr	A
-	lsr	A
-	jsr	@nyb
-	pla
-	pha
-	jsr	@nyb
-	pla
-	plp
-	rts
-@nyb:	and	#$F
-	ora	#'0'
-	cmp	#$3A
-	bcc	@s
-	adc	#'A'-$3A-1
-@s:	cop	COP_00_OPWRC
-	rts
-
-PrintHexX:
-	php
-	rep	#$30
-	.i16
-	.a16
-	pha
-	txa
-	xba
-	jsr	PrintHexA
-	xba
-	jsr	PrintHexA
-	pla
-	plp
-	rts
 
 
 
@@ -866,9 +879,10 @@ tblMosLocs:	.word	$FFC0	; map 0, mosram dis
 
 
 	; Move event stuff to a module?
-kernelRaiseEvent:
+.proc kernelRaiseEvent:far
 		sec
-		rts
+		rtl
+.endproc 
 
 ;;;;;;;;;;;;;;;;;; TODO: split this up into relevant modules?
 
