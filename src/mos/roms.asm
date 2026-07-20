@@ -1,8 +1,10 @@
 		.include "dp_bbc.inc"
-		.include "hardware.inc"
-		.include "debug.inc"
 		.include "sysvars.inc"
 		.include "oslib.inc"
+		.include "hardware.inc"
+
+		.include "debug_i.inc"
+		.include "kernel_i.inc"
 		
 		.export roms_scanroms
 		.export roms_init_services

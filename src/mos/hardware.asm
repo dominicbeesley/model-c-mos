@@ -13,6 +13,8 @@
 		.include "dp_bbc.inc"
 		.include "nat-layout.inc"
 
+		.include "kernel_i.inc"
+
 		.export	hardwareDetectHardReset
 		.export	hardwareInit
 		

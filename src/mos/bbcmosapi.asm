@@ -1,5 +1,8 @@
 		.include "oslib.inc"	
 		.include "vectors.inc"
+
+		.include "gsread_i.inc"
+		.include "kernel_i.inc"
 	
 		
 		.segment "BBCCODE"

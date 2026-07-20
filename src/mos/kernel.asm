@@ -1,13 +1,27 @@
 
 		.include "dp_bbc.inc"
 		.include "hardware.inc"
-		.include "deice.inc"
-		.include "debug.inc"
 		.include "vectors.inc"
 		.include "nat-layout.inc"
 		.include "oslib.inc"
 		.include "sysvars.inc"
 		.include "vduvars.inc"
+
+		.include "deice_i.inc"
+		.include "debug_i.inc"
+		.include "bbc-nat-vectors_i.inc"
+		.include "brk_i.inc"
+		.include "roms_i.inc"
+		.include "cop_i.inc"
+		.include "hardware_i.inc"
+		.include "buffers_i.inc"
+		.include "fscv_i.inc"
+		.include "cli_i.inc"
+		.include "linker_symbols_i.inc"
+		.include "osbyte_word_i.inc"
+		.include "modules_i.inc"
+		.include "irqs_i.inc"
+		.include "b0blocks_i.inc"
 
 		.export nat_handle_cop
 		.export nat_handle_brk
@@ -419,13 +433,13 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		; copy to "RUN" address which is 00 FFE0
 		ldx	#.loword(__HW816_VECS_LOAD__)
 		ldy	#.loword(__HW816_VECS_RUN__)
-		lda	#__HW816_VECS_SIZE__
+		lda	#.loword(__HW816_VECS_SIZE__)
 		mvn	#^__HW816_VECS_LOAD__, #^__HW816_VECS_RUN__
 
 		; copy to frigged boot-mode location TODO: can't we have both at 00 FFE0? check BAS816, beeb816 and change VHDL, API doco
 		ldx	#.loword(__HW816_VECS_LOAD__)
 		ldy	#$8FE0
-		lda	#__HW816_VECS_SIZE__
+		lda	#.loword(__HW816_VECS_SIZE__)
 		mvn	#^__HW816_VECS_LOAD__, #0
 
 ;;;; We are now running in BOOT MODE but will soon switch boot mode off - vectors
@@ -444,7 +458,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		ldx	#.loword(__default_handlers_LOAD__)
 		ldy	#.loword(__default_handlers_RUN__)
-		lda	#__default_handlers_SIZE__
+		lda	#.loword(__default_handlers_SIZE__)
 		mvn	#^__default_handlers_LOAD__, #^__default_handlers_RUN__
 
 		sep	#$30		; 8 bits registers
@@ -563,7 +577,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		DEBUG_PRINTF "insert VDU module\n"
 		ldx	#10
-		pea	__KERNEL_BASE__ >> 8
+		pea	.bankbyte(__KERNEL_BASE__) << 8 + .hibyte(__KERNEL_BASE__)
 		plb
 		plb
 		lda	#$4000
@@ -571,7 +585,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		DEBUG_PRINTF "insert KEYBOARD module\n"
 		ldx	#10
-		pea	__KERNEL_BASE__ >> 8
+		pea	.bankbyte(__KERNEL_BASE__) << 8 + .hibyte(__KERNEL_BASE__)
 		plb
 		plb
 		lda	#$8000

@@ -9,6 +9,8 @@
 		; TODO: remove this dependency
 		.include "hardware.inc"
 
+		.include "kernel_i.inc"
+
 
 		.export initBuffers
 		.export _OSBYTE_15

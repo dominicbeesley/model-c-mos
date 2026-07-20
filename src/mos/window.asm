@@ -2,9 +2,11 @@
 		.include "nat-layout.inc"
 		.include "hardware.inc"
 
-		.export windowPush
-		.export windowPop
-		.export windowYXtoBHA
+		.include "linker_symbols_i.inc"
+
+		.export windowPush:far
+		.export windowPop:far
+		.export windowYXtoBHA:far
 
 
 ; WINDOW is a 4K address space hole in the emu bank 0/nat bank FF map that
@@ -64,7 +66,7 @@
 		bne	@sk1
 		lda	2,S
 		and	#$003F
-		ora	#__KERNEL_BASE__ >> 8
+		ora	#.loword(__KERNEL_BASE__ >> 8)
 		bra	@sk2
 @sk1:		lda	2,S			; A = BH
 @sk2:		and	#$FFF8			; mask off 2K block boundary
@@ -128,7 +130,7 @@
 ;	*    the CPU must be in 16 bit index mode on entry/exit                        *
 ;	*                                                                              *                                                                              *
 ;	********************************************************************************
-.proc	windowYXtoBHA
+.proc	windowYXtoBHA:far
 		
 		phx
 		phy

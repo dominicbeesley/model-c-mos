@@ -5,7 +5,6 @@
 		.export	initB0Blocks:far
 		.export	freeB0Block:far
 		.export	allocB0Block:far
-
 		.export	initHandles:far
 		.export findHandleByAddr:far
 		.export allocHandle:far

@@ -1,6 +1,8 @@
+		.include "vectors_i.inc"
 		
 		.export tblNatShims
 		.export tblNatShimsEnd
+
 
 
 	; these entry points are used to enter native mode from emu mode

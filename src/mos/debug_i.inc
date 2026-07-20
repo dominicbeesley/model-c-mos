@@ -1,5 +1,9 @@
-.ifndef __DEBUG_INC__
-__DEBUG_INC__:
+.ifndef __DEBUG_I_INC__
+__DEBUG_I_INC__:
+
+    .import debug_printf:far
+    .import debug_printHexA:far
+    .import debug_printA:far
 
   .ifndef __DEBUG
 

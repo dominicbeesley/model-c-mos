@@ -2,7 +2,15 @@
 		.include "cop.inc"
 		.include "oslib.inc"
 		.include "vectors.inc"
-		.include "debug.inc"
+
+		.include "debug_i.inc"
+		.include "window_i.inc"
+		.include "osbyte_word_i.inc"
+		.include "modules_i.inc"
+		.include "irqs_i.inc"
+		.include "vectors_i.inc"
+		.include "kernel_i.inc"
+		.include "window_i.inc"
 
 		.export cop_handle_emu
 		.export cop_handle_nat

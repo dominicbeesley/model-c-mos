@@ -1,10 +1,13 @@
 
-		.include "debug.inc"
 		.include "oslib.inc"
 		.include "dp_bbc.inc"
 		.include "vectors.inc"
 		.include "hardware.inc"
 		.include "sysvars.inc"
+
+		.include "debug_i.inc"
+		.include "kernel_i.inc"
+		.include "window_i.inc"
 
 		.export	brkBadKey
 		.export	brkBadCommand

@@ -1,9 +1,13 @@
 
 		.include "nat-layout.inc"
 		.include "hardware.inc"
-		.include "cop.inc"
 		.include "vectors.inc"
-		.include "debug.inc"
+
+		.include "cop_i.inc"
+		.include "debug_i.inc"
+		.include "b0blocks_i.inc"
+		.include "kernel_i.inc"
+		.include "bbc-nat-vectors_i.inc"
 
 		.export bbcEmu2NatVectorEntry
 		.export vector_next

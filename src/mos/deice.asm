@@ -1,13 +1,14 @@
 
-		.autoimport +
 
 		.include "hardware.inc"
 		.include "deice.inc"
 
+		.include "linker_symbols_i.inc"
+		.include "kernel_i.inc"
+
 		.export deice_init
 		.export deice_printStrzX
 		.export deice_printA
-
 		.export deice_enter_emu
 		.export deice_enter_nat
 
@@ -268,7 +269,7 @@ deice_enter_nat:
 ;		
 		.i16
 		.a8
-deice_enter:	ldx	#DEICESTACKTOP-1
+deice_enter:	ldx	#.loword(DEICESTACKTOP-1)
 		txs
 
 		; make sure of modes
@@ -303,7 +304,7 @@ deice_enter:	ldx	#DEICESTACKTOP-1
 ;
 ; mode = i16 a8
 MAIN:		; TODO: get rid of this bit - should be unnecessary - just belt and braces
-		ldx	#DEICESTACKTOP-1
+		ldx	#.loword(DEICESTACKTOP-1)
 		txs
 		sep	#$20
 		rep	#$10

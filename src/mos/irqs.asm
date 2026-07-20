@@ -5,13 +5,23 @@
 		.include	"nat-layout.inc"
 		.include	"oslib.inc"
 		.include	"sysvars.inc"
-		.include	"cop.inc"
-		.include	"debug.inc"
+		.include	"cop_i.inc"
+		.include	"debug_i.inc"
+
+		.import	initB0Blocks:far
+		.import	freeB0Block:far
+		.import	allocB0Block:far
+
+		.import	initHandles:far
+		.import findHandleByAddr:far
+		.import allocHandle:far
+		.import getHandleYtoX:far
+		.import freeHandleForB0BlockX:far		
+
 
 		.export		COP_2F
 		.export		COP_30
 		.export		COP_31
-
 ;;;		.export		default_IVIRQ_emu
 		.export		default_IVIRQ
 		.export		initIRQdispatcher

@@ -3,6 +3,10 @@
 		.include "dp_bbc.inc"
 		.include "sysvars.inc"
 
+		.include "modules_i.inc"
+		.include "gsread_i.inc"
+		.include "brk_i.inc"
+		.include "utils_i.inc"
 
 		.export doCLIV
 
@@ -157,6 +161,7 @@ exitrts:	rts
 ;				  Command    Address	   Call goes to
 _OSCLI_TABLE:		
 			OSCLTBL	".",	_OSCLI_FSCV	,$05	; *.	    &E031, A=5	   FSCV, XY=>String
+_OSCLI_TABLE2:		
 			OSCLTBL	"FX",	_OSCLI_FX	,$ff	; *FX	    &E342, A=&FF   Number parameters
 			OSCLTBL	"BASIC",_OSCLI_BASIC	,$00	; *BASIC    &E018, A=0	   XY=>String
 			OSCLTBL	"CAT",	_OSCLI_FSCV	,$05	; *CAT	    &E031, A=5	   FSCV, XY=>String
@@ -281,6 +286,8 @@ doSvc4:
 			.byte	$0d,$0a				; carriage return
 			.byte	"MODEL C MOS 6.00"		; help message
 			.byte	$0d,$0a				; carriage return
+			.byte    "  MODULES"
+			.byte	$0d,$0a				; carriage return
 			.byte 	0
 			rtl					; 
 .endproc
@@ -318,6 +325,7 @@ _ok:		txa					; save X
 ;			*TAPE	&8C
 ;			*ROM	&8D
 ;			*TV	&90
+; DB: Cy on entry - expect space sep, else commas
 
 .proc _OSCLI_OSBYTE:far
 		pha					; save A

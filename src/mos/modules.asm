@@ -2,8 +2,11 @@
                 .include "cop.inc"
                 .include "oslib.inc"
                 .include "vectors.inc"
-                .include "debug.inc"
                 .include "modules.inc"
+
+                .include "debug_i.inc"
+                .include "utils_i.inc"
+                .include "b0blocks_i.inc"
 
                 .export COP_32
                 .export COP_34

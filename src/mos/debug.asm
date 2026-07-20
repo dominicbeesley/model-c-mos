@@ -1,11 +1,13 @@
 		.include "dp_bbc.inc"
 		.include "hardware.inc"
-		.include "debug.inc"
-		.include "deice.inc"
+;;		.include "debug.inc"
+		
+		.include "deice_i.inc"
+		.include "linker_symbols_i.inc"
 
-		.export debug_printf
-		.export debug_printHexA
-		.export debug_printA
+		.export debug_printf:far
+		.export debug_printHexA:far
+		.export debug_printA:far
 		
 		.code
 
@@ -36,7 +38,7 @@
 
 	
 
-debug_printf:	
+.proc debug_printf:far	
 	php
 	clc
 	xce
@@ -99,7 +101,7 @@ debug_printf:
 ;;	phk
 ;;	plb		; Assume strings are in our bank!
 
-	pea	__KERNEL_BASE__ >> 8
+	pea	.loword(__KERNEL_BASE__ >> 8)
 	plb
 	plb
 
@@ -216,9 +218,9 @@ debug_printf:
 	cpx	#8
 	bcc	@flp
 	bra	@cont
+.endproc
 
-
-debug_printHexA:
+.proc debug_printHexA:far
 	php
 	sep	#$20
 	.a8
@@ -241,8 +243,9 @@ debug_printHexA:
 	adc	#'A'-$3A-1
 @s:	jsr	deice_printA
 	rts
+.endproc
 
-debug_printHexX16:
+.proc debug_printHexX16:far
 	php
 	rep	#$30
 	pha
@@ -254,8 +257,10 @@ debug_printHexX16:
 	pla
 	plp
 	rtl
+.endproc
 
-debug_printA:
+.proc debug_printA:far
 	jsr	deice_printA
 	rtl
 
+.endproc

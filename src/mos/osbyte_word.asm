@@ -1,12 +1,17 @@
 
 		.include "dp_bbc.inc"
 		.include "cop.inc"
-		.include "debug.inc"
 		.include "vectors.inc"
 		.include "nat-layout.inc"
 		.include "oslib.inc"
 		.include "sysvars.inc"
 		.include "vduvars.inc"
+
+
+		.include "debug_i.inc"
+		.include "kernel_i.inc"
+		.include "roms_i.inc"
+		.include "buffers_i.inc"
 
 		.export doOSBYTE
 		.export doOSWORD

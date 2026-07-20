@@ -2,8 +2,9 @@
 		.include "dp_bbc.inc"
 		.include "hardware.inc"
 		.include "deice.inc"
-		.include "debug.inc"
 		.include "vectors.inc"
+
+		.include "debug_i.inc"
 
 
 		.segment "BBC_EXT_VECS"
