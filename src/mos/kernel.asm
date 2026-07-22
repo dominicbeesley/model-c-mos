@@ -102,30 +102,10 @@ emu_handle_irq:	sta	dp_mos_INT_A
 		pea	4 + (<@ret * 256)
 		jml	default_IVIRQ
 @ret:		pea	@c2
-		pea	$0400
+		pea	$0400			; in emu we will be in B0
 		jmp	nat2emu_rti
 @c2:		lda	dp_mos_INT_A
 		rti
-
-;;	; TODO: Move this lot to ROM and call entry/exit shims
-;;emu_handle_irq:	sta	dp_mos_INT_A
-;;		lda	1,S
-;;		and	#$10
-;;		bne	emu_handle_brk
-;;		clc
-;;		xce
-;;		pea	>@ret			; fake flags and bank 0 (return)
-;;		pea	4 + (<@ret * 256)
-;;		jml	default_IVIRQ
-;;@ret:		pea	0
-;;		pld
-;;		phd
-;;		plb
-;;		plb
-;;		sec
-;;		xce
-;;		lda	dp_mos_INT_A
-;;		rti
 
 emu_handle_nmi:	rti
 
@@ -134,6 +114,11 @@ emu_handle_nmi:	rti
 		; +3..4	Addr	Address to continue at in bank 0
 		; +2	P	Flags to pass to caller
 		; +1	#	number of bytes extra of stack to transfer
+		; TODO: consider either a branch or a different set of nat2emu/emu2nat shims for 
+		;       0 extra bytes with simpler transfers
+		; TOD: consider only preserve AL not AH making for fewer instructions and smaller
+		;       stack to be copied - check if any API requires AH to survive
+
 .proc nat2emu_rti
 		sei			; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
 		rep	#$31		; we should still be careful of data below stack pointer possibly changing, clear carry
@@ -168,22 +153,22 @@ N_STACKED = 8
 		and	#$00FF		; get 8 bit # extra bytes into A
 					; carry was cleared in rep above
 		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack
-		pha
-		adc	a:B0_NAT_STACK
-		sta	a:B0_NAT_STACK	; store back adjusted stack
 		rep	#$10
 		.i16
+		tay
+		adc	a:B0_NAT_STACK
+		sta	a:B0_NAT_STACK	; store back adjusted stack
 		tax			; source for copy (top)
-		lda	a:B0_EMU_STACK	; get emu stack pointer
+		tya
+		eor	#$FFFF
 		sec
-		sbc	1,S
-		ply			; count
+		adc	a:B0_EMU_STACK	; get emu stack pointer (RSB)
 		tcs
 		; we are now using the emu mode stack, copy across stuff from
 		; native mode stack
 		
-		tya
-		ldy	a:B0_EMU_STACK
+		tya			; count
+		ldy	a:B0_EMU_STACK	; get back dest
 
 		mvp	#0,#0		; copy stack data across
 
@@ -192,8 +177,8 @@ N_STACKED = 8
 		.i8
 		.a8
 
-		inc	A
-		sta	5,S
+		inc	A		; A FFFF->0
+		sta	5,S		; zero 5,S
 
 	; emu stack now contains
 	;	Stack/DP offset
