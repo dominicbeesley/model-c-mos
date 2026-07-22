@@ -41,6 +41,17 @@ image in an emulator or on hardware.
   `makemod.pl` (wraps a linked `.bin` into a `.mod` with header + checksum).
 - `unix2mac` for line-ending conversion of the boot script.
 
+## Internals documentation
+
+Internals docs go in `doc/internals/` as `.md` files. Follow the style of `modules.md`: terse,
+table-heavy where appropriate, On Entry / On Exit register blocks for call conventions. The
+audience knows the project; omit background explanation. No em-dashes.
+
+External reference material goes in `doc/external/README.md` as a linked list. Use a markdown
+link to the source (GitHub URL to the file on the relevant branch), add a brief note on what
+the document actually describes, and bullet the specific sections relevant to this project.
+Do not copy the full document into the repo.
+
 ## Architecture
 
 ### Core MOS (`src/mos/`)
@@ -79,7 +90,7 @@ interrupt paths, keep both directions in mind.
 ### Modules (`src/mos/modules/`)
 
 Modules are relocatable binaries acting like sideways ROMs in the 24-bit address space (rather
-than paged banks). Format is specified in `doc/modules.md`; the header struct is `modhdr` in
+than paged banks). Format is specified in `doc/internals/modules.md`; the header struct is `modhdr` in
 `src/includes/modules.inc` (four `BRL` entry points: service / start / init / finalise, plus
 length, flags, title/help offsets, version BCD, command table, COP index range, trailing 16-bit
 checksum). Modules may be bank-agnostic and/or fully relocatable within a bank.
