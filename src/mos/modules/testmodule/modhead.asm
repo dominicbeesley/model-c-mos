@@ -21,8 +21,8 @@ mod_start:	brl	serv
 		.code 
 
 
-title:		.byte "VDU",0
-help:		.byte "VDU\t\t0.01\t(01 May 2024)",0
+title:		.byte "TestModule",0
+help:		.byte "TestModule\t0.01\t(21 July 2026)",0
 
 
 		.a16
@@ -31,13 +31,7 @@ start:		rtl
 
 		.a16
 		.i16
-init:		;cop	COP_01_OPWRS
-		;.byte	"VDU MODULE INIT",0
-
-		lda	#0
-		jsl	VDU_INIT
-
-		rtl
+init:		rtl
 
 		.a16
 		.i16
@@ -46,3 +40,5 @@ fini:		rtl
 		.a16
 		.i16
 serv:		rtl
+
+		.res $A4

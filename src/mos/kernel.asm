@@ -576,21 +576,28 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.a16
 
 		DEBUG_PRINTF "insert VDU module\n"
-		ldx	#10
-		pea	.bankbyte(__KERNEL_BASE__) << 8 + .hibyte(__KERNEL_BASE__)
+		ldx	#OPMOD_OP_INSERT
+		pea	.bankbyte(__KERNEL_BASE__) << 8
 		plb
 		plb
 		lda	#$4000
 		cop	COP_34_OPMOD
 
 		DEBUG_PRINTF "insert KEYBOARD module\n"
-		ldx	#10
-		pea	.bankbyte(__KERNEL_BASE__) << 8 + .hibyte(__KERNEL_BASE__)
+		ldx	#OPMOD_OP_INSERT
+		pea	.bankbyte(__KERNEL_BASE__) << 8
 		plb
 		plb
 		lda	#$8000
 		cop	COP_34_OPMOD
 
+		DEBUG_PRINTF "insert TEST module\n"
+		ldx	#OPMOD_OP_INSERT
+		pea	.bankbyte(__KERNEL_BASE__) << 8
+		plb
+		plb
+		lda	#$C000
+		cop	COP_34_OPMOD
 
 
 		sep	#$20
@@ -622,6 +629,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 
 		DEBUG_PRINTF "scan ROMs\n"
 		jsl	roms_scanroms			; only on ctrl-break, but always for now...
+		DEBUG_PRINTF "ROMs init\n"
 		jsl	roms_init_services		; call initialisation service calls
 
 
@@ -637,6 +645,8 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 ;;
 ;;		wdm 0
 
+
+		DEBUG_PRINTF "Start BASIC\n"
 
 ;		cop	COP_26_OPBHA
 ;		.byte	"HELP",13,0

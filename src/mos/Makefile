@@ -20,7 +20,7 @@ TARGETS_B = $(addprefix $(BUILD)/,$(TARGETS))
 
 .PHONY: all clean modules
 
-all:	$(TARGETS_B)
+all:	$(TARGETS_B) modules
 
 modules:
 		make -C modules all

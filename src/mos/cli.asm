@@ -277,19 +277,28 @@ hadDot:		dex
 
 doSvc4:
 		ply
+		phy
 		ldx	#SERVICE_9_HELP			; 
 		lda	#OSBYTE_143_SERVICE_CALL
 		cop	COP_06_OPOSB			; 
 
 
-			cop	COP_01_OPWRS			; print following message routine return after BRK
-			.byte	$0d,$0a				; carriage return
-			.byte	"MODEL C MOS 6.00"		; help message
-			.byte	$0d,$0a				; carriage return
-			.byte    "  MODULES"
-			.byte	$0d,$0a				; carriage return
-			.byte 	0
-			rtl					; 
+		ply
+		jsr	utilSkipSpace	
+		bne	@nomos
+
+		; show MOS if no other params
+
+		cop	COP_01_OPWRS			; print following message routine return after BRK
+		.byte	$0d,$0a				; carriage return
+		.byte	"MODEL C MOS 6.00"		; help message
+		.byte	$0d,$0a				; carriage return
+		.byte    "  MODULES"
+		.byte	$0d,$0a				; carriage return
+		.byte 	0
+
+
+@nomos:			rtl					; 
 .endproc
 		.macro HENT keyword, fn
 		.asciiz keyword
