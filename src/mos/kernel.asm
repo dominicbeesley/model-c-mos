@@ -257,17 +257,17 @@ emu_handle_cop:	php				; caller's flags
 		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack
 		rep	#$11		; clear carry and choose big index registers
 		.i16
-		pha			; number of bytes to copy
+		tay			; number of bytes to copy
 		adc	a:B0_EMU_STACK
 		sta	a:B0_EMU_STACK	; store back adjusted stack
 		tax			; set source for copy (topmost)
-		lda	a:B0_NAT_STACK	; get emu stack pointer
+		tya			; get back count
+		eor	#$FFFF
 		sec
-		sbc	1,S		; make room on native stack
-		ply
+		adc	a:B0_NAT_STACK	; get emu stack pointer (RSB)
 		tcs
 
-		tya		
+		tya			; count
 		ldy	a:B0_NAT_STACK	; set dest for copy (topmost) - still pointing at top
 
 		; we are now using the native mode stack, copy across stuff from
