@@ -30,6 +30,7 @@ B0_IRQ_STACK		:= $00FE10
 B0_EMU_STACK		:= $00FE12
 B0_NAT_STACK		:= $00FE14
 WINDOW_CUR		:= $00FE16			; current value of the window registers
+B0_SHIM_TMP		:= $00FE18			; used in nat2emu / emu2nat - interrupts off [4 bytes!]
 
 EXSYS			:= $00FF00
 EXSYS_FpHandles		:= $00FF02

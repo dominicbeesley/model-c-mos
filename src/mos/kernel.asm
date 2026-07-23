@@ -87,28 +87,6 @@ nat_handle_nmi:	rti
 nat_handle_irq:	jml	default_IVIRQ	
 
 
-		.a8
-		.i8
-emu_handle_irq:	sta	dp_mos_INT_A
-		lda	1,S
-		and	#$10
-		beq	@sl
-		jmp	emu_handle_brk
-@sl:		pea	@c>>8
-		pea	$04 + ((<@c)<<8)
-		pea	0
-		jmp	emu2nat_rti
-@c:		pea	>@ret			; fake flags and bank 0 (return)
-		pea	4 + (<@ret * 256)
-		jml	default_IVIRQ
-@ret:		pea	@c2
-		pea	$0400			; in emu we will be in B0
-		jmp	nat2emu_rti
-@c2:		lda	dp_mos_INT_A
-		rti
-
-emu_handle_nmi:	rti
-
 		; enter emu mode and set DP/B to 0
 		; stacked should be:
 		; +3..4	Addr	Address to continue at in bank 0
@@ -205,14 +183,6 @@ N_STACKED = 8
 
 .endproc
 
-		.a8
-		.i8
-emu_handle_cop:	php				; caller's flags
-		pea	cop_handle_emu >> 8
-		pea	$04 + ((>cop_handle_emu) << 8)
-		pea	1			; copy 1 extra byte (flags)
-		; fall through to emu2nat_rti!
-
 		; enter nat mode from emu
 		; stacked should be:
 		; +4..6	Addr	Address to continue at 24-bit
@@ -220,6 +190,8 @@ emu_handle_cop:	php				; caller's flags
 		; +2	0	reserved "0"
 		; +1	#	number of stacked bytes to transfer across
 
+		.a8
+		.i8
 .proc emu2nat_rti
 		sei		; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
 		clc
@@ -238,7 +210,7 @@ emu_handle_cop:	php				; caller's flags
 
 
 	; emu stack now contains
-	;	Stack/DP offset
+	;	Stack offset
 	;	+11...  extra bytes
 	;	+8..10	RTI address (16 bits)
 	;	+7	caller's flags
@@ -280,7 +252,7 @@ emu_handle_cop:	php				; caller's flags
 		mvp	#0,#0		; copy stack data
 
 	; emu stack now contains
-	;	Stack/DP offset
+	;	Stack offset
 	;	+11...  extra bytes
 	;	+8..10	RTI address (16 bits)
 	;	+7	caller's flags
@@ -301,6 +273,8 @@ emu_handle_cop:	php				; caller's flags
 		rti
 .endproc
 
+		; enter nat mode from emu
+		; stacked should be:
 		.segment "boot_CODE"
 		.i8
 		.a8
