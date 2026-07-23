@@ -17,8 +17,8 @@ B0B_END			:= $00BCF8
 ;---- C000 - E000 must be left free for Hazel overlay
 
 STACKNAT		:= $00F700
-STACKNAT_TOP		:= $00FB00
-HANDLER_TRAMPOLINES	:= $00FB00			; set in .cfg file - Repurposes Soft Keys expansion buffer
+STACKNAT_TOP		:= $00FAE0
+HANDLER_TRAMPOLINES	:= $00FAE0			; set in .cfg file - Repurposes Soft Keys expansion buffer
 DEICEBSS		:= $00FC00
 NAT_OS_VECS 		:= $00FD00
 NAT_OS_VECS_COUNT 	:= IX_VEC_MAX+1

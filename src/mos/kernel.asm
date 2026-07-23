@@ -275,9 +275,128 @@ N_STACKED = 8
 
 		; enter nat mode from emu
 		; stacked should be:
+		; +2..4	Addr	Address to continue at 24-bit
+		; +1	P	Flags to pass to caller
+
+.proc emu2nat_0_rti
+		sei		; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
+		clc
+		xce
+		rep	#$31	; clear carry for ADC below
+		.a16
+		.i16
+		sta	B0_SHIM_TMP
+		stx	B0_SHIM_TMP+2
+
+;		;TODO: force bank 0 - maybe remove?
+;		pea	0
+;		plb
+;		plb
+
+		ldx	a:B0_NAT_STACK
+		dex
+		dex
+		dex
+		dex
+		pla			; A contains P/low byte of ret
+		sta	1,X		; move to nat stack
+		pla			; A contains hi/bank byte of ret
+		sta	3,X		; move to nat stack
+		tsc
+		sta	a:B0_EMU_STACK
+		txs
+
+		ldx	B0_SHIM_TMP+2		
+		lda	B0_SHIM_TMP
+
+		rti
+.endproc
+
+
+
+		; enter emu mode and set DP/B to 0
+		; stacked should be:
+		; +3..4	Addr	Address to continue at in bank 0
+		; +2	P	Flags to pass to caller
+		; +1	- 	don't care
+		; TODO: consider either a branch or a different set of nat2emu/emu2nat shims for 
+		;       0 extra bytes with simpler transfers
+		; TOD: consider only preserve AL not AH making for fewer instructions and smaller
+		;       stack to be copied - check if any API requires AH to survive
+.proc nat2emu_0_rti
+		sei		; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
+		rep	#$31	; clear carry for ADC below
+		.a16
+		.i16
+		sta	B0_SHIM_TMP
+		stx	B0_SHIM_TMP+2
+
+		ldx	a:B0_EMU_STACK
+		dex
+		dex
+		dex
+		dex
+		pla			; A contains P/low byte of ret
+		sta	1,X		; move to nat stack
+		pla			; A contains hi/bank byte of ret
+		sta	3,X		; move to nat stack
+		tsc
+		sta	a:B0_NAT_STACK
+		txs
+		plb			; pull and discard "don't care" byte
+
+		ldx	B0_SHIM_TMP+2		
+		lda	B0_SHIM_TMP
+
+		;  force bank 0 - maybe remove?
+		pea	0
+		pld
+		phd
+		plb
+		plb
+
+		sec
+		xce
+
+		rti
+.endproc
+
+
+
 		.segment "boot_CODE"
 		.i8
 		.a8
+
+
+		.a8
+		.i8
+emu_handle_irq:	sta	dp_mos_INT_A
+		lda	1,S
+		and	#$10
+		beq	@sl
+		jmp	emu_handle_brk
+@sl:		pea	@c>>8			; note pass BANK FF here
+		pea	$04 + ((<@c)<<8)
+		jmp	emu2nat_0_rti
+@c:		pea	@ret>>8			; fake flags and bank FF(return)
+		pea	4 + (<@ret * 256)
+		jml	default_IVIRQ
+@ret:		pea	@c2
+		pea	$0400			; in emu we will be in B0
+		jml	nat2emu_0_rti
+@c2:		lda	dp_mos_INT_A
+		rti
+
+emu_handle_nmi:	rti
+
+
+
+
+emu_handle_cop:	php				; caller's flags
+		pea	cop_handle_emu >> 8
+		pea	$04 + ((>cop_handle_emu) << 8)
+		pea	1			; copy 1 extra byte (flags)
+		jmp	emu2nat_rti
 
 
 emu_default_irq1v:
