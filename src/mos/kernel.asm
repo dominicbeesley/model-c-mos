@@ -36,8 +36,10 @@
 		.export emu_handle_res
 
 		.export nat2emu_rti
+		.export nat2emu_0_rti
 		.export deice_nat2emu_rti
 		.export emu2nat_rti
+		.export emu2nat_0_rti
 
 
 		.export bank0
@@ -328,6 +330,14 @@ N_STACKED = 8
 		rep	#$31	; clear carry for ADC below
 		.a16
 		.i16
+
+		;  force bank 0 - maybe remove?
+		pea	0
+		pld
+		phd
+		plb
+		plb
+
 		sta	B0_SHIM_TMP
 		stx	B0_SHIM_TMP+2
 
@@ -348,12 +358,6 @@ N_STACKED = 8
 		ldx	B0_SHIM_TMP+2		
 		lda	B0_SHIM_TMP
 
-		;  force bank 0 - maybe remove?
-		pea	0
-		pld
-		phd
-		plb
-		plb
 
 		sec
 		xce
@@ -649,6 +653,10 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 ;;		cop	COP_09_OPADV
 		
 
+
+		wdm 0
+
+
 		rep	#$30
 		.i16
 		.a16
@@ -721,7 +729,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 ;;		ldy	$4000 + 12
 ;;		cop	COP_32_OPSUM
 ;;
-;;		wdm 0
 
 
 		DEBUG_PRINTF "Start BASIC\n"

@@ -17,6 +17,9 @@
 
 
 	; The shim in bank 0 will already have switched to Native mode (to page in this address space)
+	; cop_handle_emu RUNS IN NATIVE MODE!
+	;
+	; DP is always assumed to be 0 on entry (forced to 0 after call)
 		.a8
 		.i8
 cop_handle_emu: plp
@@ -28,7 +31,7 @@ cop_handle_emu: plp
 		; massage the stack at this point to look as if we'd entered from native mode
 		; i.e. insert a phoney FF for the pushed K register
 		phb				; room for a little'un
-		phd				; 8
+		pea	0			; 8	Force DP=0
 		phb				; 7
 		pha				; 5
 		phx				; 3
@@ -39,7 +42,7 @@ cop_handle_emu: plp
 	;	+12..13	PC
 	;	+11	P
 	;	+10	-spare-
-	;	+8..9	DP
+	;	+8..9	DP = 0
 	;	+7	B
 	;	+5..6	A
 	;	+3..4	X
@@ -56,7 +59,7 @@ cop_handle_emu: plp
 	; 	+13	PBR=$FF
 	;	+11..12	PC
 	;	+10	P
-	;	+8..9	DP
+	;	+8..9	DP = 0
 	;	+7	B
 	;	+5..6	A
 	;	+3..4	X
@@ -67,7 +70,7 @@ cop_handle_emu: plp
 	; 	+13	PBR=$FF
 	;	+11..12	PC-1	(dispatch code makes PC ready for an RTL instead of RTI!)
 	;	+10	P
-	;	+8..9	DP
+	;	+8..9	DP = 0 - unless COP changed it?!
 	;	+7	B
 	;	+5..6	A
 	;	+3..4	X
@@ -87,7 +90,7 @@ cop_handle_emu: plp
 	; 	+12..13	PC
 	;	+11	P	(dispatch code makes PC ready for an RTL instead of RTI!)
 	;	+10	"0"
-	;	+8..9	DP
+	;	+8..9	DP = 0 - unless COP changed it
 	;	+7	B
 	;	+5..6	A
 	;	+3..4	X
@@ -107,6 +110,8 @@ cop_handle_emu: plp
 		plb
 		phb
 		phb
+		pld		; force DP = 0 on return!
+		phd
 
 	; Stack
 	; 	+4..6	PC
