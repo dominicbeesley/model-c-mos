@@ -18,7 +18,7 @@ The driver for the the model-c-mos is twofold:
 
 Aims:
  - existing games, applications and ROMs to be able to run
- - new applications can access 16-bit filing systems
+ - new applications can access 8-bit filing systems
  - 8-bit applications can access 16-bit filing systems
 
 # Challenges
