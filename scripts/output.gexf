@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gexf xmlns="http://gexf.net/1.3" version="1.3">
+  <graph mode="static" defaultedgetype="directed">
+    <nodes>
+      <node id="deice.o" label="deice.o">
+        <node id="deice_printStrzX" label="deice_printStrzX"/>
+        <node id="deice_init" label="deice_init"/>
+        <node id="deice_enter_nat" label="deice_enter_nat"/>
+        <node id="deice_printA" label="deice_printA"/>
+        <node id="deice_enter_emu" label="deice_enter_emu"/>
+      </node>
+      <node id="b0blocks.o" label="b0blocks.o">
+        <node id="initB0Blocks" label="initB0Blocks"/>
+        <node id="allocHandle" label="allocHandle"/>
+        <node id="allocB0Block" label="allocB0Block"/>
+        <node id="freeHandleForB0BlockX" label="freeHandleForB0BlockX"/>
+        <node id="getHandleYtoX" label="getHandleYtoX"/>
+        <node id="freeB0Block" label="freeB0Block"/>
+        <node id="findHandleByAddr" label="findHandleByAddr"/>
+        <node id="initHandles" label="initHandles"/>
+      </node>
+      <node id="brk.o" label="brk.o">
+        <node id="brkBadKey" label="brkBadKey"/>
+        <node id="emu_handle_brk" label="emu_handle_brk"/>
+        <node id="brk_handle_nat" label="brk_handle_nat"/>
+        <node id="brkBadCommand" label="brkBadCommand"/>
+        <node id="default_emu_brkv" label="default_emu_brkv"/>
+      </node>
+      <node id="[linker generated]" label="[linker generated]">
+        <node id="__debug_strings_RUN__" label="__debug_strings_RUN__"/>
+        <node id="__BBC_EXT_VECS_LOAD__" label="__BBC_EXT_VECS_LOAD__"/>
+        <node id="__RAM_DEICE_BSS_START__" label="__RAM_DEICE_BSS_START__"/>
+        <node id="__KERNEL_BASE__" label="__KERNEL_BASE__"/>
+        <node id="__default_handlers_RUN__" label="__default_handlers_RUN__"/>
+        <node id="__HWBBC_VECS_SIZE__" label="__HWBBC_VECS_SIZE__"/>
+        <node id="__RAM_DEICE_BSS_LAST__" label="__RAM_DEICE_BSS_LAST__"/>
+        <node id="__HWBBC_VECS_LOAD__" label="__HWBBC_VECS_LOAD__"/>
+        <node id="__HW816_VECS_RUN__" label="__HW816_VECS_RUN__"/>
+        <node id="__debug_strings_LOAD__" label="__debug_strings_LOAD__"/>
+        <node id="__debug_strings_SIZE__" label="__debug_strings_SIZE__"/>
+        <node id="__default_handlers_SIZE__" label="__default_handlers_SIZE__"/>
+        <node id="__HWBBC_VECS_RUN__" label="__HWBBC_VECS_RUN__"/>
+        <node id="__HW816_VECS_LOAD__" label="__HW816_VECS_LOAD__"/>
+        <node id="__BBC_MOS_OSAPI_RUN__" label="__BBC_MOS_OSAPI_RUN__"/>
+        <node id="__HW816_VECS_SIZE__" label="__HW816_VECS_SIZE__"/>
+        <node id="__DEICE_BSS_RUN__" label="__DEICE_BSS_RUN__"/>
+        <node id="__RAM_DEICE_BSS_SIZE__" label="__RAM_DEICE_BSS_SIZE__"/>
+        <node id="__BBC_EXT_VECS_RUN__" label="__BBC_EXT_VECS_RUN__"/>
+        <node id="__BBC_EXT_VECS_SIZE__" label="__BBC_EXT_VECS_SIZE__"/>
+        <node id="__default_handlers_LOAD__" label="__default_handlers_LOAD__"/>
+        <node id="__DEICE_BSS_SIZE__" label="__DEICE_BSS_SIZE__"/>
+        <node id="__BBC_MOS_OSAPI_SIZE__" label="__BBC_MOS_OSAPI_SIZE__"/>
+        <node id="__BBC_MOS_OSAPI_LOAD__" label="__BBC_MOS_OSAPI_LOAD__"/>
+        <node id="__DEICE_BSS_LOAD__" label="__DEICE_BSS_LOAD__"/>
+        <node id="__RAM_DEICE_BSS_FILEOFFS__" label="__RAM_DEICE_BSS_FILEOFFS__"/>
+      </node>
+      <node id="buffers.o" label="buffers.o">
+        <node id="_OSBYTE_153" label="_OSBYTE_153"/>
+        <node id="_OSBYTE_15" label="_OSBYTE_15"/>
+        <node id="_OSBYTE_125" label="_OSBYTE_125"/>
+        <node id="_OSBYTE_21" label="_OSBYTE_21"/>
+        <node id="_OSBYTE_145" label="_OSBYTE_145"/>
+        <node id="initBuffers" label="initBuffers"/>
+        <node id="_OSBYTE_138" label="_OSBYTE_138"/>
+        <node id="_OSBYTE_124" label="_OSBYTE_124"/>
+        <node id="_OSBYTE_126" label="_OSBYTE_126"/>
+      </node>
+      <node id="boot-vecs.o" label="boot-vecs.o">
+        <node id="boot_vecs_new_len" label="boot_vecs_new_len"/>
+        <node id="boot_vecs_new" label="boot_vecs_new"/>
+        <node id="bbc_vecs_base" label="bbc_vecs_base"/>
+      </node>
+      <node id="bbcmosapi.o" label="bbcmosapi.o"/>
+      <node id="modules.o" label="modules.o">
+        <node id="COP_32" label="COP_32"/>
+        <node id="modules_init" label="modules_init"/>
+        <node id="COP_34" label="COP_34"/>
+        <node id="modules_list" label="modules_list"/>
+        <node id="modules_help" label="modules_help"/>
+      </node>
+      <node id="gsread.o" label="gsread.o">
+        <node id="utilReadDigits8bit" label="utilReadDigits8bit"/>
+        <node id="utilSkipSpace" label="utilSkipSpace"/>
+        <node id="_CHECK_FOR_HEX" label="_CHECK_FOR_HEX"/>
+        <node id="utilSkipComma" label="utilSkipComma"/>
+        <node id="_GSINIT" label="_GSINIT"/>
+        <node id="utilNextSkipSpace" label="utilNextSkipSpace"/>
+        <node id="_GSREAD" label="_GSREAD"/>
+      </node>
+      <node id="debug.o" label="debug.o">
+        <node id="debug_printHexA" label="debug_printHexA"/>
+        <node id="debug_printA" label="debug_printA"/>
+        <node id="debug_printf" label="debug_printf"/>
+      </node>
+      <node id="cli.o" label="cli.o">
+        <node id="doCLIV" label="doCLIV"/>
+      </node>
+      <node id="fscv.o" label="fscv.o">
+        <node id="doFSCV" label="doFSCV"/>
+      </node>
+      <node id="osbyte_word.o" label="osbyte_word.o">
+        <node id="COP_07" label="COP_07"/>
+        <node id="doOSBYTE" label="doOSBYTE"/>
+        <node id="COP_3F" label="COP_3F"/>
+        <node id="doOSWORD" label="doOSWORD"/>
+        <node id="osByteWordInit" label="osByteWordInit"/>
+        <node id="COP_06" label="COP_06"/>
+      </node>
+      <node id="font.o" label="font.o">
+        <node id="font_base" label="font_base"/>
+      </node>
+      <node id="vectors.o" label="vectors.o">
+        <node id="COP_08" label="COP_08"/>
+        <node id="bbcEmu2NatVectorEntry" label="bbcEmu2NatVectorEntry"/>
+        <node id="vector_next" label="vector_next"/>
+        <node id="COP_09" label="COP_09"/>
+      </node>
+      <node id="window.o" label="window.o">
+        <node id="windowYXtoBHA" label="windowYXtoBHA"/>
+        <node id="windowPop" label="windowPop"/>
+        <node id="windowPush" label="windowPush"/>
+      </node>
+      <node id="hardware.o" label="hardware.o">
+        <node id="hardwareInit" label="hardwareInit"/>
+        <node id="hardwareDetectHardReset" label="hardwareDetectHardReset"/>
+      </node>
+      <node id="roms.o" label="roms.o">
+        <node id="_OSBYTE_143" label="_OSBYTE_143"/>
+        <node id="roms_init_services" label="roms_init_services"/>
+        <node id="roms_scanroms" label="roms_scanroms"/>
+        <node id="roms_selX" label="roms_selX"/>
+      </node>
+      <node id="bbc-nat-vectors.o" label="bbc-nat-vectors.o">
+        <node id="tblNatShims" label="tblNatShims"/>
+        <node id="tblNatShimsEnd" label="tblNatShimsEnd"/>
+      </node>
+      <node id="utils.o" label="utils.o">
+        <node id="utilsAisAlpha" label="utilsAisAlpha"/>
+        <node id="PrintHexX" label="PrintHexX"/>
+        <node id="PrintHexA" label="PrintHexA"/>
+        <node id="Print2Spc" label="Print2Spc"/>
+        <node id="PrintSpc" label="PrintSpc"/>
+      </node>
+      <node id="cop.o" label="cop.o">
+        <node id="cop_handle_nat" label="cop_handle_nat"/>
+        <node id="cop_handle_emu" label="cop_handle_emu"/>
+      </node>
+      <node id="irqs.o" label="irqs.o">
+        <node id="COP_2F" label="COP_2F"/>
+        <node id="default_IVIRQ" label="default_IVIRQ"/>
+        <node id="initIRQdispatcher" label="initIRQdispatcher"/>
+        <node id="COP_30" label="COP_30"/>
+        <node id="COP_31" label="COP_31"/>
+      </node>
+      <node id="kernel.o" label="kernel.o">
+        <node id="default_BBC_vectors_len" label="default_BBC_vectors_len"/>
+        <node id="bankFF" label="bankFF"/>
+        <node id="nat_handle_abort" label="nat_handle_abort"/>
+        <node id="emu_handle_nmi" label="emu_handle_nmi"/>
+        <node id="nat_handle_irq" label="nat_handle_irq"/>
+        <node id="emu_handle_irq" label="emu_handle_irq"/>
+        <node id="kernelRaiseEvent" label="kernelRaiseEvent"/>
+        <node id="nat2emu_rti" label="nat2emu_rti"/>
+        <node id="default_BBC_vectors" label="default_BBC_vectors"/>
+        <node id="nat_handle_nmi" label="nat_handle_nmi"/>
+        <node id="emu_handle_abort" label="emu_handle_abort"/>
+        <node id="emu2nat_rti" label="emu2nat_rti"/>
+        <node id="nat_handle_brk" label="nat_handle_brk"/>
+        <node id="nat_handle_cop" label="nat_handle_cop"/>
+        <node id="deice_nat2emu_rti" label="deice_nat2emu_rti"/>
+        <node id="emu2nat_0_rti" label="emu2nat_0_rti"/>
+        <node id="emu_handle_res" label="emu_handle_res"/>
+        <node id="emu_handle_cop" label="emu_handle_cop"/>
+        <node id="nat2emu_0_rti" label="nat2emu_0_rti"/>
+        <node id="bank0" label="bank0"/>
+      </node>
+    </nodes>
+    <edges>
+      <edge id="0" target="deice_init" source="kernel.o"/>
+      <edge id="1" target="deice_enter_nat" source="kernel.o"/>
+      <edge id="2" target="deice_printA" source="debug.o"/>
+      <edge id="3" target="deice_enter_emu" source="kernel.o"/>
+      <edge id="4" target="initB0Blocks" source="kernel.o"/>
+      <edge id="5" target="allocHandle" source="irqs.o"/>
+      <edge id="6" target="allocB0Block" source="modules.o"/>
+      <edge id="7" target="allocB0Block" source="irqs.o"/>
+      <edge id="8" target="allocB0Block" source="vectors.o"/>
+      <edge id="9" target="freeHandleForB0BlockX" source="irqs.o"/>
+      <edge id="10" target="getHandleYtoX" source="irqs.o"/>
+      <edge id="11" target="freeB0Block" source="irqs.o"/>
+      <edge id="12" target="initHandles" source="kernel.o"/>
+      <edge id="13" target="emu_handle_brk" source="kernel.o"/>
+      <edge id="14" target="brk_handle_nat" source="kernel.o"/>
+      <edge id="15" target="brkBadCommand" source="fscv.o"/>
+      <edge id="16" target="brkBadCommand" source="cli.o"/>
+      <edge id="17" target="default_emu_brkv" source="kernel.o"/>
+      <edge id="18" target="__RAM_DEICE_BSS_START__" source="deice.o"/>
+      <edge id="19" target="__KERNEL_BASE__" source="window.o"/>
+      <edge id="20" target="__KERNEL_BASE__" source="debug.o"/>
+      <edge id="21" target="__KERNEL_BASE__" source="kernel.o"/>
+      <edge id="22" target="__default_handlers_RUN__" source="kernel.o"/>
+      <edge id="23" target="__HW816_VECS_RUN__" source="kernel.o"/>
+      <edge id="24" target="__default_handlers_SIZE__" source="kernel.o"/>
+      <edge id="25" target="__HW816_VECS_LOAD__" source="kernel.o"/>
+      <edge id="26" target="__HW816_VECS_SIZE__" source="kernel.o"/>
+      <edge id="27" target="__RAM_DEICE_BSS_SIZE__" source="deice.o"/>
+      <edge id="28" target="__default_handlers_LOAD__" source="kernel.o"/>
+      <edge id="29" target="_OSBYTE_153" source="osbyte_word.o"/>
+      <edge id="30" target="_OSBYTE_15" source="osbyte_word.o"/>
+      <edge id="31" target="_OSBYTE_125" source="osbyte_word.o"/>
+      <edge id="32" target="_OSBYTE_21" source="osbyte_word.o"/>
+      <edge id="33" target="_OSBYTE_145" source="osbyte_word.o"/>
+      <edge id="34" target="initBuffers" source="kernel.o"/>
+      <edge id="35" target="_OSBYTE_138" source="osbyte_word.o"/>
+      <edge id="36" target="_OSBYTE_124" source="osbyte_word.o"/>
+      <edge id="37" target="_OSBYTE_126" source="osbyte_word.o"/>
+      <edge id="38" target="COP_32" source="cop.o"/>
+      <edge id="39" target="modules_init" source="kernel.o"/>
+      <edge id="40" target="COP_34" source="cop.o"/>
+      <edge id="41" target="modules_list" source="cli.o"/>
+      <edge id="42" target="modules_help" source="cli.o"/>
+      <edge id="43" target="utilReadDigits8bit" source="cli.o"/>
+      <edge id="44" target="utilSkipSpace" source="cli.o"/>
+      <edge id="45" target="_CHECK_FOR_HEX" source="cli.o"/>
+      <edge id="46" target="utilSkipComma" source="cli.o"/>
+      <edge id="47" target="_GSINIT" source="bbcmosapi.o"/>
+      <edge id="48" target="utilNextSkipSpace" source="cli.o"/>
+      <edge id="49" target="_GSREAD" source="bbcmosapi.o"/>
+      <edge id="50" target="debug_printHexA" source="brk.o"/>
+      <edge id="51" target="debug_printA" source="brk.o"/>
+      <edge id="52" target="debug_printf" source="brk.o"/>
+      <edge id="53" target="debug_printf" source="irqs.o"/>
+      <edge id="54" target="debug_printf" source="kernel.o"/>
+      <edge id="55" target="doCLIV" source="kernel.o"/>
+      <edge id="56" target="doFSCV" source="kernel.o"/>
+      <edge id="57" target="COP_07" source="cop.o"/>
+      <edge id="58" target="doOSBYTE" source="kernel.o"/>
+      <edge id="59" target="COP_3F" source="cop.o"/>
+      <edge id="60" target="doOSWORD" source="kernel.o"/>
+      <edge id="61" target="osByteWordInit" source="kernel.o"/>
+      <edge id="62" target="COP_06" source="cop.o"/>
+      <edge id="63" target="COP_08" source="cop.o"/>
+      <edge id="64" target="bbcEmu2NatVectorEntry" source="bbc-nat-vectors.o"/>
+      <edge id="65" target="COP_09" source="cop.o"/>
+      <edge id="66" target="windowPop" source="cop.o"/>
+      <edge id="67" target="windowPush" source="brk.o"/>
+      <edge id="68" target="windowPush" source="cop.o"/>
+      <edge id="69" target="hardwareInit" source="kernel.o"/>
+      <edge id="70" target="_OSBYTE_143" source="osbyte_word.o"/>
+      <edge id="71" target="roms_init_services" source="kernel.o"/>
+      <edge id="72" target="roms_scanroms" source="kernel.o"/>
+      <edge id="73" target="roms_selX" source="osbyte_word.o"/>
+      <edge id="74" target="tblNatShims" source="vectors.o"/>
+      <edge id="75" target="tblNatShims" source="kernel.o"/>
+      <edge id="76" target="utilsAisAlpha" source="cli.o"/>
+      <edge id="77" target="PrintHexX" source="modules.o"/>
+      <edge id="78" target="PrintHexA" source="modules.o"/>
+      <edge id="79" target="Print2Spc" source="modules.o"/>
+      <edge id="80" target="PrintSpc" source="modules.o"/>
+      <edge id="81" target="cop_handle_nat" source="kernel.o"/>
+      <edge id="82" target="cop_handle_emu" source="kernel.o"/>
+      <edge id="83" target="COP_2F" source="cop.o"/>
+      <edge id="84" target="default_IVIRQ" source="kernel.o"/>
+      <edge id="85" target="initIRQdispatcher" source="kernel.o"/>
+      <edge id="86" target="COP_30" source="cop.o"/>
+      <edge id="87" target="COP_31" source="cop.o"/>
+      <edge id="88" target="default_BBC_vectors_len" source="bbcmosapi.o"/>
+      <edge id="89" target="nat_handle_abort" source="boot-vecs.o"/>
+      <edge id="90" target="emu_handle_nmi" source="boot-vecs.o"/>
+      <edge id="91" target="nat_handle_irq" source="boot-vecs.o"/>
+      <edge id="92" target="emu_handle_irq" source="boot-vecs.o"/>
+      <edge id="93" target="kernelRaiseEvent" source="buffers.o"/>
+      <edge id="94" target="kernelRaiseEvent" source="hardware.o"/>
+      <edge id="95" target="nat2emu_rti" source="brk.o"/>
+      <edge id="96" target="nat2emu_rti" source="osbyte_word.o"/>
+      <edge id="97" target="nat2emu_rti" source="cop.o"/>
+      <edge id="98" target="nat2emu_rti" source="vectors.o"/>
+      <edge id="99" target="nat2emu_rti" source="roms.o"/>
+      <edge id="100" target="default_BBC_vectors" source="bbcmosapi.o"/>
+      <edge id="101" target="nat_handle_nmi" source="boot-vecs.o"/>
+      <edge id="102" target="emu_handle_abort" source="boot-vecs.o"/>
+      <edge id="103" target="emu2nat_rti" source="vectors.o"/>
+      <edge id="104" target="emu2nat_rti" source="roms.o"/>
+      <edge id="105" target="nat_handle_brk" source="boot-vecs.o"/>
+      <edge id="106" target="nat_handle_cop" source="boot-vecs.o"/>
+      <edge id="107" target="deice_nat2emu_rti" source="deice.o"/>
+      <edge id="108" target="emu_handle_res" source="boot-vecs.o"/>
+      <edge id="109" target="emu_handle_cop" source="boot-vecs.o"/>
+      <edge id="110" target="nat2emu_0_rti" source="vectors.o"/>
+    </edges>
+  </graph>
+</gexf>
