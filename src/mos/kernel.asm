@@ -279,37 +279,38 @@ N_STACKED = 8
 		; stacked should be:
 		; +2..4	Addr	Address to continue at 24-bit
 		; +1	P	Flags to pass to caller
+		;
+		; B=0 on entry assumed
+		; DP unaffected
 
 .proc emu2nat_0_rti
 		sei		; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
 		clc
 		xce
 		rep	#$31	; clear carry for ADC below
+
 		.a16
 		.i16
-		sta	B0_SHIM_TMP
-		stx	B0_SHIM_TMP+2
+		sta	a:B0_SHIM_TMP						;5
+		stx	a:B0_SHIM_TMP+2						;5
+		sty	a:B0_SHIM_TMP+4						;5
 
-;		;TODO: force bank 0 - maybe remove?
-;		pea	0
-;		plb
-;		plb
+		pla								;5
+		ply								;5
+		tsx								;2
+		stx	a:B0_EMU_STACK						;5
 
-		ldx	a:B0_NAT_STACK
-		dex
-		dex
-		dex
-		dex
-		pla			; A contains P/low byte of ret
-		sta	1,X		; move to nat stack
-		pla			; A contains hi/bank byte of ret
-		sta	3,X		; move to nat stack
-		tsc
-		sta	a:B0_EMU_STACK
-		txs
 
-		ldx	B0_SHIM_TMP+2		
-		lda	B0_SHIM_TMP
+		ldx	a:B0_NAT_STACK						;5
+		txs								;2
+		phy								;4
+		pha								;4
+
+		ldy	a:B0_SHIM_TMP+4						;5
+		ldx	a:B0_SHIM_TMP+2						;5
+		lda	a:B0_SHIM_TMP						;5
+										;===
+										;62
 
 		rti
 .endproc
@@ -321,83 +322,17 @@ N_STACKED = 8
 		; +3..4	Addr	Address to continue at in bank 0
 		; +2	P	Flags to pass to caller
 		; +1	- 	don't care
-		; TODO: consider either a branch or a different set of nat2emu/emu2nat shims for 
-		;       0 extra bytes with simpler transfers
-		; TOD: consider only preserve AL not AH making for fewer instructions and smaller
-		;       stack to be copied - check if any API requires AH to survive
+		; AH is preserved
+		; XL, YL preserved
+		; B=DP=0 on exit
 .proc nat2emu_0_rti
 		sei		; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
 		rep	#$31	; clear carry for ADC below
 		.a16
 		.i16
 
-;;		;  force bank 0 - maybe remove?
-;;		pea	0							;5
-;;		pld								;5
-;;		phd								;4
-;;		plb								;4
-;;		plb								;4
-;;
-;;		sta	a:B0_SHIM_TMP						;5
-;;		stx	a:B0_SHIM_TMP+2						;5
-;;
-;;		ldx	a:B0_EMU_STACK						;5
-;;		dex								;2
-;;		dex								;2
-;;		dex								;2
-;;		dex								;2
-;;		pla			; A contains P/low byte of ret		;5
-;;		sta	1,X		; move to nat stack			;6
-;;		pla			; A contains hi/bank byte of ret		;5
-;;		sta	3,X		; move to nat stack			;6
-;;		tsc								;2
-;;		sta	a:B0_NAT_STACK						;5
-;;		txs								;2
-;;		plb			; pull and discard "don't care" byte	;4
-;;		
-;;		ldx	a:B0_SHIM_TMP+2						;5
-;;		lda	a:B0_SHIM_TMP						;5
-;;										;=====
-;;										;90
-;;
-
-
-;;; try #2
-
-;;;		phk			; force bank 0				;3
-;;;		plb								;4
-;;;
-;;;		sta	a:B0_SHIM_TMP						;5
-;;;		stx	a:B0_SHIM_TMP+2						;5
-;;;		sty	a:B0_SHIM_TMP+4						;5
-;;;
-;;;		pla								;5
-;;;		ply								;5
-;;;		tsx								;2
-;;;		stx	a:B0_NAT_STACK						;5
-;;;
-;;;		ldx	a:B0_EMU_STACK						;5
-;;;		txs								;2
-;;;		phy								;4
-;;;		pha								;4
-;;;		
-;;;		plb			; discard unwanted			;4
-;;;		phk			; force bank 0				;3
-;;;		plb								;4
-;;;
-;;;		lda	#0							;3
-;;;		tcd								;2
-;;;
-;;;		lda	a:B0_SHIM_TMP	; recover AH (16 bit)			;5
-;;;		ldx	a:B0_SHIM_TMP+2	; recover X (16 bit)			;5
-;;;		ldy	a:B0_SHIM_TMP+4	; recover Y (16 bit)			;5
-;;;
-;;;
-
-										;====
-										;85
 		; point DP at B0 area
-		pea	B0_BASE & $FF00	 					;5
+		pea	B0_BASE		 					;5
 		pld								;5
 
 		sta	z:<B0_SHIM_TMP						;4
@@ -418,21 +353,23 @@ N_STACKED = 8
 		phk			; force bank 0				;3
 		plb								;4
 
+
+		ldx	z:<B0_SHIM_TMP+2	; recover X (16 bit)			;4
+		ldy	z:<B0_SHIM_TMP+4	; recover Y (16 bit)			;4
+
+
 		lda	#0							;3
 		tcd								;2
 
 		lda	a:B0_SHIM_TMP	; recover AH (16 bit)			;5
-		ldx	a:B0_SHIM_TMP+2	; recover X (16 bit)			;5
-		ldy	a:B0_SHIM_TMP+4	; recover Y (16 bit)			;5
 
+		sec
+		xce
 
 
 										;====
 										;81
 
-
-		sec
-		xce
 		rti
 .endproc
 
