@@ -22,6 +22,7 @@ HANDLER_TRAMPOLINES	:= $00FAE0			; set in .cfg file - Repurposes Soft Keys expan
 DEICEBSS		:= $00FC00
 NAT_OS_VECS 		:= $00FD00
 NAT_OS_VECS_COUNT 	:= IX_VEC_MAX+1
+B0_BASE			:= $00FE00			; assumed to be page-aligned
 B0LL_FREE_BLOCKS	:= $00FE00
 B0LL_FREE_BLOCKS_END	:= $00FE02
 B0LL_IRQ_BLOCKS		:= $00FE06
@@ -30,7 +31,7 @@ B0_IRQ_STACK		:= $00FE10
 B0_EMU_STACK		:= $00FE12
 B0_NAT_STACK		:= $00FE14
 WINDOW_CUR		:= $00FE16			; current value of the window registers
-B0_SHIM_TMP		:= $00FE18			; used in nat2emu / emu2nat - interrupts off [4 bytes!]
+B0_SHIM_TMP		:= $00FE18			; used in nat2emu / emu2nat - interrupts off [6 bytes!]
 
 EXSYS			:= $00FF00
 EXSYS_FpHandles		:= $00FF02

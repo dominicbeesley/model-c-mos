@@ -331,37 +331,108 @@ N_STACKED = 8
 		.a16
 		.i16
 
-		;  force bank 0 - maybe remove?
-		pea	0
-		pld
-		phd
-		plb
-		plb
+;;		;  force bank 0 - maybe remove?
+;;		pea	0							;5
+;;		pld								;5
+;;		phd								;4
+;;		plb								;4
+;;		plb								;4
+;;
+;;		sta	a:B0_SHIM_TMP						;5
+;;		stx	a:B0_SHIM_TMP+2						;5
+;;
+;;		ldx	a:B0_EMU_STACK						;5
+;;		dex								;2
+;;		dex								;2
+;;		dex								;2
+;;		dex								;2
+;;		pla			; A contains P/low byte of ret		;5
+;;		sta	1,X		; move to nat stack			;6
+;;		pla			; A contains hi/bank byte of ret		;5
+;;		sta	3,X		; move to nat stack			;6
+;;		tsc								;2
+;;		sta	a:B0_NAT_STACK						;5
+;;		txs								;2
+;;		plb			; pull and discard "don't care" byte	;4
+;;		
+;;		ldx	a:B0_SHIM_TMP+2						;5
+;;		lda	a:B0_SHIM_TMP						;5
+;;										;=====
+;;										;90
+;;
 
-		sta	B0_SHIM_TMP
-		stx	B0_SHIM_TMP+2
 
-		ldx	a:B0_EMU_STACK
-		dex
-		dex
-		dex
-		dex
-		pla			; A contains P/low byte of ret
-		sta	1,X		; move to nat stack
-		pla			; A contains hi/bank byte of ret
-		sta	3,X		; move to nat stack
-		tsc
-		sta	a:B0_NAT_STACK
-		txs
-		plb			; pull and discard "don't care" byte
+;;; try #2
 
-		ldx	B0_SHIM_TMP+2		
-		lda	B0_SHIM_TMP
+;;;		phk			; force bank 0				;3
+;;;		plb								;4
+;;;
+;;;		sta	a:B0_SHIM_TMP						;5
+;;;		stx	a:B0_SHIM_TMP+2						;5
+;;;		sty	a:B0_SHIM_TMP+4						;5
+;;;
+;;;		pla								;5
+;;;		ply								;5
+;;;		tsx								;2
+;;;		stx	a:B0_NAT_STACK						;5
+;;;
+;;;		ldx	a:B0_EMU_STACK						;5
+;;;		txs								;2
+;;;		phy								;4
+;;;		pha								;4
+;;;		
+;;;		plb			; discard unwanted			;4
+;;;		phk			; force bank 0				;3
+;;;		plb								;4
+;;;
+;;;		lda	#0							;3
+;;;		tcd								;2
+;;;
+;;;		lda	a:B0_SHIM_TMP	; recover AH (16 bit)			;5
+;;;		ldx	a:B0_SHIM_TMP+2	; recover X (16 bit)			;5
+;;;		ldy	a:B0_SHIM_TMP+4	; recover Y (16 bit)			;5
+;;;
+;;;
+
+										;====
+										;85
+		; point DP at B0 area
+		pea	B0_BASE & $FF00	 					;5
+		pld								;5
+
+		sta	z:<B0_SHIM_TMP						;4
+		stx	z:<B0_SHIM_TMP+2						;4
+		sty	z:<B0_SHIM_TMP+4						;4
+
+		pla								;5
+		ply								;5
+		tsx								;2
+		stx	z:<B0_NAT_STACK						;4
+
+		ldx	z:<B0_EMU_STACK						;4
+		txs								;2
+		phy								;4
+		pha								;4
+		
+		plb			; discard unwanted			;4
+		phk			; force bank 0				;3
+		plb								;4
+
+		lda	#0							;3
+		tcd								;2
+
+		lda	a:B0_SHIM_TMP	; recover AH (16 bit)			;5
+		ldx	a:B0_SHIM_TMP+2	; recover X (16 bit)			;5
+		ldy	a:B0_SHIM_TMP+4	; recover Y (16 bit)			;5
+
+
+
+										;====
+										;81
 
 
 		sec
 		xce
-
 		rti
 .endproc
 
@@ -654,7 +725,7 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		
 
 
-		wdm 0
+;		wdm 0
 
 
 		rep	#$30
