@@ -433,8 +433,8 @@ emu_handle_res:
 		; Enter auto-boot mode
 		lda	sheila_MEM_CTL
 		and	#<~BITS_MEM_CTL_BOOT_MASK
-;;		ora	#MEM_CTL_AUTOBOOT_THROT_MODE	; production mode - but no hoglet debugger
-		ora	#MEM_CTL_AUTOBOOT_MODE
+		ora	#MEM_CTL_AUTOBOOT_THROT_MODE	; production mode - but no hoglet debugger
+;;		ora	#MEM_CTL_AUTOBOOT_MODE
 		sta	sheila_MEM_CTL
 
 ; Map the BLTURBO registers so that both native and emulation modes see the 
