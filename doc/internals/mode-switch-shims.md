@@ -3,9 +3,12 @@
 
 ## Introduction
 
-On the C20K / Blitter the 65816 sees two memory maps: In **emulation mode** the C20K/Blitter hardware's SWMOS logic causes the mirrors the FF bank into bank 00. In **native mode** (16-bit) the banks are separate. 
+On the C20K / Blitter the 65816 sees two memory maps: 
 
-Also, the native mode code in general requires quite large stacks - when switching from emulation to native mode the stack needs to be moved from $100-$200 to a new location with more room. This requires some shims that copy the stack from on area to another _and_ that appear to be located at the same area during a mode-switch. The area FB00-FC00 in emulation mode (which is mapped to FF FB00 - in the kernel of the ROM) is copied to 00 FB00-FC00 at boot time and all the mode-switch shims execute from this mirrored page. 
+  * In **emulation mode** the C20K/Blitter hardware's SWMOS logic mirrors bank FF into the CPU's logical bank 00. When the CPU accesses FExx (with PBR=0 or PBR=FF) the hardware registers are accessed.
+  * In **native mode** (16-bit) the banks are separate, hardware is accessed at FF FExx and 00 FExx is used to access system variables
+
+Also, the native mode code in general requires quite large stacks - when switching from emulation to native mode the stack needs to be moved from $100-$200 to a new location with more room. This requires some shims that copy the stack from one area to another. That code must survive the mode switch so if running. The area FB00-FC00 in emulation mode (which is mapped to FF FB00 - in the kernel of the ROM) is copied to 00 FB00-FBDF at boot time and all the mode-switch shims execute from this mirrored partial page, this means code can continue to run during a mode switch despite being in bank FF or 00.
 
 At boot the MOS copies the segment from ROM to bank-0 RAM (`kernel.asm:459-462`):
 
@@ -18,14 +21,14 @@ mvn  #^__default_handlers_LOAD__, #^__default_handlers_RUN__
 
 After boot mode is switched off, code in both worlds sees the same RAM copy:
 - Emulation mode: `FB00` (logical, page 1 stack + SHEILA visible above)
-- Native mode: `00 FB00` (physical bank 0)
+- Native mode: `00 FB00` (physical bank 0) or `FF FB00` (physical bank FF)
 
 The linker (`boot.cfg:23/57`) defines two memory regions for this:
 
-| Region | Address | Purpose |
-|--------|---------|---------|
-| `BMOS_DEFHWND` | `$FF FB00` | ROM load location |
-| `RAM_BMOS_DEFHWND` | `$00 FB00` | RAM run location, size `$E0` |
+| Region              | Address     | Purpose                       |
+|---------------------|-------------|-------------------------------|
+| `BMOS_DEFHWND`      | `$FF FB00`  | ROM load location             |
+| `RAM_BMOS_DEFHWND`  | `$00 FB00`  | RAM run location, size `$E0`  |
 
 See `memorymap.md` line 59-60 (the `>>>>` arrow).
 
@@ -35,17 +38,18 @@ See `memorymap.md` line 59-60 (the `>>>>` arrow).
 
 From `nat-layout.inc` and `memorymap.md`:
 
-| Address | Symbol | Contents |
-|---------|--------|----------|
-| `00 F700` | `STACKNAT` | Native mode OS stack (grows up toward FB00) |
-| `00 FB00` | `HANDLER_TRAMPOLINES` / `STACKNAT_TOP` | This segment (224 bytes, copied from ROM at boot) |
-| `00 FC00` | `DEICEBSS` | DeICE stack/workspace |
-| `00 FD00` | `NAT_OS_VECS` | Native OS vector table |
-| `00 FE10` | `B0_IRQ_STACK` | IRQ handler private stack pointer |
-| `00 FE12` | `B0_EMU_STACK` | Scratch: saved emulation stack pointer (during transitions) |
-| `00 FE14` | `B0_NAT_STACK` | Scratch: saved native stack pointer (during transitions) |
+| Address   | Symbol                                  | Contents                                                    |
+|-----------|-----------------------------------------|-------------------------------------------------------------|
+| `00 F700` | `STACKNAT`                              | Native mode OS stack (grows up toward FB00)                 |
+| `00 FB00` | `HANDLER_TRAMPOLINES` / `STACKNAT_TOP`  | This segment (224 bytes, copied from ROM at boot)           |
+| `00 FC00` | `DEICEBSS`                              | DeICE stack/workspace                                       |
+| `00 FD00` | `NAT_OS_VECS`                           | Native OS vector table                                      |
+| `00 FE10` | `B0_IRQ_STACK`                          | IRQ handler private stack pointer                           |
+| `00 FE12` | `B0_EMU_STACK`                          | Scratch: saved emulation stack pointer (during transitions) |
+| `00 FE14` | `B0_NAT_STACK`                          | Scratch: saved native stack pointer (during transitions)    |
 
-`B0_EMU_STACK` and `B0_NAT_STACK` are only valid between the `sei` and `rti` of the transition shims. Not for general use.
+`B0_EMU_STACK` and `B0_NAT_STACK` are only valid when the other mode is in operation - it is assumed that one mode
+will always switch to the other and back, whereupon the relevant stack pointer will be restored from these locations.
 
 ---
 
@@ -158,11 +162,11 @@ Switches to native mode and RTIs into `cop_handle_emu` (`cop.asm`). That handler
 
 Short `jml` trampolines so the hardware vector table can reach the real handlers:
 
-| Label | Target |
-|-------|--------|
+| Label            | Target                           |
+|------------------|----------------------------------|
 | `nat_handle_cop` | `jml cop_handle_nat` (`cop.asm`) |
 | `nat_handle_brk` | `jml brk_handle_nat` (`brk.asm`) |
-| `nat_handle_nmi` | `rti` (ignored) |
+| `nat_handle_nmi` | `rti` (ignored)                  |
 | `nat_handle_irq` | `jml default_IVIRQ` (`irqs.asm`) |
 
 These must live in this segment because the hardware vector table is also near `$FF FF00` and `$00 FFE0`, and a `jml` to the copied RAM is shorter/safer than reaching deep into ROM.
@@ -171,18 +175,18 @@ These must live in this segment because the hardware vector table is also near `
 
 ## Callers outside `default_handlers`
 
-| File | Line | Direction | Why |
-|------|------|-----------|-----|
-| `cop.asm` | 117 | nat → emu | COP call returns to 8-bit caller |
-| `brk.asm` | 154 | nat → emu | BRK handler returns to emulation |
-| `osbyte_word.asm` | 750 | nat → emu | OSBYTE/OSWORD returns to emu caller |
-| `roms.asm` | 171 | nat → emu | Return from ROM service call |
-| `roms.asm` | 199 | emu → nat | Enter native to service a ROM call |
-| `vectors.asm` | 41 | emu → nat | BBC vector entry: cross to native handler |
-| `vectors.asm` | 114 | nat → emu | BBC vector exit: return result to emu |
-| `vectors.asm` | 284 | nat → emu | Exit native vector back to emulation |
-| `vectors.asm` | 308 | emu → nat | Enter native for vector dispatch |
-| `deice.asm` | 203 | nat → emu | DeICE exit via `deice_nat2emu_rti` |
+| File              | Line | Direction | Why                                       |
+|-------------------|------|-----------|-------------------------------------------|
+| `cop.asm`         | 117  | nat → emu | COP call returns to 8-bit caller          |
+| `brk.asm`         | 154  | nat → emu | BRK handler returns to emulation          |
+| `osbyte_word.asm` | 750  | nat → emu | OSBYTE/OSWORD returns to emu caller       |
+| `roms.asm`        | 171  | nat → emu | Return from ROM service call              |
+| `roms.asm`        | 199  | emu → nat | Enter native to service a ROM call        |
+| `vectors.asm`     | 41   | emu → nat | BBC vector entry: cross to native handler |
+| `vectors.asm`     | 114  | nat → emu | BBC vector exit: return result to emu     |
+| `vectors.asm`     | 284  | nat → emu | Exit native vector back to emulation      |
+| `vectors.asm`     | 308  | emu → nat | Enter native for vector dispatch          |
+| `deice.asm`       | 203  | nat → emu | DeICE exit via `deice_nat2emu_rti`        |
 
 ---
 
@@ -192,9 +196,9 @@ These must live in this segment because the hardware vector table is also near `
 
 Each shim updates the variable for the mode being *left* and reads the variable for the mode being *entered*:
 
-| Shim | Writes | Reads |
-|------|--------|-------|
-| `emu2nat_rti` | `B0_EMU_STACK` := current emu SP | `B0_NAT_STACK` to place native frame |
+| Shim          | Writes                           | Reads                                   |
+|---------------|----------------------------------|-----------------------------------------|
+| `emu2nat_rti` | `B0_EMU_STACK` := current emu SP | `B0_NAT_STACK` to place native frame    |
 | `nat2emu_rti` | `B0_NAT_STACK` := current nat SP | `B0_EMU_STACK` to place emulation frame |
 
 After any switch completes, the updated variable reflects the live top of that mode's stack, ready to be used by the next switch in the same direction.

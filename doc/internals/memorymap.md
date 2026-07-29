@@ -3,7 +3,7 @@
 
 ```
 
-Emulation Mode                                    Native Mode
+                    Emulation Mode                     Native Mode
 
 Log     Phys                                                 
 0000    00 0000 +---------------------------------------------------------+     00 0000
@@ -29,7 +29,7 @@ Log     Phys
 0D00    00 0D00 +---------------------------------------------------------+     00 0D00
                 | EMU NMI / Econet / Ext vectors / ROM private pointers   |
 0E00    00 0E00 +---------------------------------------------------------+     00 0E00
-                |                                                         |
+                |      ROM workspace or Language reserved for 8-bit       |
 1000    FF 1000 +..........................+----+-------------------------+     00 1000 
                 B                          B    |                         |
                 B      ROM workspace       B    |                         |
