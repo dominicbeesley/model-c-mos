@@ -133,26 +133,27 @@ N_STACKED = 8
 										;3
 		rep	#$10							;3
 		.i16
-		tay								;2
+		sta	z:<B0_SHIM_TMP	; stash size				;4
 		adc	z:<B0_NAT_STACK						;4
 		sta	z:<B0_NAT_STACK	; store back adjusted stack  		;4
 		tax			; source for copy (top)  			;2
-		tya								;2
-		eor	#$FFFF							;3
+
+		; adjust emu stack down to fit
+		lda	z:<B0_EMU_STACK	; get emu stack pointer			;4
+		tay								;2
 		sec								;2
-		adc	z:<B0_EMU_STACK	; get emu stack pointer (RSB)  		;4
+		sbc	z:<B0_SHIM_TMP	;  adjust down (size stashed above)		;3
 		tcs								;2
 		; we are now using the emu mode stack, copy across stuff from
 		; native mode stack
 		
-		tya			; count  				;2
+		lda	z:<B0_SHIM_TMP	; count  				;4
 		dec	A							;2
-		ldy	z:<B0_EMU_STACK	; get back dest  				;4
 
 		mvp	#0,#0		; copy stack data across  			;7 x (n)
 
 		; reset DP
-		inc	A							;2
+		inc	A		; A=0 after this				;2
 		tcd								;2
 
 
@@ -181,9 +182,9 @@ N_STACKED = 8
 		xba								;3
 		plx								;4
 		ply								;4
-		plb		; "0"  						;4
+		plb		; zeroed above					;4
 										;====
-										;104 cycles + 7 x (n) for MVP, (excluding sei/rep/sec/xce/rti prolog+epilog)
+										;102 cycles + 7 x (n) for MVP, (excluding sei/rep/sec/xce/rti prolog+epilog)
 
 		sec
 		xce
