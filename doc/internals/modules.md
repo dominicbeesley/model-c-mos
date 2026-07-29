@@ -5,10 +5,10 @@ This is the specification for Model C MOS modules
 Modules are intended to be like sideways ROMS in a 24bit address space (as 
 opposed to in sideways banks). 
 
-Modules are binary format with fields as specified below
-Modules are a 256 byte aligned
-Modules _may_ be relocatable within a bank (fully relocatable)
-Modules _may_ be bank agnostic (bank relocatable)
+* Modules are binary format with fields as specified below
+* Modules are a 256 byte aligned
+* Modules _may_ be bank agnostic (bank relocatable)
+* In addition to bank agnostic modules _may_ be relocatable within a bank (fully relocatable)
 
 The modules presented here are not compatible with any pre-existing format 
 (BBC, Communicator, RiscOS). 

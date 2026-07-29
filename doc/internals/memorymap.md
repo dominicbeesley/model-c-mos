@@ -3,7 +3,7 @@
 
 ```
 
-Emulation Mode                                    Native Mode
+                    Emulation Mode                     Native Mode
 
 Log     Phys                                                 
 0000    00 0000 +---------------------------------------------------------+     00 0000
@@ -29,7 +29,7 @@ Log     Phys
 0D00    00 0D00 +---------------------------------------------------------+     00 0D00
                 | EMU NMI / Econet / Ext vectors / ROM private pointers   |
 0E00    00 0E00 +---------------------------------------------------------+     00 0E00
-                |                                                         |
+                |      ROM workspace or Language reserved for 8-bit       |
 1000    FF 1000 +..........................+----+-------------------------+     00 1000 
                 B                          B    |                         |
                 B      ROM workspace       B    |                         |
@@ -56,7 +56,7 @@ E000    ?? ???? ?-----------------+---------------------------------------|
 F000    FF F000 M--------------------------M    |                         |
                 M                          M    |-------------------------|     00 F700
                 M      MOS ROM             M    | Native mode OS Stack    |
-FB00    FF FB00 M--------------------------M    |-------------------------|     00 FB00
+FAE0    FF FAE0 M--------------------------M    |-------------------------|     00 FAE0
                 M  EMU/NAT handler code    M>>>>| copy of EMU/NAT code    |     copied at boot
 FC00    FF FC00 +--------------------------+    |-------------------------|     00 FC00
           FRED  h                          h    | DeIce stack/workspace   |
