@@ -108,13 +108,11 @@ nat_handle_irq:	jml	default_IVIRQ
 		phx								;3
 		pha			; save caller A  				;4
 
-		; must switch to DP=B=0 before switching to emu mode
-		; as interrupts etc in emu mode may assume them
-		pea	0							;5
-		pld								;5
-		phd								;4
-		plb								;4
-		plb								;4
+
+		; we don't bother switching to B=0 here as DP will be used for all 
+		; sys var accesses
+		lda	#B0_BASE		 					;3
+		tcd								;2
 
 		tsc			; A = nat stack pointer  			;2
 	; nat stack now contains
@@ -126,7 +124,7 @@ nat_handle_irq:	jml	default_IVIRQ
 	;	+3	caller's X (8 bit)
 	;	+1..2   caller's A
 N_STACKED = 8
-		sta	a:B0_NAT_STACK	; save nat stack pointer (temporary)	;5
+		sta	z:<B0_NAT_STACK	; save nat stack pointer (temporary)	;4
 
 		lda	5,S							;5
 		and	#$00FF		; get 8 bit # extra bytes into A  		;3
@@ -136,28 +134,33 @@ N_STACKED = 8
 		rep	#$10							;3
 		.i16
 		tay								;2
-		adc	a:B0_NAT_STACK						;5
-		sta	a:B0_NAT_STACK	; store back adjusted stack  		;5
+		adc	z:<B0_NAT_STACK						;4
+		sta	z:<B0_NAT_STACK	; store back adjusted stack  		;4
 		tax			; source for copy (top)  			;2
 		tya								;2
 		eor	#$FFFF							;3
-		sec
-		adc	a:B0_EMU_STACK	; get emu stack pointer (RSB)  		;5
+		sec								;2
+		adc	z:<B0_EMU_STACK	; get emu stack pointer (RSB)  		;4
 		tcs								;2
 		; we are now using the emu mode stack, copy across stuff from
 		; native mode stack
 		
 		tya			; count  				;2
-		ldy	a:B0_EMU_STACK	; get back dest  				;5
+		dec	A							;2
+		ldy	z:<B0_EMU_STACK	; get back dest  				;4
 
-		mvp	#0,#0		; copy stack data across  			;7 x (n+1)
+		mvp	#0,#0		; copy stack data across  			;7 x (n)
+
+		; reset DP
+		inc	A							;2
+		tcd								;2
+
 
 
 		sep	#$30							;3
 		.i8
 		.a8
 
-		inc	A		; A FFFF->0  				;2
 		sta	5,S		; zero 5,S   				;4
 
 	; emu stack now contains
@@ -171,6 +174,7 @@ N_STACKED = 8
 	;	+1..2   caller's A (16 bit)
 
 
+
 		pla								;4
 		xba								;3
 		pla								;4
@@ -179,7 +183,7 @@ N_STACKED = 8
 		ply								;4
 		plb		; "0"  						;4
 										;====
-										;124 cycles + 7 x (n+1) for MVP, (excluding sei/rep/sec/xce/rti prolog+epilog)
+										;104 cycles + 7 x (n) for MVP, (excluding sei/rep/sec/xce/rti prolog+epilog)
 
 		sec
 		xce
