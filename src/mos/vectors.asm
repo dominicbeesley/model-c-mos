@@ -111,7 +111,11 @@ bbcEmu2NatVectorEntry_ff:
 		;	+1..2	A
 		pla
 
-		jml	nat2emu_rti
+		;stack
+		;	+3..4	vectors caller's rti address (bank 0)
+		;	+2	P
+		;	+1	0
+		jml	nat2emu_0_rti	; no extras
 
 
 		.i16

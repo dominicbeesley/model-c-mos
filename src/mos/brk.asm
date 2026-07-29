@@ -89,7 +89,10 @@ _LDC16:		stx	dp_mos_curROM			; RAM copy of rom latch
 
 		.segment "BMOS_NAT_CODE"
 
-
+		; The native mode BRK handler _always_ calls the emu mode handler
+		; first
+		; TODO: should there be a check to see which mode owns the current
+		;       BRK handler or are BRKs treated as intrinsically slow
 brk_handle_nat:	
 		sep	#$20
 		rep	#$10
@@ -147,7 +150,8 @@ brk_handle_nat:
 		xba
 		pla
 		xba
-		plb
+		plb		; discard a byte B is reset in nat2emu_rti
+
 		pea	emu_handle_brk	
 		pea	$0403
 

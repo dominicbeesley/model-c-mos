@@ -12,8 +12,10 @@ __KERNEL_I_INC__:
 		.import emu_handle_nmi
 		.import emu_handle_res
 		.import nat2emu_rti
+		.import nat2emu_0_rti
 		.import deice_nat2emu_rti
 		.import emu2nat_rti
+		.import emu2nat_0_rti
 		.import bank0
 		.import bankFF
 		.import kernelRaiseEvent:far
