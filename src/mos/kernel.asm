@@ -164,6 +164,9 @@ N_STACKED = 8
 
 		sta	5,S		; zero 5,S   				;4
 
+		rep	#$20							;3
+		.a16
+
 	; emu stack now contains
 	;	Stack/DP offset
 	;	+9....	extra bytes requested
@@ -176,15 +179,12 @@ N_STACKED = 8
 
 
 
-		pla								;4
-		xba								;3
-		pla								;4
-		xba								;3
+		pla								;5
 		plx								;4
 		ply								;4
 		plb		; zeroed above					;4
 										;====
-										;102 cycles + 7 x (n) for MVP, (excluding sei/rep/sec/xce/rti prolog+epilog)
+										;96 cycles + 7 x (n) for MVP, (excluding sei/rep/sec/xce/rti prolog+epilog)
 
 		sec
 		xce
