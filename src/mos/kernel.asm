@@ -195,8 +195,10 @@ N_STACKED = 8
 		; stacked should be:
 		; +4..6	Addr	Address to continue at 24-bit
 		; +3	P	Flags to pass to caller
-		; +2	0	reserved "0"
+		; +2	0	reserved "0" - set B register on exit - TODO: make this part of API? (needs to be 0 for 16 bit count calcs currently!)
 		; +1	#	number of stacked bytes to transfer across
+		; DP=0, B=0 (offset 2 on entry)
+		; TODO - don't set EMU stack until after copy - safe for NMIs
 		.a8
 		.i8
 .proc emu2nat_rti
@@ -210,11 +212,8 @@ N_STACKED = 8
 		phx			; save caller X (8bit)  			;3
 		pha			; save caller A  				;4
 
-;		;TODO: force bank 0 - maybe remove?
-;		pea	0
-;		plb
-;		plb
-
+		lda	#B0_BASE							;3
+		tcd								;2
 
 	; emu stack now contains
 	;	Stack offset
@@ -229,8 +228,8 @@ N_STACKED = 8
 
 	N_STACKED = 10
 
-		tsc	; 2 cycles
-		sta	a:B0_EMU_STACK	; save nat stack pointer (temporary)  	;5
+		tsc								;2
+		sta	z:<B0_EMU_STACK	; save nat stack pointer (temporary)  	;4
 
 		lda	5,S		; get 8 bit # extra bytes into A (0 must be pushed above 8 bit len)
 										;5
@@ -238,19 +237,19 @@ N_STACKED = 8
 										;3
 		rep	#$11		; clear carry and choose big index registers	;3
 		.i16
-		tay			; number of bytes to copy  		;2
-		adc	a:B0_EMU_STACK						;5
-		sta	a:B0_EMU_STACK	; store back adjusted stack  		;5
+		sta	z:<B0_SHIM_TMP	; number of bytes to copy  		;4
+		adc	z:<B0_EMU_STACK						;4
+		sta	z:<B0_EMU_STACK	; store back adjusted stack  		;4
 		tax			; set source for copy (topmost)  		;2
-		tya			; get back count  			;2
-		eor	#$FFFF							;3
-		sec
-		adc	a:B0_NAT_STACK	; get emu stack pointer (RSB)  		;5
+
+		lda	z:<B0_NAT_STACK	; get nat stack				;4
+		tay			; dest for copy				;2
+		sec								;2
+		sbc	z:<B0_SHIM_TMP	; subtract count				;4
 		tcs								;2
 
-		tya			; count  				;2
-		ldy	a:B0_NAT_STACK	; set dest for copy (topmost) - still pointing at top  
-										;5
+		lda	z:<B0_SHIM_TMP	; count  				;4
+		dec	A							;2
 
 		; we are now using the native mode stack, copy across stuff from
 		; emu mode stack into the space we reserved
@@ -272,16 +271,19 @@ N_STACKED = 8
 	;	+3	caller's X
 	;	+1..2   caller's A
 
+		lda	#0							;3
+		tcd								;2
+
 		sep	#$10							;3
 		.i8
 		pla								;5
 		plx								;4
 		ply								;4
-		plb								;4
+		plb			; discard count				;4
 		plb								;4
 
 		rti
-	; TOTAL (excluding sei/clc/xce/rep/sec/rti prolog+epilog): 85 cycles + 7 x (n+1) for MVP
+	; TOTAL (excluding sei/clc/xce/rep/sec/rti prolog+epilog): 95 cycles + 7 x (n) for MVP
 .endproc
 
 		; enter nat mode from emu
