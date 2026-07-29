@@ -206,9 +206,9 @@ N_STACKED = 8
 		rep	#$21	; clear carry for ADC below
 		.a16
 		.i8
-		phy	; 3 cycles
-		phx			; save caller X (8bit)  [3 cycles]
-		pha			; save caller A  [4 cycles]
+		phy								;3
+		phx			; save caller X (8bit)  			;3
+		pha			; save caller A  				;4
 
 ;		;TODO: force bank 0 - maybe remove?
 ;		pea	0
@@ -230,24 +230,27 @@ N_STACKED = 8
 	N_STACKED = 10
 
 		tsc	; 2 cycles
-		sta	a:B0_EMU_STACK	; save nat stack pointer (temporary)  [5 cycles]
+		sta	a:B0_EMU_STACK	; save nat stack pointer (temporary)  	;5
 
-		lda	5,S		; get 8 bit # extra bytes into A (0 must be pushed above 8 bit len)  [5 cycles]
-		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack  [3 cycles]
-		rep	#$11		; clear carry and choose big index registers
+		lda	5,S		; get 8 bit # extra bytes into A (0 must be pushed above 8 bit len)
+										;5
+		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack  
+										;3
+		rep	#$11		; clear carry and choose big index registers	;3
 		.i16
-		tay			; number of bytes to copy  [2 cycles]
-		adc	a:B0_EMU_STACK	; 5 cycles
-		sta	a:B0_EMU_STACK	; store back adjusted stack  [5 cycles]
-		tax			; set source for copy (topmost)  [2 cycles]
-		tya			; get back count  [2 cycles]
-		eor	#$FFFF	; 3 cycles
+		tay			; number of bytes to copy  		;2
+		adc	a:B0_EMU_STACK						;5
+		sta	a:B0_EMU_STACK	; store back adjusted stack  		;5
+		tax			; set source for copy (topmost)  		;2
+		tya			; get back count  			;2
+		eor	#$FFFF							;3
 		sec
-		adc	a:B0_NAT_STACK	; get emu stack pointer (RSB)  [5 cycles]
-		tcs	; 2 cycles
+		adc	a:B0_NAT_STACK	; get emu stack pointer (RSB)  		;5
+		tcs								;2
 
-		tya			; count  [2 cycles]
-		ldy	a:B0_NAT_STACK	; set dest for copy (topmost) - still pointing at top  [5 cycles]
+		tya			; count  				;2
+		ldy	a:B0_NAT_STACK	; set dest for copy (topmost) - still pointing at top  
+										;5
 
 		; we are now using the native mode stack, copy across stuff from
 		; emu mode stack into the space we reserved
@@ -256,7 +259,7 @@ N_STACKED = 8
 		; Y points at native stack
 		; A contains number of bytes to copy
 
-		mvp	#0,#0		; copy stack data  [7 x (n+1) cycles, n = C reg (bytes to move - 1) -- data dependent]
+		mvp	#0,#0		; copy stack data  			;7 x (n+1)
 
 	; emu stack now contains
 	;	Stack offset
@@ -269,16 +272,16 @@ N_STACKED = 8
 	;	+3	caller's X
 	;	+1..2   caller's A
 
-		sep	#$10	; 3 cycles
+		sep	#$10							;3
 		.i8
-		pla	; 5 cycles
-		plx	; 4 cycles
-		ply	; 4 cycles
-		plb	; 4 cycles
-		plb	; 4 cycles
+		pla								;5
+		plx								;4
+		ply								;4
+		plb								;4
+		plb								;4
 
 		rti
-	; TOTAL (excluding sei/clc/xce/rep/sec/rti prolog+epilog): 82 cycles + 7 x (n+1) for MVP
+	; TOTAL (excluding sei/clc/xce/rep/sec/rti prolog+epilog): 85 cycles + 7 x (n+1) for MVP
 .endproc
 
 		; enter nat mode from emu
