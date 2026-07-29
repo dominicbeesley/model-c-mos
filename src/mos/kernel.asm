@@ -94,30 +94,29 @@ nat_handle_irq:	jml	default_IVIRQ
 		; +3..4	Addr	Address to continue at in bank 0
 		; +2	P	Flags to pass to caller
 		; +1	#	number of bytes extra of stack to transfer
-		; TODO: consider either a branch or a different set of nat2emu/emu2nat shims for 
-		;       0 extra bytes with simpler transfers
-		; TOD: consider only preserve AL not AH making for fewer instructions and smaller
-		;       stack to be copied - check if any API requires AH to survive
+		; B=DP=0 on exit
+		; AH, XL, YL preserved
 
 .proc nat2emu_rti
 		sei			; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
 		rep	#$31		; we should still be careful of data below stack pointer possibly changing, clear carry
-		sep	#$10		; we can afford to lose top part of X/Y as they will get lost when we xce
+		sep	#$10		; we can afford to lose top part of X/Y as they will get lost when we xce  
+										;3
 		.a16
 		.i8
-		phy
-		phx
-		pha			; save caller A
+		phy								;3
+		phx								;3
+		pha			; save caller A  				;4
 
 		; must switch to DP=B=0 before switching to emu mode
 		; as interrupts etc in emu mode may assume them
-		pea	0
-		pld
-		phd
-		plb
-		plb
+		pea	0							;5
+		pld								;5
+		phd								;4
+		plb								;4
+		plb								;4
 
-		tsc			; A = nat stack pointer
+		tsc			; A = nat stack pointer  			;2
 	; nat stack now contains
 	;	Stack/DP offset
 	;	+7..8	RTI address (16 bits)
@@ -127,38 +126,39 @@ nat_handle_irq:	jml	default_IVIRQ
 	;	+3	caller's X (8 bit)
 	;	+1..2   caller's A
 N_STACKED = 8
-		sta	a:B0_NAT_STACK	; save nat stack pointer (temporary)
+		sta	a:B0_NAT_STACK	; save nat stack pointer (temporary)	;5
 
-		lda	5,S
-		and	#$00FF		; get 8 bit # extra bytes into A
+		lda	5,S							;5
+		and	#$00FF		; get 8 bit # extra bytes into A  		;3
 					; carry was cleared in rep above
-		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack
-		rep	#$10
+		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack  
+										;3
+		rep	#$10							;3
 		.i16
-		tay
-		adc	a:B0_NAT_STACK
-		sta	a:B0_NAT_STACK	; store back adjusted stack
-		tax			; source for copy (top)
-		tya
-		eor	#$FFFF
+		tay								;2
+		adc	a:B0_NAT_STACK						;5
+		sta	a:B0_NAT_STACK	; store back adjusted stack  		;5
+		tax			; source for copy (top)  			;2
+		tya								;2
+		eor	#$FFFF							;3
 		sec
-		adc	a:B0_EMU_STACK	; get emu stack pointer (RSB)
-		tcs
+		adc	a:B0_EMU_STACK	; get emu stack pointer (RSB)  		;5
+		tcs								;2
 		; we are now using the emu mode stack, copy across stuff from
 		; native mode stack
 		
-		tya			; count
-		ldy	a:B0_EMU_STACK	; get back dest
+		tya			; count  				;2
+		ldy	a:B0_EMU_STACK	; get back dest  				;5
 
-		mvp	#0,#0		; copy stack data across
+		mvp	#0,#0		; copy stack data across  			;7 x (n+1)
 
 
-		sep	#$30
+		sep	#$30							;3
 		.i8
 		.a8
 
-		inc	A		; A FFFF->0
-		sta	5,S		; zero 5,S
+		inc	A		; A FFFF->0  				;2
+		sta	5,S		; zero 5,S   				;4
 
 	; emu stack now contains
 	;	Stack/DP offset
@@ -171,18 +171,19 @@ N_STACKED = 8
 	;	+1..2   caller's A (16 bit)
 
 
-		pla
-		xba
-		pla
-		xba
-		plx
-		ply
-		plb		; "0"
+		pla								;4
+		xba								;3
+		pla								;4
+		xba								;3
+		plx								;4
+		ply								;4
+		plb		; "0"  						;4
+										;====
+										;124 cycles + 7 x (n+1) for MVP, (excluding sei/rep/sec/xce/rti prolog+epilog)
 
 		sec
 		xce
 		rti
-
 .endproc
 
 		; enter nat mode from emu
@@ -191,7 +192,6 @@ N_STACKED = 8
 		; +3	P	Flags to pass to caller
 		; +2	0	reserved "0"
 		; +1	#	number of stacked bytes to transfer across
-
 		.a8
 		.i8
 .proc emu2nat_rti
@@ -201,9 +201,9 @@ N_STACKED = 8
 		rep	#$21	; clear carry for ADC below
 		.a16
 		.i8
-		phy
-		phx			; save caller X (8bit)
-		pha			; save caller A
+		phy	; 3 cycles
+		phx			; save caller X (8bit)  [3 cycles]
+		pha			; save caller A  [4 cycles]
 
 ;		;TODO: force bank 0 - maybe remove?
 ;		pea	0
@@ -224,25 +224,25 @@ N_STACKED = 8
 
 	N_STACKED = 10
 
-		tsc
-		sta	a:B0_EMU_STACK	; save nat stack pointer (temporary)
+		tsc	; 2 cycles
+		sta	a:B0_EMU_STACK	; save nat stack pointer (temporary)  [5 cycles]
 
-		lda	5,S		; get 8 bit # extra bytes into A (0 must be pushed above 8 bit len)
-		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack
+		lda	5,S		; get 8 bit # extra bytes into A (0 must be pushed above 8 bit len)  [5 cycles]
+		adc	#N_STACKED	; step back over saved stuff will get moved to emu stack  [3 cycles]
 		rep	#$11		; clear carry and choose big index registers
 		.i16
-		tay			; number of bytes to copy
-		adc	a:B0_EMU_STACK
-		sta	a:B0_EMU_STACK	; store back adjusted stack
-		tax			; set source for copy (topmost)
-		tya			; get back count
-		eor	#$FFFF
+		tay			; number of bytes to copy  [2 cycles]
+		adc	a:B0_EMU_STACK	; 5 cycles
+		sta	a:B0_EMU_STACK	; store back adjusted stack  [5 cycles]
+		tax			; set source for copy (topmost)  [2 cycles]
+		tya			; get back count  [2 cycles]
+		eor	#$FFFF	; 3 cycles
 		sec
-		adc	a:B0_NAT_STACK	; get emu stack pointer (RSB)
-		tcs
+		adc	a:B0_NAT_STACK	; get emu stack pointer (RSB)  [5 cycles]
+		tcs	; 2 cycles
 
-		tya			; count
-		ldy	a:B0_NAT_STACK	; set dest for copy (topmost) - still pointing at top
+		tya			; count  [2 cycles]
+		ldy	a:B0_NAT_STACK	; set dest for copy (topmost) - still pointing at top  [5 cycles]
 
 		; we are now using the native mode stack, copy across stuff from
 		; emu mode stack into the space we reserved
@@ -251,7 +251,7 @@ N_STACKED = 8
 		; Y points at native stack
 		; A contains number of bytes to copy
 
-		mvp	#0,#0		; copy stack data
+		mvp	#0,#0		; copy stack data  [7 x (n+1) cycles, n = C reg (bytes to move - 1) -- data dependent]
 
 	; emu stack now contains
 	;	Stack offset
@@ -264,15 +264,16 @@ N_STACKED = 8
 	;	+3	caller's X
 	;	+1..2   caller's A
 
-		sep	#$10
+		sep	#$10	; 3 cycles
 		.i8
-		pla
-		plx
-		ply
-		plb
-		plb
+		pla	; 5 cycles
+		plx	; 4 cycles
+		ply	; 4 cycles
+		plb	; 4 cycles
+		plb	; 4 cycles
 
 		rti
+	; TOTAL (excluding sei/clc/xce/rep/sec/rti prolog+epilog): 82 cycles + 7 x (n+1) for MVP
 .endproc
 
 		; enter nat mode from emu
