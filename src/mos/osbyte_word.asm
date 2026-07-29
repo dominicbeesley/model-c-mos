@@ -8,6 +8,7 @@
 		.include "vduvars.inc"
 
 
+		.include "config.inc"
 		.include "debug_i.inc"
 		.include "kernel_i.inc"
 		.include "roms_i.inc"
@@ -465,8 +466,15 @@ _OSWORD_11:
 _OSWORD_12:
 _OSWORD_13:
 
-
+		; TODO: Discuss JGH
 _OSBYTE_0:
+		txa
+		bne	@ros
+		brk
+		.byte	247, OS_NAME,0
+@ros:		ldx	#OS_LEVEL
+		rtl
+
 _OSBYTE_1_6:
 _OSBYTE_2:
 _OSBYTE_3_4:

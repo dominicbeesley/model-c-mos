@@ -7,6 +7,7 @@
 		.include "sysvars.inc"
 		.include "vduvars.inc"
 
+		.include "config.inc"
 		.include "deice_i.inc"
 		.include "debug_i.inc"
 		.include "bbc-nat-vectors_i.inc"
@@ -729,15 +730,15 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.i16
 
 
-
-
-
 		DEBUG_PRINTF "scan ROMs\n"
 		jsl	roms_scanroms			; only on ctrl-break, but always for now...
 		DEBUG_PRINTF "ROMs init\n"
 		jsl	roms_init_services		; call initialisation service calls
 
 
+		; OS banner TODO: think about this - maybe check machine type
+		cop	COP_01_OPWRS
+		.byte	13, 10, OS_NAME, 13, 10, 10, 0
 
 		cli
 
