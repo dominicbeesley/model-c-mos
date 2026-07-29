@@ -52,7 +52,7 @@ From `nat-layout.inc` and `memorymap.md`:
 | `00 FE10` | `B0_IRQ_STACK`                         | IRQ handler private stack pointer                                        |
 | `00 FE12` | `B0_EMU_STACK`                         | Scratch: saved emulation stack pointer (during transitions)              |
 | `00 FE14` | `B0_NAT_STACK`                         | Scratch: saved native stack pointer (during transitions)                 |
-| `00 FE18` | `B0_SHIM_TMP`                          | Scratch: A/X/Y save area for `emu2nat_0_rti` / `nat2emu_0_rti` (6 bytes) |
+| `00 FE18` | `B0_SHIM_TMP`                          | Scratch: A/X/Y save area for `emu2nat_0_rti` / `nat2emu_0_rti`; also used by `emu2nat_rti` / `nat2emu_rti` to stash the frame byte-count while adjusting stack pointers (6 bytes) |
 
 `B0_EMU_STACK` and `B0_NAT_STACK` are only valid when the other mode is in operation - it is assumed that one mode
 will always switch to the other and back, whereupon the relevant stack pointer will be restored from these locations.
@@ -72,7 +72,7 @@ Switches the CPU to native mode and RTIs to a 24-bit continuation address, carry
 [S+5]  hi byte of continuation addr
 [S+4]  lo byte of continuation addr
 [S+3]  P — flags for destination
-[S+2]  0 — reserved
+[S+2]  0 — must be 0; consumed as the data bank register on exit
 [S+1]  # — number of extra bytes to copy (beyond the N_STACKED = 10 frame)
 ```
 
@@ -82,11 +82,13 @@ Constructed with three `pea` instructions, then `jmp emu2nat_rti` (or `jml` from
 
 1. `sei` — interrupts off for the duration.
 2. `clc / xce` — switch to native mode.
-3. `rep #$21` (16-bit A/X/Y, clear carry), push A, X, Y. Record `tsc → B0_EMU_STACK`.
-4. Read `#extra` from `[S+5]`, add `N_STACKED (10)` = total bytes to move.
-5. Subtract total from `B0_NAT_STACK`; transfer SP there (`tcs`) — make room on native stack.
-6. `mvp #0,#0` — block-copy the entire frame (including original IRQ/COP stacked state) from emulation stack to native stack.
-7. `sep #$10` (8-bit index), pop Y/X/A, pop two B bytes, `rti` — lands at the 24-bit continuation in native mode.
+3. `rep #$21` (16-bit A/X/Y, clear carry), push A, X, Y.
+4. `lda #B0_BASE / tcd` — point DP at `B0_BASE` so the scratch/stack-pointer variables can be reached `z:<` instead of `a:` (the same trick the `_0` shims use), for the rest of the shim. Record `tsc → B0_EMU_STACK`.
+5. Read `#extra` from `[S+5]`, add `N_STACKED (10)`, stash the total in `B0_SHIM_TMP`; add it to `B0_EMU_STACK` and store back (so the variable is correct for the next `emu2nat_rti` call); `tax` = source pointer (top of emu stack).
+6. Compute the destination: `lda B0_NAT_STACK`, `tay`, `sec`, `sbc B0_SHIM_TMP` (subtract the size), `tcs` — switches SP onto the native stack at the reserved gap.
+7. `mvp #0,#0` — block-copy the entire frame (including original IRQ/COP stacked state) from emulation stack to native stack.
+8. `lda #0 / tcd` — reset DP back to 0 (undoes step 4's borrow) before returning to native code.
+9. `sep #$10` (8-bit index), pop A/X/Y, then `plb` twice: the first pulls a discarded placeholder byte, the second pulls the caller's `[S+2]` byte into `B` — forcing `B=0` on entry to native mode (this is new: the previous version left `B` untouched here). `rti` — lands at the 24-bit continuation in native mode.
 
 ---
 
@@ -108,11 +110,14 @@ Constructed with two `pea` instructions, then `jmp nat2emu_rti`.
 **Shim steps:**
 
 1. `sei`, `rep #$31` (16-bit, clear carry), `sep #$10` (8-bit index). Push Y, X, A (N_STACKED = 8 bytes total including RTI frame).
-2. Force `DP=0, B=0` — `pea 0 / pld / phd / plb / plb`. **Mandatory** before entering emulation mode, which assumes both are zero.
-3. `tsc → B0_NAT_STACK`; compute emulation stack destination (`B0_EMU_STACK - count`); set SP there (`tcs`).
-4. `mvp #0,#0` — copy frame to emulation stack.
-5. Patch the `#extra` slot on stack to 0 (`inc A / sta 5,S`); restore Y/X/A (via `pla/xba` pairs because A is 16-bit but being stored 8-bit), pop B.
-6. `sec / xce` — switch to emulation mode, `rti` at the 16-bit continuation.
+2. `lda #B0_BASE / tcd` — point DP at `B0_BASE` for cheap `z:<` access to the scratch/stack-pointer variables for the rest of the shim (does **not** force `DP=0`/`B=0` yet — that happens later, right before `xce`).
+3. `tsc → B0_NAT_STACK`. Read `#extra` from `[S+5]`, add `N_STACKED (8)`, stash the total in `B0_SHIM_TMP`; add it to `B0_NAT_STACK` and store back; `tax` = source pointer.
+4. Compute emulation stack destination: `lda B0_EMU_STACK`, `tay`, `sec`, `sbc B0_SHIM_TMP`, `tcs`.
+5. `mvp #0,#0` — copy frame to emulation stack.
+6. `inc A` (the count register underflows to 0 after the `mvp` loop) `/ tcd` — reset DP back to 0.
+7. `sep #$30` (8-bit A/X/Y); `sta 5,S` zeroes the caller's `#extra` slot on the emulation stack — this slot is reused below as the source of `B=0`. `rep #$20` back to 16-bit A.
+8. Restore Y/X/A (`pla/plx/ply`); `plb` pulls the zeroed slot into `B`, **forcing `B=0`**. This (together with step 6's `tcd`) replaces the old `pea 0 / pld / phd / plb / plb` sequence — **mandatory** before entering emulation mode, which assumes both `DP` and `B` are zero.
+9. `sec / xce` — switch to emulation mode, `rti` at the 16-bit continuation.
 
 ---
 
@@ -263,9 +268,9 @@ These must live in this segment because the hardware vector table is also near `
 
 | File              | Line | Direction | Shim                | Why                                                 |
 |-------------------|------|-----------|---------------------|-----------------------------------------------------|
-| `kernel.asm`      | 392  | emu → nat | `emu2nat_0_rti`     | `emu_handle_irq`: enter native for `default_IVIRQ`  |
-| `kernel.asm`      | 398  | nat → emu | `nat2emu_0_rti`     | `emu_handle_irq`: return to interrupted emu code    |
-| `kernel.asm`      | 411  | emu → nat | `emu2nat_rti`       | `emu_handle_cop`: enter native for `cop_handle_emu` |
+| `kernel.asm`      | 403  | emu → nat | `emu2nat_0_rti`     | `emu_handle_irq`: enter native for `default_IVIRQ`  |
+| `kernel.asm`      | 409  | nat → emu | `nat2emu_0_rti`     | `emu_handle_irq`: return to interrupted emu code    |
+| `kernel.asm`      | 422  | emu → nat | `emu2nat_rti`       | `emu_handle_cop`: enter native for `cop_handle_emu` |
 | `cop.asm`         | 122  | nat → emu | `nat2emu_rti`       | COP call returns to 8-bit caller                    |
 | `brk.asm`         | 158  | nat → emu | `nat2emu_rti`       | BRK handler returns to emulation                    |
 | `osbyte_word.asm` | 750  | nat → emu | `nat2emu_rti`       | OSBYTE/OSWORD returns to emu caller                 |
@@ -316,11 +321,12 @@ At each leg the shim reads the "destination" variable to locate the target stack
 
 ## Invariants
 
-- DP and B must be 0 on entry to emulation mode. Both `nat2emu_rti` and `nat2emu_0_rti` enforce this unconditionally before `xce` — `nat2emu_0_rti` does it via `phk/plb` and `lda #0 / tcd` rather than `pld/phd/plb/plb`, but the effect (and the requirement) is identical.
-- `emu2nat_rti` and `emu2nat_0_rti` do **not** force `B=0` on entry to native mode; they assume DBR is already 0, which always holds while code is running in emulation mode. Neither touches DP.
+- DP and B must be 0 on entry to emulation mode. Both `nat2emu_rti` and `nat2emu_0_rti` enforce this unconditionally before `xce`. `nat2emu_0_rti` does it via `phk/plb` and `lda #0 / tcd`. `nat2emu_rti` does it via `inc A / tcd` for DP, and by zeroing the caller's `#extra` stack slot (`sta 5,S`) and then pulling it back into `B` via `plb` — replacing the older `pea 0 / pld / phd / plb / plb` sequence. The effect (and the requirement) is identical either way.
+- `emu2nat_0_rti` does **not** force `B=0` or `DP=0` on entry to native mode; it assumes DBR is already 0, which always holds while code is running in emulation mode, and leaves DP untouched. `emu2nat_rti` **does** force both now (this changed from the previous version, which left both alone): the caller's `[S+2]` byte (must be 0) is pulled into `B` via a second `plb`, and DP is reset via `lda #0 / tcd` before the final `sep #$10 / pla / plx / ply / plb / plb / rti` sequence.
 - `nat2emu_0_rti` only preserves `AH`, `XL` and `YL` across the round trip (matching the 8-bit view emulation mode exposes) — it is not a drop-in replacement for `nat2emu_rti` wherever the caller's full `AL` needs to survive.
 - `emu2nat_0_rti` / `nat2emu_0_rti` carry no extra caller-stack bytes and do no `mvp` copy — they only suit callers with a fixed, statically-known continuation (currently just `emu_handle_irq`'s two legs). Anything that needs to carry variable extra context across still needs the full `emu2nat_rti` / `nat2emu_rti`.
+- `emu2nat_rti` and `nat2emu_rti` now also borrow DP (pointing it at `B0_BASE` via `lda #B0_BASE / tcd`) for the duration of the copy, so their scratch/stack-pointer variables can be addressed `z:<` instead of `a:` — the same speed trick the `_0` shims already used. DP is put back to 0 before the mode switch completes (see above), so callers never observe the borrow.
 - `B0_EMU_STACK` / `B0_NAT_STACK` track the live boundary of each mode's stack for the duration of any active call chain. They are updated (not stacked) by every mode-switch shim (including the `_0` variants) and must not be written by any other code.
-- `B0_SHIM_TMP` (`$00FE18`, 6 bytes) is scratch, valid only for the duration of a single `_0` shim call — unlike `B0_EMU_STACK`/`B0_NAT_STACK` it is not expected to survive across nested mode switches.
+- `B0_SHIM_TMP` (`$00FE18`, 6 bytes) is scratch, valid only for the duration of a single shim call — unlike `B0_EMU_STACK`/`B0_NAT_STACK` it is not expected to survive across nested mode switches. The `_0` shims use it to save A/X/Y; `emu2nat_rti`/`nat2emu_rti` use it to stash the frame byte-count while adjusting stack pointers.
 - All four mode-switch shims (`emu2nat_rti`, `nat2emu_rti`, `emu2nat_0_rti`, `nat2emu_0_rti`) open with `sei`. NMIs can still arrive; NMI handlers must not disturb memory below the current SP.
 - Emulation stack is page `$01` (`STACKBBC`, 8-bit S). Native stack is `$00 F700`–`$00 FADF` (`STACKNAT`, 16-bit S, up to `STACKNAT_TOP` at `$00FAE0`). The `mvp` moves data between these two physically separate regions (the `_0` shims move data with plain pushes/pops instead).
