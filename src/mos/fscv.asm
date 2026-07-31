@@ -18,7 +18,11 @@
 		; TODO: FSCV
 		cmp	#$6
 		bcs	@rtl
-		jml	brkBadCommand
+		; TODO: this is duplicated in cli.asm - export/import or remove?
+		brk					; 
+		.byte	$fe				; error number
+		.byte	"Bad command"			;
+		.byte    0 
 
 @rtl:		rtl
 

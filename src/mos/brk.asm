@@ -10,15 +10,11 @@
 		.include "window_i.inc"
 
 		.export	brkBadKey
-		.export	brkBadCommand
 
 		.export emu_handle_brk
 		.export brk_handle_nat
 		.export default_emu_brkv
 
-brkBadCommand:		brk					; 
-			.byte	$fe				; error number
-			.byte	"Bad command"			; 
 brkBadKey:		brk					
 			.byte	$fb				; 
 			.byte	"Bad key"			; 

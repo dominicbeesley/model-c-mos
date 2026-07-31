@@ -33,6 +33,8 @@ B0_NAT_STACK		:= $00FE14
 WINDOW_CUR		:= $00FE16			; current value of the window registers
 B0_SHIM_TMP		:= $00FE18			; used in nat2emu / emu2nat - interrupts off [6 bytes!]
 
+B0_OSFILE_BLOCK		:= $00FE20			; 20 byte NATIVE OSFILE block used in CLI/LOAD/SAVE etc
+
 EXSYS			:= $00FF00
 EXSYS_FpHandles		:= $00FF02
 

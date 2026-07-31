@@ -1,6 +1,6 @@
 		.include "dp_bbc.inc"
 
-;;		.export _LEA1D
+		.export _clcGSINIT
 		.export _GSINIT
 		.export _GSREAD
 
@@ -27,7 +27,7 @@
 ;*	 A contains first non blank character				 *
 ;*************************************************************************
 
-_LEA1D:			clc					; clear carry
+_clcGSINIT:		clc					; clear carry
 
 _GSINIT:		ror	dp_mos_GSREAD_quoteflag		; Rotate moves carry to &E4
 			jsr	utilSkipSpace			; get character from text

@@ -11,6 +11,7 @@
 		.include "vectors_i.inc"
 		.include "kernel_i.inc"
 		.include "window_i.inc"
+		.include "utils_i.inc"
 
 		.export cop_handle_emu
 		.export cop_handle_nat
@@ -234,21 +235,21 @@ cop_dispatch_int:
 		tsb	DPCOP_P			;return error/V/Cy
 		bra   @ret
 
-tblCOPDispatch:	.faraddr	COP_00		;OPWRC 00 = OSWRCH
-		.faraddr	COP_01		;OPWRS 01 = Write String Immediate
-		.faraddr	COP_02		;OPWRA 02 = Write string at BHA
-		.faraddr	COP_03		;OPNLI 03 = OSNEWL - write CR/LF
-		.faraddr	COP_04		;OPRDC 04 = OSRDCH - read a char
-		.faraddr	COP_05		;OPCLI 05 = OPCLI - execute command at BYX [deprecated]
-		.faraddr	COP_06		;OPOSB 06 = OSBYTE
-		.faraddr	COP_07		;OPOSW 07 = OSWORD
-		.faraddr	COP_08		;OPCAV 08 = Call A Vector **NEW**
-		.faraddr	COP_09		;OPCAV 08 = Add to Vector **NEW**
-		.faraddr	COP_NotImpl	;A
-		.faraddr	COP_NotImpl	;B
-		.faraddr	COP_NotImpl	;C
+tblCOPDispatch:	.faraddr	COP_00		;OPWRC 	00 = OSWRCH
+		.faraddr	COP_01		;OPWRS 	01 = Write String Immediate
+		.faraddr	COP_02		;OPWRA 	02 = Write string at BHA
+		.faraddr	COP_03		;OPNLI 	03 = OSNEWL - write CR/LF
+		.faraddr	COP_04		;OPRDC 	04 = OSRDCH - read a char
+		.faraddr	COP_05		;OPCLI 	05 = OPCLI - execute command at BYX [deprecated]
+		.faraddr	COP_06		;OPOSB 	06 = OSBYTE
+		.faraddr	COP_07		;OPOSW 	07 = OSWORD
+		.faraddr	COP_08		;OPCAV 	08 = Call A Vector **NEW**
+		.faraddr	COP_09		;OPCAV 	08 = Add to Vector **NEW**
+		.faraddr	COP_NotImpl	;A	BGET
+		.faraddr	COP_NotImpl	;B	BPUT
+		.faraddr	COP_0C		;OPFILE 	0C = OSFILE **NEW**
 		.faraddr	COP_NotImpl	;D
-		.faraddr	COP_0E		;OPCOM 0E = OPCOM - execute command at BHA
+		.faraddr	COP_0E		;OPCOM 	0E = OPCOM - execute command at BHA
 		.faraddr	COP_NotImpl	;F
 
 		.faraddr	COP_NotImpl	;10
@@ -402,17 +403,17 @@ COP_01:		inc	DPCOP_PC
 ;		********************************************************************************
 ;		* COP 02 - OPWRA - write string at BHA                                         *
 ;		*                                                                              *
-;		* TODO: DOCO: NOTE: This seems to imply that X is set to 0 for 0 terminated, 1 *
-;		* for control terminated string - not in systems manual                        *
+;		* TODO: DOCO: NOTE: This seems to imply that X is set to 0,1 for 0 terminated  *
+;		* 2,3 for control terminated string - not in systems manual                    *
 ;		*                                                                              *
 ;		********************************************************************************
 COP_02:		lda   DPCOP_X         ;get passed X and check is < 2 and use to determine type of terminator
-                lsr   A
-                cmp   #$0002
-                bcc   @skok
-                brk   $00
+		lsr   A
+		cmp   #$0002
+		bcc   @skok
+		brk   $00
 
-                .byte "COP `OPWRA: invalid termination option"
+		.byte "COP `OPWRA: invalid termination option",0
 
 @skok:		tax
                 ldy   #$0000
@@ -423,12 +424,7 @@ COP_02:		lda   DPCOP_X         ;get passed X and check is < 2 and use to determi
                 bne   @sknocc         ;if X<>1 skip forwards
                 cmp   #$0020
                 bcc   @ret            ;else exit on control character
-@sknocc:	phx
-                phy
-                phk
-                jsr   COP_00
-                ply
-                plx
+@sknocc:	cop	COP_00_OPWRC
                 iny
                 bra   @lp
 
@@ -517,6 +513,104 @@ COP_27:	        inc	DPCOP_PC
                 .a16
                 .i16
 COP_05:          jsr   makeBYXptr
+
+
+; ********************************************************************************
+; * COP 0E OPFILE - call filing system's OSFILE entry                            *
+; *                                                                              *
+; * On Entry									 *
+; * 	BHA	Points to a **NEW** OSFILE block:                              	 *
+; *               0	24-bit address of filename                            	 *
+; *               3        operation code					 *
+; *               4	load address                                   		 *
+; *               8	exec address                                          	 *
+; *               12	start address                                         	 *
+; *               16       end address                                           *
+; *                                                                              *
+; * On exit 									 *
+; *	block is updated byte at offset 3 is the 8-bit return code               *
+; *                                                                              *
+; *                                                                              *
+; * This call may be translated into an OPEN/GBPB*/CLOSE operations when an      *
+; * 8-bit filing system is in operation.					 *
+; *                                                                              *
+; *                                                                              *
+; ********************************************************************************
+.proc	COP_0C:far
+		.a16
+		.i16
+
+		cop	COP_01_OPWRS
+		.byte	"OSFILE:", 13, 10, "FILENAME: ",0
+
+		; TODO: this will be a common feature - make a subroutine?
+		; get 24-bit address at BHA+0 into BHA
+		ldy	#1
+		lda	[DPCOP_AH],Y
+		pha
+		plb
+		plb
+		lda	[DPCOP_AH]
+
+		ldx	#2
+		cop	COP_02_OPWRA
+
+		cop	COP_01_OPWRS
+		.byte	13, 10, "OP:       ",0
+		ldy	#3
+		lda	[DPCOP_AH],Y
+		jsl	PrintHexA
+
+		cop	COP_01_OPWRS
+		.byte	13, 10, "LOAD:     ",0
+		ldy	#6
+		lda	[DPCOP_AH],Y
+		tax
+		jsl	PrintHexX
+		ldy	#4
+		lda	[DPCOP_AH],Y
+		tax
+		jsl	PrintHexX
+
+		cop	COP_01_OPWRS
+		.byte	13, 10, "EXEC:     ",0
+		ldy	#10
+		lda	[DPCOP_AH],Y
+		tax
+		jsl	PrintHexX
+		ldy	#8
+		lda	[DPCOP_AH],Y
+		tax
+		jsl	PrintHexX
+
+		cop	COP_01_OPWRS
+		.byte	13, 10, "START:    ",0
+		ldy	#14
+		lda	[DPCOP_AH],Y
+		tax
+		jsl	PrintHexX
+		ldy	#12
+		lda	[DPCOP_AH],Y
+		tax
+		jsl	PrintHexX
+
+		cop	COP_01_OPWRS
+		.byte	13, 10, "END:      ",0
+		ldy	#18
+		lda	[DPCOP_AH],Y
+		tax
+		jsl	PrintHexX
+		ldy	#16
+		lda	[DPCOP_AH],Y
+		tax
+		jsl	PrintHexX
+
+		cop	COP_03_OPNLI
+
+		rtl
+.endproc
+
+
 ; ********************************************************************************
 ; * COP 0E OPCOM - execute command at BHA                                        *
 ; *                                                                              *

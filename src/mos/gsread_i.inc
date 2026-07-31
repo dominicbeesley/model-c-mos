@@ -1,6 +1,7 @@
 .ifndef __GSREAD_I_INC__
 __GSREAD_I_INC__:
 
+		.import _clcGSINIT
 		.import _GSINIT
 		.import _GSREAD
 		.import utilSkipSpace
