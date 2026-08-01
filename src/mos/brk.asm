@@ -117,7 +117,7 @@ brk_handle_nat:
 		lda	8,S
 	; BHA is now the RTI return address, get it into WINDOW
 
-		jsl	windowPush
+		jsl	windowPush ; discard old window - brk kills it TODO: should this be preserved somewhere?
 
 	; Spoof a stack ready for emu BRK handler and switch to emu mode
 		

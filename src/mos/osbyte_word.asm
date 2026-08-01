@@ -456,6 +456,8 @@ TBLD_WORD		:= 68
 		.faraddr	_OSWORD_13-1			; OSWORD  13  (&D5CE)	; 81 ; = 3*(ix-256-68)
 _OSBYTE_TABLE_SIZE := * - _OSBYTE_TABLE
 
+		.assert _OSBYTE_TABLE_SIZE < $100, error, "OSBYTE table too large, adjust this and nat-layout.inc"
+
 _OSWORD_5:
 _OSWORD_6:
 _OSWORD_7:

@@ -40,7 +40,9 @@ EXSYS_FpHandles		:= $00FF02
 
 HANDLE_BLOCK		:= $010000
 HANDLE_BLOCK_LEN	:= $000100
-OSBYTE_TABLE		:= $010100			; copy of the 
+OSBYTE_TABLE		:= $010100			; updatable copy of the osbyte/word dispatch table
+FSINFO_8BIT_LEN		:= 17*8
+FSINFO_8BIT		:= $010200			; Filing system info blocks from 8-bit ROMs
 
 B0B_TYPE_FREE		:= 0
 B0B_TYPE_LL_NATVEC	:= 10

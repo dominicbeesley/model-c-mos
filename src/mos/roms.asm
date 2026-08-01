@@ -1,7 +1,9 @@
 		.include "dp_bbc.inc"
 		.include "sysvars.inc"
+		.include "vduvars.inc"
 		.include "oslib.inc"
 		.include "hardware.inc"
+		.include "config.inc"
 
 		.include "debug_i.inc"
 		.include "kernel_i.inc"
@@ -222,12 +224,34 @@ _BF186:
 		dex
 		bpl	@lp
 
-		; TODO: auto-hazel
+
+		rep	#$10
+		.i16
+
+		; TODO: auto-hazel - currently assuming BLTUTIL ROM is present
 
 		ldy	#$0e				; set current value of PAGE
 		ldx	#$01				; issue claim absolute workspace call	
 		lda	#OSBYTE_143_SERVICE_CALL
 		cop	COP_06_OPOSB
+
+		; put banner here else BLTUTIL changes MODE
+
+		phk
+		plb		
+		ldx	#.loword(str_boot_7)		
+		lda	f:vduvar_MODE
+		eor	#7
+		beq	@lpb
+		ldx	#.loword(str_boot)
+@lpb:		lda	a:0,X
+		beq	@sk
+		cop	COP_00_OPWRC
+		inx
+		bra	@lpb
+@sk:		cop	COP_03_OPNLI
+		cop	COP_03_OPNLI
+
 		ldx	#$02				; send private workspace claim call
 		lda	#OSBYTE_143_SERVICE_CALL
 		cop	COP_06_OPOSB
@@ -242,3 +266,9 @@ _BF186:
 		plp
 		rtl
 .endproc
+
+str_boot_7:
+		.incbin "logo.bin"
+		.byte	0
+
+str_boot:	.byte	13, 10, OS_NAME, 0

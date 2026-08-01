@@ -23,6 +23,7 @@
 		.include "modules_i.inc"
 		.include "irqs_i.inc"
 		.include "b0blocks_i.inc"
+		.include "fileswitch_i.inc"
 
 		.export nat_handle_cop
 		.export nat_handle_brk
@@ -597,7 +598,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		DEBUG_PRINTF "Init modules\n"
 		jsl	modules_init
 
-
 ; Set up the BBC/emulation mode OS vectors to point at their defaults
 ; which are the entry points in bbc-nat-vectors
 		ldx	#.loword(default_BBC_vectors)
@@ -659,24 +659,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		DEBUG_PRINTF "hardware\n"
 		jsr	hardwareInit
 
-
-;		DEBUG_PRINTF "VDU\n"
-;		lda	#0
-;		jsl	VDU_INIT
-
-;;		pea	DPBBC
-;;		pld
-;;		ldx	#0
-;;		ldy	#IX_WRCHV
-;;		cop	COP_27_OPBHI
-;;		.faraddr debug_printA
-;;		cop	COP_09_OPADV
-		
-
-
-;		wdm 0
-
-
 		rep	#$30
 		.i16
 		.a16
@@ -710,36 +692,21 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.a8
 
 
-		phk
-		plb		
-		ldx	#.loword(str_boot_7)		
-		lda	vduvar_MODE
-		eor	#7
-		beq	@lp
-		ldx	#.loword(str_boot)
-@lp:		lda	a:0,X
-		beq	@sk
-		cop	COP_00_OPWRC
-		inx
-		bra	@lp
-@sk:		cop	COP_03_OPNLI
-		cop	COP_03_OPNLI
-
-		rep	#$30
-		.a16
-		.i16
-
-
 		DEBUG_PRINTF "scan ROMs\n"
 		jsl	roms_scanroms			; only on ctrl-break, but always for now...
 		DEBUG_PRINTF "ROMs init\n"
 		jsl	roms_init_services		; call initialisation service calls
 
 
-		; OS banner TODO: think about this - maybe check machine type
-		cop	COP_01_OPWRS
-		.byte	13, 10, OS_NAME, 13, 10, 10, 0
+		rep	#$30
+		.a16
+		.i16
 
+		DEBUG_PRINTF "FileSwitch init\n"
+		jsl	fileswitch_init
+
+
+		
 		cli
 
 ;;		pea	$7D7D
@@ -749,7 +716,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 ;;		ldy	$4000 + 12
 ;;		cop	COP_32_OPSUM
 ;;
-
 
 		DEBUG_PRINTF "Start BASIC\n"
 
@@ -768,13 +734,6 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		ldx	sysvar_ROMNO_BASIC
 		lda	#OSBYTE_142_ENTER_LANGUAGE
 		cop	COP_06_OPOSB
-
-		wdm 0
-
-
-str_basprog:	.byte "OLD",13,"RUN",13,0
-		;;.byte "P.\"DOMISH\"",13,0
-
 
 
 
@@ -851,12 +810,6 @@ bankFF:		pea	$FFFF
 		plb
 		rts
 
-
-str_boot_7:
-		.incbin "logo.bin"
-		.byte	0
-
-str_boot:	.byte	"Dossytronics 816 MOS", 0
 
 ; These are cut-down configuration routines, only for use during boot
 ; they have a similar API to those found in the bltutils rom

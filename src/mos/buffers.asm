@@ -12,22 +12,24 @@
 		.include "kernel_i.inc"
 
 
-		.export initBuffers
-		.export _OSBYTE_15
-		.export _OSBYTE_21
-		.export _OSBYTE_124
-		.export _OSBYTE_125
-		.export _OSBYTE_126
-		.export _OSBYTE_138
-		.export _OSBYTE_145
-		.export _OSBYTE_153
+		.export initBuffers:far
+		.export _OSBYTE_15:far
+		.export _OSBYTE_21:far
+		.export _OSBYTE_124:far
+		.export _OSBYTE_125:far
+		.export _OSBYTE_126:far
+		.export _OSBYTE_138:far
+		.export _OSBYTE_145:far
+		.export _OSBYTE_153:far
 
 		.segment "BMOS_NAT_CODE"
 
 
+.proc initBuffers:far
 		.i16
 		.a16
-initBuffers:
+		php
+
 		pea	DPBBC
 		pld
 		ldx	#0
@@ -60,9 +62,22 @@ initBuffers:
 		cop	COP_27_OPBHI
 		.faraddr _NVRDCH
 		cop	COP_09_OPADV
+		
+		sep	#$20
+		.a8
+		lda	#$FF
+		ldx	#MOSBUF_COUNT*3
+@clp:		sta	f:mosbuf_buf_busy-1,X
+		dex
+		bne	@clp
+
+		plp
+		.a16
+		.i16
+
 
 		rtl
-
+.endproc
 
 ; buffer tables - the buffer pointers are all calculated so that an offset
 ; will wrap to zero at then end of the buffer.
@@ -125,7 +140,8 @@ tblBufferStarts:
 ;**************************************************************************
 ;**************************************************************************
 
-_NVRDCH:		sep	#$30
+.proc _NVRDCH:far
+			sep	#$30
 			.a8
 			.i8
 			phd
@@ -175,7 +191,7 @@ _BDF05:			pla
 			tax					
 			lda	dp_mos_OS_wksp				
 			rtl			
-
+.endproc
 		
 ;*************************************************************************
 ;*									 *
@@ -186,14 +202,15 @@ _BDF05:			pla
 ; ON EXIT Y is character extracted
 ;if buffer is empty C=1, else C=0
 
+.proc _OSBYTE_145:far
 		.a8
 		.i8
-_OSBYTE_145:	clv					; clear V
+		clv					; clear V
 
 _BE461:		cop	COP_08_OPCAV			; Jump via REMV
 		.byte	IX_REMV
 		rtl
-
+.endproc
 
 ;*************************************************************************
 ;*									 *
@@ -202,10 +219,11 @@ _BE461:		cop	COP_08_OPCAV			; Jump via REMV
 ;*************************************************************************
 ;on entry X = buffer number
 ;on exit if buffer is empty C=1, Y is preserved else C=0
+
+.proc _REMVB:far
 		.i16
 		.a16
-
-_REMVB:		php					; save flags
+		php					; save flags
 		; bar interrupts, set small registers and reset decimal
 		sep	#$34
 		rep	#$08
@@ -250,15 +268,16 @@ _BE48F:		pla					; get back byte from buffer
 _BE491:		plp					; get back flags
 		clc					; clear carry to indicate success
 		rtl					; and exit
+.endproc
 
 
-
-		.a8
-		.i8
 
 ;********* check event 2 character entering buffer ***********************
 
-_BE4A8:		tya					; A=Y
+_BE4A8:
+		.a8
+		.i8
+		tya					; A=Y
 		ldy	#EVENT_02_INPUT_BUF_ENTER	; Y=2
 		jsl	kernelRaiseEvent		; check event
 		tay					; Y=A
@@ -271,13 +290,12 @@ _BE4A8:		tya					; A=Y
 ;*									 *
 ;*************************************************************************
 ;on entry X is buffer number, Y is character to be written
-_OSBYTE_138:	tya					; A=Y
+.proc _OSBYTE_138:far
+		tya					; A=Y
 		cop	COP_08_OPCAV
 		.byte   IX_INSV
 		rtl
-
-		.a16
-		.i16
+.endproc
 
 ;*************************************************************************
 ;*									 *
@@ -289,7 +307,10 @@ _OSBYTE_138:	tya					; A=Y
 
 ;ASSUME DP = 0
 
-_INSBV:			php					; save flags
+.proc _INSBV:far
+		.a16
+		.i16
+			php					; save flags
 			; bar interrupts, set small registers and reset decimal
 			sep	#$34
 			rep	#$08
@@ -326,16 +347,16 @@ _INSBV:			php					; save flags
 			jsl	kernelRaiseEvent		; to service input buffer full event
 			pha
 
-plaPlpSecRtl:		pla
-plpSecRtl:		plp					; restore flags
+::plaPlpSecRtl:		pla
+::plpSecRtl:		plp					; restore flags
 			sec					; set carry
 			rtl					; and exit
 
-plaPlpSecSevRtl:	pla
-plpSecSevRtl:		plp
+::plaPlpSecSevRtl:	pla
+::plpSecSevRtl:		plp
 			sep	#$41
 			rtl
-
+.endproc
 
 				; ON ENTRY X=buffer number
 				; Buffer number	 Address	 Flag	 Out pointer	 In pointer
@@ -349,20 +370,19 @@ plpSecSevRtl:		plp
 				; 7=sound3	 870-87F	 2D6	 2DF		 2E8
 				; 8=speech	 8C0-8FF	 2D7	 2E0		 2E9
 
-_GET_BUFFER_ADDRESS:	.a8
+.proc _GET_BUFFER_ADDRESS:near
+			.a8
 			.i8
 			lda	f:tblBufferLO,X			; get buffer base address lo
 			sta	dp_mos_OS_wksp2			; store it
 			lda	f:tblBufferHI,X			; get buffer base address hi
 			sta	dp_mos_OS_wksp2+1		; store it
 			rts					; exit
+.endproc
 
 
 
 
-
-		.a8
-		.i8
 
 ;*************************************************************************
 ;*									 *
@@ -374,7 +394,10 @@ _GET_BUFFER_ADDRESS:	.a8
 ;X=0 is Keyboard
 ;Y is character to be written
 
-_OSBYTE_153:		txa					; A=buffer number
+.proc _OSBYTE_153:far
+			.a8
+			.i8
+			txa					; A=buffer number
 			and	sysvar_RS423_MODE		; and with RS423 mode (0 treat as keyboard
 								; 1 ignore Escapes no events no soft keys)
 			bne	_OSBYTE_138			; so if RS423 buffer AND RS423 in normal mode (1) E4AF
@@ -393,7 +416,7 @@ _OSBYTE_153:		txa					; A=buffer number
 			jsl	_OSBYTE_125			; else set ESCAPE flag
 @clcrtl:		clc					; clear carry
 			rtl					; and exit
-
+.endproc
 
 ;*************** Buffer handling *****************************************
 				; X=buffer number
