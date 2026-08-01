@@ -214,7 +214,7 @@ vec_done:	pla
 ;		********************************************************************************
 ;		* COP 08 - OPCAV - Call A Vector                                               *
 ;		*                                                                              *
-;		* Calls the vector whose index is in DP                                        *
+;		* Calls the vector whose index is in the byte following the COP instruction.   *
 ;		*                                                                              *
 ;		* Entry                                                                        *
 ;		*         one byte following cop is the vector index                           *
