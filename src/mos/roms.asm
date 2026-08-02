@@ -225,9 +225,6 @@ _BF186:
 		bpl	@lp
 
 
-		rep	#$10
-		.i16
-
 		; TODO: auto-hazel - currently assuming BLTUTIL ROM is present
 
 		ldy	#$0e				; set current value of PAGE
@@ -236,6 +233,9 @@ _BF186:
 		cop	COP_06_OPOSB
 
 		; put banner here else BLTUTIL changes MODE
+
+		rep	#$10
+		.i16
 
 		phk
 		plb		
@@ -251,6 +251,9 @@ _BF186:
 		bra	@lpb
 @sk:		cop	COP_03_OPNLI
 		cop	COP_03_OPNLI
+
+		sep	#$10
+		.i8
 
 		ldx	#$02				; send private workspace claim call
 		lda	#OSBYTE_143_SERVICE_CALL
