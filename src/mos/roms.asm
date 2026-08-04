@@ -232,11 +232,14 @@ _BF186:
 		lda	#OSBYTE_143_SERVICE_CALL
 		cop	COP_06_OPOSB
 
+		phy					; save Y while we print the banner
+
 		; put banner here else BLTUTIL changes MODE
 
 		rep	#$10
 		.i16
 
+		phb
 		phk
 		plb		
 		ldx	#.loword(str_boot_7)		
@@ -252,9 +255,11 @@ _BF186:
 @sk:		cop	COP_03_OPNLI
 		cop	COP_03_OPNLI
 
+		plb
 		sep	#$10
 		.i8
-
+HERE:
+		ply					; page restored
 		ldx	#$02				; send private workspace claim call
 		lda	#OSBYTE_143_SERVICE_CALL
 		cop	COP_06_OPOSB

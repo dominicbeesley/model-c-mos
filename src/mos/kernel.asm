@@ -67,9 +67,9 @@ emu_handle_abort:
 ; deice - all 65816 entries are initially ABORT
 ; entry point inspects instruction and changes to BP if WDM instruction
 nat_handle_abort:	
+		rep	#$30
 		.a16
 		.i16
-		rep	#$30
 		pha
 		lda	#DEICE_STATE_ABORT
 enter_deice:	jml	deice_enter_nat
