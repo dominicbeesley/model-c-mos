@@ -7,6 +7,7 @@
 		.include "gsread_i.inc"
 		.include "brk_i.inc"
 		.include "utils_i.inc"
+		.include "b0blocks_i.inc"
 
 		.export doCLIV
 
@@ -195,7 +196,8 @@ _OSCLI_TABLE2:
 			OSCLTBL	"TAPE",		_OSCLI_OSBYTE	,$8c	; *TAPE	    &E348, A=&8C   OSBYTE
 			OSCLTBL	"TV",		_OSCLI_OSBYTE	,$90	; *TV	    &E348, A=&90   OSBYTE
 			OSCLTBL "GO",		_OSCLI_GO	,$80	; *GO (NEW)
-			OSCLTBL	"",		_OSCLI_FSCV	,$03	; Unmatched &E031, A=3	   FSCV, XY=>String
+			OSCLTBL "BOBDUMP",	_OSCLI_B0BDUMP	,$00	; dump B0B block info
+			OSCLTBL	"",		_OSCLI_FSCV	,$03	; Unmatched &E031, A=3	   FSCV, XY=>String			
 			.byte	$00				; Table end marker
 
 
@@ -605,5 +607,5 @@ _BE2EF:		lda	f:B0_OSFILE_BLOCK+12		; copy start adddress to load and execution a
 
 
 
-
+_OSCLI_B0BDUMP: jmp B0BDump
 _OSCLI_MODULES: jml modules_list			; we need to trampoline this to ensure high bit set in address?

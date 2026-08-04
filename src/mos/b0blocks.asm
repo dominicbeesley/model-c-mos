@@ -1,5 +1,8 @@
+		.include "oslib.inc"
 
 		.include	"nat-layout.inc"
+
+		.include "utils_i.inc"
 
 
 		.export	initB0Blocks:far
@@ -10,6 +13,7 @@
 		.export allocHandle:far
 		.export getHandleYtoX:far
 		.export freeHandleForB0BlockX:far
+		.export B0BDump:far
 
 	; b0blocks are 12 byte long blocks that are pre-allocated in bank 0 
 	; that can be allocated by the OS. They are typically used to contain
@@ -362,3 +366,139 @@
 		rtl
 .endproc
 
+.proc B0BDump:far
+		php
+		phb
+		rep	#$30
+		.i16
+		.a16
+
+		cop	COP_01_OPWRS
+		.byte	"=========== IRQ ===============",13,10,0
+
+		pea	0
+		plb
+		plb
+		
+		ldx	B0LL_IRQ_BLOCKS
+		jsr	B0BDumpChain_I
+
+		plb
+		plp
+		rtl
+
+.endproc
+
+
+.proc B0BDumpChain_I:near
+		;!.a?
+		;!.i?
+		php
+		rep	#$30
+		.i16
+		.a16
+
+@lp:		cop	COP_01_OPWRS
+		.byte	"B0B @ ",0
+		jsl	PrintHexX
+
+		cop	COP_01_OPWRS	
+		.byte	13,10,"HW IRQ flags:   ", 0
+		phx
+		lda	b0b_ll_irq_pri::irqf+2,X
+		jsl	PrintHexA
+		lda	b0b_ll_irq_pri::irqf,X
+		tax
+		jsl	PrintHexX
+		plx
+
+		cop	COP_01_OPWRS	
+		.byte	13,10,"MASK/EOR:       ", 0
+		lda	b0b_ll_irq_pri::mand,X
+		jsl	PrintHexA
+		lda	#'/'
+		cop	COP_00_OPWRC
+		lda	b0b_ll_irq_pri::meor,X
+		jsl	PrintHexA
+		
+		cop	COP_01_OPWRS	
+		.byte	13,10,"secondary:      ", 0
+		phx
+		lda	b0b_ll_irq_pri::psec,X
+		tax
+		jsl	PrintHexX
+		txy
+		plx
+
+		cop	COP_01_OPWRS	
+		.byte	13,10,"HW IRQ mask:    ", 0
+		phx
+		lda	b0b_ll_irq_pri::fpand+2
+		jsl	PrintHexA
+		lda	b0b_ll_irq_pri::fpand
+		tax
+		jsl	PrintHexX
+		plx
+
+		phx
+		tyx
+		; secondary block
+		
+		cop	COP_01_OPWRS
+		.byte	13,10,"Priority:       ",0
+		lda	b0b_ll_irq_sec::prior,X
+		jsr	PrintHexA
+
+		cop	COP_01_OPWRS
+		.byte	13,10,"DP:             ",0
+		phx
+		lda	b0b_ll_irq_sec::dp,X
+		tax
+		jsr	PrintHexX
+		plx
+
+		cop	COP_01_OPWRS
+		.byte	13,10,"Flags:          ",0
+		lda	b0b_ll_irq_sec::flags,X
+		jsr	PrintHexA
+
+		cop	COP_01_OPWRS	
+		.byte	13,10,"Handler:        ", 0
+		phx
+		lda	b0b_ll_irq_sec::fphand+2,X
+		jsl	PrintHexA
+		lda	b0b_ll_irq_sec::fphand,X
+		tax
+		jsl	PrintHexX
+		plx
+
+		cop	COP_01_OPWRS
+		.byte	13,10,"Hits:           ",0
+		phx
+		lda	b0b_ll_irq_sec::hitct,X
+		tax
+		jsr	PrintHexX
+		plx
+
+		cop	COP_01_OPWRS
+		.byte	13,10,"Type:           ",0
+		lda	b0b_ll_irq_sec::type,X
+		jsr	PrintHexA
+
+
+		plx
+
+
+		cop	COP_03_OPNLI
+		cop	COP_03_OPNLI
+
+		lda	b0b_ll_free::next,X
+		tax
+		beq	@ex
+		jmp	@lp
+@ex:
+
+		pld
+		plp
+		rts
+.endproc

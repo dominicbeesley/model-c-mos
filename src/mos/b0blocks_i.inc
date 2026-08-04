@@ -9,4 +9,5 @@ __B0BLOCKS_I_INC__:
 		.import allocHandle:far
 		.import getHandleYtoX:far
 		.import freeHandleForB0BlockX:far
+		.import B0BDump:far
 .endif
