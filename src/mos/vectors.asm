@@ -117,7 +117,27 @@ bbcEmu2NatVectorEntry_ff:
 		;	+1	0
 		jml	nat2emu_0_rti	; no extras
 
-
+; *******************************************************************************
+; * 										*
+; * 	callNativeVectorChain							*
+; * 		On Entry:							*
+; * 			DP contains the native vector index multiplied by 3	*
+; * 			B,A,X,Y contain parameters				*
+; * 										*
+; * 		On Exit:							*
+; *			DP = corrupted						*
+; *			B,A,X,Y,P as per vector API				*
+; *										*
+; *	The native OS vector indicated by the index in DP is traversed and	*
+; *	registered handlers are called. A handler may return any registers	*
+; *	except DP which is corrupted, including flags.				*
+; *										*
+; *	Handlers can "take over" by cancelling the traversal by rewriting 	*
+; *	the two bytes of the stack above the return address to 0. Otherwise	*
+; *	the handler should leave registers in a state that the next handler 	*
+; *     can utilise.								*
+; *										*
+; *******************************************************************************
 		.i16
 		.a16
 	; DP contains index *3, A,X,Y as per vector call
@@ -231,7 +251,7 @@ vec_done:	pla
 ;		*                                                                              *
 ;		*         Flags are returned as per vector but E/M/X are preserved from        *
 ;		*         caller                                                               *
-;		*                                                                              *12331
+;		*                                                                              *
 ;		*         TODO: update DP/B or disallow as part of API                         *
 ;		********************************************************************************
 COP_08:
