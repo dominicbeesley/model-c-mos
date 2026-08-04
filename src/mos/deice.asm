@@ -171,8 +171,6 @@ deice_enter_emu:
 
 		rep	#$10
 		.i16
-		xba
-		sta	deice_reg_A+1		; store high byte of AH
 		stx	deice_reg_X
 		; we can now use X as 16 bit reg
 		pla
@@ -191,7 +189,14 @@ deice_enter_emu:
 		; stack pointer is now back to how it was before the interrupt
 		tsx
 		stx	z:<deice_reg_SP
-		stz	deice_reg_PC+2		; TODO: check always bank 0 for emu
+
+		; a hack specific to C20K/Blitter boot mode - we set K to be FF
+		; on an emu abort to mimic the boot mode remapping
+
+		;stz	deice_reg_PC+2		; TODO: check always bank 0 for emu
+		lda	#$FF
+		sta	deice_reg_PC+2
+
 		bra	deice_enter
 
 deice_emu_already_running:
@@ -615,6 +620,8 @@ emu_exit:	; we need to push PCH,PCL,P - this assumes that DeIce is in bank 0, ne
 		phx
 		lda	z:<deice_reg_P
 		pha
+		lda	z:<deice_reg_A+1
+		xba
 		lda	z:<deice_reg_A
 		ldx	z:<deice_reg_DP
 		phx
