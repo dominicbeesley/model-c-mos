@@ -16,6 +16,17 @@
 		.export vectors_init:far
 
 		.segment "BBCCODE"
+;
+; When a BBC API vector is called at 2xx any emulation mode claimer of 
+; the respective vector is called first. However, at boot time the 
+; emulation mode vectors are setup to point at the tblNatShims table 
+; which points to bbcEmu2NatVectoryEntry. 
+;
+; The bbcEmu2NatVectoryEntry routine will pass the call on  to 
+; callNativeVectorChain or, if a shim has been registered in the 
+; EMU2NAT_VEC_SHIMS then it is called with registers set up ready
+; to call callNativeVectorChain after possibly massaging any registers
+; or data blocks to match native mode APIs.
 
 	; we are still running from the MOS rom in bank 0, we need
 	; to enter native mode 
@@ -140,7 +151,7 @@ bbcEmu2NatVectorEntry_ff:
 ; * 			B,A,X,Y contain parameters				*
 ; * 										*
 ; * 		On Exit:							*
-; *			DP = corrupted						*
+; *			DP = FFFF when the vector was claimed, else 0		*
 ; *			B,A,X,Y,P as per vector API				*
 ; *										*
 ; *	The native OS vector indicated by the index in DP is traversed and	*
@@ -221,6 +232,9 @@ vector_loop:
 		bra	vector_loop
 
 vec_done2:
+		lda	#$FFFF
+		tcd				; mark vector claimed
+
 		lda	2,S
 		sta	4,S
 	; stack
