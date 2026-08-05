@@ -17,8 +17,15 @@
 	; These are the BBC native vector entry points, they should
 	; be entered in emulation mode only
 
-	; the entry points below bounce to the routine doExtended which
-	; uses the return address here to figure out which vector
+	; the entry points below bounce to the routine bbcEmu2NatVectorEntry which
+	; uses the return address here to figure out which vector and then passes
+	; it on through the EMU2NAT_VEC_SHIMS entry to callAvector to call the
+	; native mode handler
+
+	; There is a double indirection, the first uses this table to get us into
+	; native mode and derive the index, then the bbcEmu2NatVectorEntry routine
+	; passes on to any registered shims. This may change to be a single
+	; indirection in future.
 
 tblNatShims:
 		jsr	bbcEmu2NatVectorEntry		; XUSERV

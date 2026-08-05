@@ -9,14 +9,11 @@
 		.include "kernel_i.inc"
 		.include "bbc-nat-vectors_i.inc"
 
-		.export bbcEmu2NatVectorEntry
-		.export vector_next
-		.export COP_08
-		.export COP_09
-
-;TODO: how should a vector signal "claimed" and not pass on to next?
-;TODO: currently can store 0 on stack above return address to cancel [TODO: API: DOCUMENT]
-
+		.export bbcEmu2NatVectorEntry:near
+		.export vector_next:far
+		.export COP_08:far
+		.export COP_09:far
+		.export vectors_init:far
 
 		.segment "BBCCODE"
 
@@ -51,58 +48,76 @@ bbcEmu2NatVectorEntry_ff:
 		.a16			; these set in code above
 		.i16
 
+		pha			; make space
+		pha			; make space
+		phx
 		pha
 
 		;stack
-		;	+6..7	caller's return address-1
-		;	+4..5	return address to entry shim+2
-		;	+3	P
+		;	+12..13	caller's return address-1
+		;	+10..11	return address to entry shim+2
+		;	+9	P 	(caller)
+		;	+5..8	spare
+		;	*3..4	X
 		;	+1..2	A
 
-
-		lda	4,S
+		lda	10,S
 		sec
 		sbc	#.loword(tblNatShims+2)
-		; A now contains IX*3
-		tcd
-		pla
-		plp
-		jsr	callNativeVectorChain
+		; A now contains IX*3		
+		tcd					; pass DP=IX*3 to callNativeVectorChain/shim
+		tax
+		lda 	9,S
+		sta	5,S				; move P down
+		lda	EMU2NAT_VEC_SHIMS,X
+		sta	6,S
+		lda	EMU2NAT_VEC_SHIMS+1,X
+		sta	7,S
+		lda	#.loword(@continue-1)
+		sta	9,S
+		lda	#.loword((@continue-1) >> 8)
+		sta	10,S
 
+		;	+12	caller's bank 0 return address
+		;	+9	rtl far return address to @continue (note -1)
+		;	+6	far addr of shim (or callNativeVectorChain)
+		;	+5	P
+		;	+3	X
+		;	+1	A
+
+		pla
+		plx
+
+		;	+8	caller's bank 0 return address
+		;	+5	rtl far return address to @continue (note -1)
+		;	+2	far addr of shim (or callNativeVectorChain) from EMU2NAT_VEC_SHIMS table
+		;	+1	P
+		
+		rti
+
+@continue:
 
 		;stack
-		;	+3..4   caller's return address-1
-		;	+1..2	return address to entry shim+-1
+		;	+1..2   caller's return address-1
+		php
 		php
 		rep	#$30
 		.a16
 		.i16
 		pha
-		tsc
-		tcd
+		tsc					; quick stack access
+		tcd					; DP will get forced to 0 by nat2emu_0_rti
 
 		;stack/DP
-		;	+6..7   Vector callers rts address
-		;	+4..5	return address to entry shim+-1
-		;	+3	P
+		;	+5..6   Vector callers rts address
+		;	+4	P
+		;	+3	spare
 		;	+1..2	A
 
-		inc	6	; make return address suitable for rti
-		lda	2
+		inc	5	; make return address suitable for rti
+		lda	3
 		and	#$FF00
-		sta	4
-		lda	1
-		sta	2
-
-
-		;stack/DP
-		;	+6..7   Vector callers rts address
-		;	+5	P
-		;	+4	0
-		;	+2..3	A
-		;	+1	spare
-	
-		plb
+		sta	3
 
 		;stack
 		;	+5..6	vectors caller's rti address (bank 0)
@@ -119,7 +134,7 @@ bbcEmu2NatVectorEntry_ff:
 
 ; *******************************************************************************
 ; * 										*
-; * 	callNativeVectorChain							*
+; * 	callNativeVectorChain:far						*
 ; * 		On Entry:							*
 ; * 			DP contains the native vector index multiplied by 3	*
 ; * 			B,A,X,Y contain parameters				*
@@ -133,15 +148,15 @@ bbcEmu2NatVectorEntry_ff:
 ; *	except DP which is corrupted, including flags.				*
 ; *										*
 ; *	Handlers can "take over" by cancelling the traversal by rewriting 	*
-; *	the two bytes of the stack above the return address to 0. Otherwise	*
-; *	the handler should leave registers in a state that the next handler 	*
-; *     can utilise.								*
+; *	the two bytes of the stack above the far return address to 0. 		*
+; *	Otherwise the handler should leave registers in a state that the next 	*
+; *	handler can utilise as entry arguments.					*
 ; *										*
 ; *******************************************************************************
 		.i16
 		.a16
 	; DP contains index *3, A,X,Y as per vector call
-callNativeVectorChain:
+.proc callNativeVectorChain:far
 		php
 		rep	#$38			; ensure 16 bit registers, decimal off
 		pha
@@ -169,14 +184,14 @@ vector_loop:
 		pei	(b0b_ll_nat_vec::dp)
 	; stack	
 	;		Linked list pointer
-	;		far return address to vector_next -1 (suitable for RTL)
-	;		far address of handler (suitable for RTI)
-	;		Flags
-	;		DP			
+	;	+	far return address to vector_next -1 (suitable for RTL)
+	;	+4	far address of handler (suitable for RTI)
+	;	+3	Flags
+	;	+1	DP			
 		pld				; setup routine's DP
 		rti				; branch to routine
 
-vector_next:	rep	#$38			; ensure 16 bit regs and no decimal
+::vector_next:	rep	#$38			; ensure 16 bit regs and no decimal
 		php
 		pha
 	; stack
@@ -225,9 +240,9 @@ vec_done2:
 
 vec_done:	pla
 		plp
-		rts
+		rtl
 
-
+.endproc
 		.i16
 		.a16
 
@@ -394,7 +409,7 @@ COP_08:
 		txa				; A = entry A	
 		plx			
 		plp
-		jsr	callNativeVectorChain
+		jsl	callNativeVectorChain
 		php
 		rep	#$38
 		pha
@@ -504,3 +519,39 @@ COP_09:		.a16
 @retBadCall:	sec
 		rtl	
 		
+.proc vectors_init:far
+		php
+		rep	#$30
+		.a16
+		.i16
+; Set up the BBC/emulation mode OS vectors to point at their defaults
+; which are the entry points in bbc-nat-vectors
+		ldx	#.loword(default_BBC_vectors)
+		ldy	#.loword(BBC_USERV)
+		lda	#default_BBC_vectors_len
+		mvn	#^default_BBC_vectors, #^BBC_USERV
+
+; point all the EMU2NAT_VEC table entries to callNativeVectorChain
+		lda	#.loword(callNativeVectorChain)
+		sta	EMU2NAT_VEC_SHIMS
+		lda	#.loword(callNativeVectorChain >> 8)
+		sta	EMU2NAT_VEC_SHIMS + 1
+		lda	#(IX_VEC_BBC_MAX-1)*3-1
+		ldx	#EMU2NAT_VEC_SHIMS
+		ldy	#EMU2NAT_VEC_SHIMS+3
+		mvn	#0, #0
+		
+
+; zeroes to the native OS Vecs
+		lda	#0
+		ldx	#NAT_OS_VECS_COUNT*3
+		sep	#$20
+		.a8
+@lp2:		sta	a:NAT_OS_VECS-1,X
+		dex	
+		bne	@lp2
+
+
+		plp
+		rtl
+.endproc

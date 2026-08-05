@@ -24,6 +24,7 @@
 		.include "irqs_i.inc"
 		.include "b0blocks_i.inc"
 		.include "fileswitch_i.inc"
+		.include "vectors_i.inc"
 
 		.export nat_handle_cop
 		.export nat_handle_brk
@@ -337,7 +338,7 @@ N_STACKED = 8
 		; +1	- 	don't care
 		; AH is preserved
 		; XL, YL preserved
-		; B=DP=0 on exit
+		; B=DP=0 on exit (DP=0 relied upon in vectors.asm in bbcEmu2NatVectorEntry and related )
 .proc nat2emu_0_rti
 		sei		; turn interrupts off - an NMI might occur though that shouldn't disturb stack pointer
 		rep	#$31	; clear carry for ADC below
@@ -598,21 +599,10 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		DEBUG_PRINTF "Init modules\n"
 		jsl	modules_init
 
-; Set up the BBC/emulation mode OS vectors to point at their defaults
-; which are the entry points in bbc-nat-vectors
-		ldx	#.loword(default_BBC_vectors)
-		ldy	#.loword(BBC_USERV)
-		lda	#default_BBC_vectors_len
-		mvn	#^default_BBC_vectors, #^BBC_USERV
+		DEBUG_PRINTF "Init vectors\n"
+		jsl	vectors_init
 
-; zeroes to the native OS Vecs
-		lda	#0
-		ldx	#NAT_OS_VECS_COUNT*3
-		sep	#$20
-@lp2:		sta	a:NAT_OS_VECS-1,X
-		dex	
-		bne	@lp2
-		rep	#$20	
+		DEBUG_PRINTF "Init MOS native handlers\n"
 
 		; set up OSBYTE/WORD native vector handlers
 		pea	DPBBC

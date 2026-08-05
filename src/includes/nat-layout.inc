@@ -22,6 +22,7 @@ HANDLER_TRAMPOLINES	:= $00FAE0			; set in .cfg file - Repurposes Soft Keys expan
 DEICEBSS		:= $00FC00
 NAT_OS_VECS 		:= $00FD00
 NAT_OS_VECS_COUNT 	:= IX_VEC_MAX+1
+EMU2NAT_VEC_SHIMS	:= $00FD80
 B0_BASE			:= $00FE00			; assumed to be page-aligned
 B0LL_FREE_BLOCKS	:= $00FE00
 B0LL_FREE_BLOCKS_END	:= $00FE02
