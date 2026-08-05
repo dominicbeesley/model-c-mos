@@ -270,8 +270,6 @@ vec_done:	pla
 ;		*                                                                              *
 ;		* Exit                                                                         *
 ;		*         Other registers updated as per vector API.                           *
-;		*         8 bit vectors will not alter the high bytes of A,X,Y registers and   *
-;		*         B/DP are not altered updated for 8 bit vectors.                      *
 ;		*                                                                              *
 ;		*         8 bit vectors are those with IX<=$1A even where they are handled by  *
 ;		*         a native mode handler.                                               *
@@ -281,76 +279,221 @@ vec_done:	pla
 ;		*         Flags are returned as per vector but E/M/X are preserved from        *
 ;		*         caller                                                               *
 ;		*                                                                              *
-;		*         TODO: update DP/B or disallow as part of API                         *
+;		*         DP, B are unaltered but B is passed to native vectors                *
 ;		********************************************************************************
 COP_08:
+		.a16
+		.i16
+
 		phd					; save COP DP
 		; set entry registers for the vector
+		
+		pha
+		pha					; spare
+		lda	DPCOP_B				
+		pha					; B + spare high
+		lda	DPCOP_AH		
+		pha					; AH
+		lda	DPCOP_P
+		sta	4,S				; put caller's P on stack in P
+
 		ldx	DPCOP_X
 		ldy	DPCOP_Y
 
-		inc	DPCOP_PC			; increment PC to skip index byte
-		lda	[DPCOP_PC]			; vector index
-		and	#$00FF				; mask low byte
+	; Stack	
+	;	+11..13	RTL to COP handler
+	;	+9..10	COP DP
+	;	+7..8	spare
+	;	+5..6	spare		
+	;	+4	caller's P
+	;	+3	caller's B
+	;	+1..2	caller's AH
 
+		inc	DPCOP_PC			; bump PC to point at vector index following COP
+		lda	[DPCOP_PC]
+		and	#$00FF
+		sta	5,S
 		cmp	#IX_VEC_MAX+1
 		bcs	@badIx
+
+	; Stack	
+	;	+11..13	RTL to COP handler
+	;	+9..10	COP DP
+	;	+7..8	spare
+	;	+6	"0"
+	;	+5	index parameter to COP
+	;	+4	caller's P
+	;	+3	caller's B
+	;	+1..2	caller's AH
+
+		asl	A
+		clc
+		adc	[DPCOP_PC]		; A = IX*3
+		and	#$00FF
+		tcd				; DP = IX*3
+
+		pla
+		plb
+		plp
+		jsl	callNativeVectorChain
+		.a16
+		.i16
+		php				; these already have $38 rep'd in callNativeVectorChain
+		phb
+		pha
+		tdc				; check returned DP (0 means not handled)
+
+	; Stack	
+	;	+11..13	RTL to COP handler
+	;	+9..10	COP DP
+	;	+7..8	spare
+	;	+6	"0"
+	;	+5	index parameter to COP
+	;	+4	updated P
+	;	+3	updated B
+	;	+1..2	updated AH
+
+	
+		lda	9,S
+		tcd				; get back DP COP
+
+		beq	@callBBC
+
+		pla				; get back AH
+		
+	; Stack	
+	;	+9..11	RTL to COP handler
+	;	+7..8	COP DP
+	;	+5..6	spare
+	;	+4	"0"
+	;	+3	index parameter to COP
+	;	+2	updated P
+	;	+1	updated B
+
+
+		stx	DPCOP_X
+		sty	DPCOP_Y
+		sta	DPCOP_AH
+		sep	#$20
+		.a8
+		pla
+;;;		sta	DPCOP_B			; get back B - don't update B?
+		pla				; get back P
+		eor	DPCOP_P
+		and	#$CF			; mask out original flags
+		eor	DPCOP_P			; get back Caller's flags and nothing else
+		sta	DPCOP_P			; set flags but keep M/X from caller
+
+	; Stack	
+	;	+8..9	RTL to COP handler
+	;	+5..6	COP DP
+	;	+3..4	spare
+	;	+2	"0"
+	;	+1	index parameter to COP
+
+		rep	#$38
+		.a16
+		.i16
+		pld				; skip index, 0
+		pld				; skip spare
+		pld				; get back pushed COP DP (discarded in dispatcher)
+		clc
+		rtl
+
+@badIx:		.a16
+		.i16
+
+; Stack	
+	;	+11..13	RTL to COP handler
+	;	+9..10	COP DP
+	;	+7..8	spare
+	;	+5..6	spare		
+	;	+4	caller's P
+	;	+3	caller's B
+	;	+1..2	caller's AH
+
+		tsc
+		clc
+		adc	#10
+		tcs
+
+		lda	DPCOP_P
+		ora	#$41			; set V/C
+		sta	DPCOP_P
+		rtl
+
+
+@callBBC:	
+		.a16
+		.i16
+	; Stack	
+	;	+11..13	RTL to COP handler
+	;	+9..10	COP DP
+	;	+7..8	spare
+	;	+6	"0"
+	;	+5	index parameter to COP
+	;	+4	updated P
+	;	+3	updated B
+	;	+1..2	updated AH
+
+		lda	5,S				; get back vector index
+
 		cmp	#IX_VEC_BBC_MAX+1
-		bcs	@natOnly
+		bcs	@exindex			; not a BBC vector!
 		asl	A				; vector index * 2
+		clc
 		adc	#BBC_USERV			; turn to BBC vector address				
-
-		tcd					; DP = vector address
+		tcd					; DP = vector table address
 		lda	z:0				; A = vector contents
-		pld					; get back COP DP
+		sta	5,S				
+		cmp	#.loword(bbcEmu2NatVectorEntry)
+		beq	@exindex			; don't go round in a circle, break out and exit
 
-		phd					; save COP DP
-		per	@ret-1				; 16 bit emu/boot mode return address - TODO: IRQ1/IRQ2/BRKV need to be made suitable for RTI instead of RTS
-		pha					; stack vector address
+		lda	#.loword(@ret-1)		; 16 bit emu/boot mode return address - TODO: IRQ1/IRQ2/BRKV need to be made suitable for RTI instead of RTS
+		sta	7,S				; stack vector address
+
+	; Stack	
+	;	+11..13	RTL to COP handler
+	;	+9..10	COP DP
+	;	+7..8	@ret-1
+	;	+5..5	vector routine to call
+	;	+4	updated P
+	;	+3	updated B
+	;	+1..2	updated AH
+
 
 		sep	#$30
 		.a8
 		.i8
 
-	; Stack
-	;	+5..6	COP_DP
-	;	+3..4	return address from vector
-	;	+1..2	Vector address
-
-
-		lda	DPCOP_P
-		pha					; Caller's flags	
-		lda	#2				; number of bytes of stack to transfer
-		pha
+		lda	#0
+		sta	3,S				; clear B/emu2nat required "0"
+		pla
+		xba
+		pla
+		xba
 
 	; Stack
+	;	+8..10	RTL to COP handler
 	;	+7	COP_DP
 	;	+5..6	return address from vector
 	;	+3..4	Vector address
-	;	+2	P
-	;	+1	"2" number of bytes of stack to transfer
+	;	+2	caller P
+	;	+1	"0" number of bytes of stack to transfer
 
-		lda	DPCOP_AH+1
-		xba
-		lda	DPCOP_AH
-
-		jml	nat2emu_rti			; enter emu mode and set DP/B to 0
+		jml	nat2emu_0_rti			; enter emu mode and set DP/B to 0
 	; The vector handler will be entered with emu stack:
 	; Emu Stack
 	;	+1..2	return address from vector	; suitable for RTS or RTI
-	; The native stack will hold the saved DP
-	; Nat Stack
-	;	+1..2	DP
 
 
-@ret:		
+@ret:		; we're still in emu mode the stack will be empty
 		.a8
 		.i8
 		pha
 		php
 		
 	; Stack
-	;	+3..4	COP_DP
 	;	+2	A (8 bit)
 	;	+1	flags returned from vector
 		
@@ -361,12 +504,21 @@ COP_08:
 		jml	emu2nat_rti
 
 	;;;;;;;;; enter native mode ;;;;;;;;;;;;
-@c:		; get back DP cop
-		tsc
-		tcd
-		pei	(3)
-		pld
 
+	; Stack
+	;	+5..7	RTL to COP handler
+	;	+3..4	COP_DP
+	;	+2	returned AL from emu mode (AH should be intact)
+	;	+1	returned P from emu mode
+
+
+@c:		.a16
+		.i16
+
+		lda	3,S
+		tcd				; get back DP COP
+		sep	#$20
+		.a8
 
 		pla				; get back flags
 		eor	DPCOP_P
@@ -375,13 +527,13 @@ COP_08:
 		sta	DPCOP_P			; set flags but keep M/X from caller
 
 		pla				; get back 8 bit A
-		sta	DPCOP_AH		; store only bottom 8 bits!
-		stx	DPCOP_X			; store only bottom 8 bits!
-		sty	DPCOP_Y			; store only bottom 8 bits!
-
 		rep	#$30
 		.a16
 		.i16
+
+		sta	DPCOP_AH		; store all of it!
+		stx	DPCOP_X			; store X MSByte = 0 
+		sty	DPCOP_Y			; store Y MSByte = 0 
 
 		pld				; discard/re-pull DP cop
 
@@ -389,62 +541,38 @@ COP_08:
 
 		rtl
 
-@badIx:		pld
-		lda	DPCOP_P
-		ora	#$41			; set V/C
-		sta	DPCOP_P
-		sec
-		rtl
-
-
-	; Entered here when this is a native-only vector
-
-@natOnly:	php
+@exindex:
+		.a16
+		.i16
 	; Stack	
-	;	+2..3	DP
-	;	+1	P - spare
-		lda	DPCOP_P-1
-		sta	0,S			; put caller's P on stack in P
-	; Stack	
-	;	+2..3	DP
-	;	+1	COP caller's P
-		phx
-	; Stack	
-	;	+4..5	DP
-	;	+3	COP caller's P
-	;	+1..2	COP caller's X
-		lda	[DPCOP_PC]
-		and	#$00FF
-		asl	A
-		adc	[DPCOP_PC]		; A = IX*3
-		and	#$00FF
-		ldx	DPCOP_AH
-		tcd				; DP = IX*3
-		txa				; A = entry A	
-		plx			
-		plp
-		jsl	callNativeVectorChain
-		php
-		rep	#$38
-		pha
-		tsc
-		tcd
-		pei	(4)			; get back DP
-		pld
-		pla
+	;	+11..13	RTL to COP handler
+	;	+9..10	COP DP
+	;	+7..8	spare
+	;	+6	"0"
+	;	+5	index parameter to COP
+	;	+4	updated P
+	;	+3	updated B
+	;	+1..2	updated AH
+
 		stx	DPCOP_X
 		sty	DPCOP_Y
-		sta	DPCOP_AH
-		sep	#$20
-		.a8
+
 		pla
+		sta	DPCOP_AH
+		
+		sep	#$30
+		pla
+
+		pla				; get back flags
 		eor	DPCOP_P
 		and	#$CF			; mask out original flags
 		eor	DPCOP_P			; get back Caller's flags and nothing else
 		sta	DPCOP_P			; set flags but keep M/X from caller
-		rep	#$38
-		pld				; get back pushed DP
-		clc
+
+		pld				; skip spare
+		pld				; skip spare
+		pld				; COP DP
+
 		rtl
 
 
