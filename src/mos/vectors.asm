@@ -478,8 +478,8 @@ vec_done:	pla
 		.a8
 		.i8
 
-		lda	#0
-		sta	3,S				; clear B/emu2nat required "0"
+		lda	#2
+		sta	3,S				; send 2 bytes of return address to called emulation routine
 		pla
 		xba
 		pla
@@ -491,9 +491,9 @@ vec_done:	pla
 	;	+5..6	@ret-1
 	;	+3..4	Vector address
 	;	+2	caller P
-	;	+1	"0" number of bytes of stack to transfer
+	;	+1	"2" number of bytes of stack to transfer
 
-		jml	nat2emu_0_rti			; enter emu mode and set DP/B to 0
+		jml	nat2emu_rti			; enter emu mode and set DP/B to 0
 	; The vector handler will be entered with emu stack:
 	; Emu Stack
 	;	+1..2	return address from vector	; suitable for RTS or RTI
