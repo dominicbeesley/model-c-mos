@@ -281,7 +281,7 @@ vec_done:	pla
 ;		*                                                                              *
 ;		*         DP, B are unaltered but B is passed to native vectors                *
 ;		********************************************************************************
-COP_08:
+.proc	COP_08:far
 		.a16
 		.i16
 
@@ -312,6 +312,7 @@ COP_08:
 		inc	DPCOP_PC			; bump PC to point at vector index following COP
 		lda	[DPCOP_PC]
 		and	#$00FF
+
 		sta	5,S
 		cmp	#IX_VEC_MAX+1
 		bcs	@badIx
@@ -354,10 +355,11 @@ COP_08:
 	;	+1..2	updated AH
 
 	
+		beq	@callBBC
+
 		lda	9,S
 		tcd				; get back DP COP
 
-		beq	@callBBC
 
 		pla				; get back AH
 		
@@ -426,6 +428,10 @@ COP_08:
 @callBBC:	
 		.a16
 		.i16
+
+		lda	9,S
+		tcd				; get back DP COP
+
 	; Stack	
 	;	+11..13	RTL to COP handler
 	;	+9..10	COP DP
@@ -439,15 +445,21 @@ COP_08:
 		lda	5,S				; get back vector index
 
 		cmp	#IX_VEC_BBC_MAX+1
-		bcs	@exindex			; not a BBC vector!
+		bcs	_exindex			; not a BBC vector!
+
 		asl	A				; vector index * 2
 		clc
 		adc	#BBC_USERV			; turn to BBC vector address				
+
 		tcd					; DP = vector table address
 		lda	z:0				; A = vector contents
-		sta	5,S				
-		cmp	#.loword(bbcEmu2NatVectorEntry)
-		beq	@exindex			; don't go round in a circle, break out and exit
+		sta	5,S		
+
+		cmp	#.loword(tblNatShims)
+		bcc	@ok1
+		cmp	#.loword(tblNatShimsEnd)
+		bcc	_exindex			; don't go round in a circle, break out and exit
+@ok1:
 
 		lda	#.loword(@ret-1)		; 16 bit emu/boot mode return address - TODO: IRQ1/IRQ2/BRKV need to be made suitable for RTI instead of RTS
 		sta	7,S				; stack vector address
@@ -456,7 +468,7 @@ COP_08:
 	;	+11..13	RTL to COP handler
 	;	+9..10	COP DP
 	;	+7..8	@ret-1
-	;	+5..5	vector routine to call
+	;	+5..6	vector routine to call
 	;	+4	updated P
 	;	+3	updated B
 	;	+1..2	updated AH
@@ -476,7 +488,7 @@ COP_08:
 	; Stack
 	;	+8..10	RTL to COP handler
 	;	+7	COP_DP
-	;	+5..6	return address from vector
+	;	+5..6	@ret-1
 	;	+3..4	Vector address
 	;	+2	caller P
 	;	+1	"0" number of bytes of stack to transfer
@@ -486,6 +498,7 @@ COP_08:
 	; Emu Stack
 	;	+1..2	return address from vector	; suitable for RTS or RTI
 
+		.segment "BBCCODE"
 
 @ret:		; we're still in emu mode the stack will be empty
 		.a8
@@ -502,6 +515,8 @@ COP_08:
 		pea	$34 + ((<@c)<<8)
 		pea	2			; transfer 2 bytes from emu to nat stack (P, A)
 		jml	emu2nat_rti
+
+		.code
 
 	;;;;;;;;; enter native mode ;;;;;;;;;;;;
 
@@ -541,9 +556,14 @@ COP_08:
 
 		rtl
 
-@exindex:
+_exindex:
 		.a16
 		.i16
+		
+		; get back DP COP	
+		lda	9,S
+		tcd
+
 	; Stack	
 	;	+11..13	RTL to COP handler
 	;	+9..10	COP DP
@@ -561,6 +581,8 @@ COP_08:
 		sta	DPCOP_AH
 		
 		sep	#$30
+			.a8
+			.i8
 		pla
 
 		pla				; get back flags
@@ -574,7 +596,7 @@ COP_08:
 		pld				; COP DP
 
 		rtl
-
+.endproc
 
 
 ;		********************************************************************************
