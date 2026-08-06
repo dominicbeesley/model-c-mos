@@ -168,8 +168,8 @@ bbcEmu2NatVectorEntry_ff:
 		.a16
 	; DP contains index *3, A,X,Y as per vector call
 .proc callNativeVectorChain:far
-		php
 		rep	#$38			; ensure 16 bit registers, decimal off
+		php
 		pha
 		tdc				; get index into A
 		clc
