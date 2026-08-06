@@ -629,13 +629,13 @@ _BDA5B:			lda	default_sysvars-1,Y		; copy data from &D93F+Y
 		.faraddr doCLIV
 		cop	COP_09_OPADV
 
-		pea	DPBBC
-		pld
-		ldx	#0
-		ldy	#IX_FSCV
-		cop	COP_27_OPBHI
-		.faraddr doFSCV
-		cop	COP_09_OPADV
+;;		pea	DPBBC
+;;		pld
+;;		ldx	#0
+;;		ldy	#IX_FSCV
+;;		cop	COP_27_OPBHI
+;;		.faraddr doFSCV
+;;		cop	COP_09_OPADV
 
 		DEBUG_PRINTF "buffers\n"
 		jsl	initBuffers
