@@ -22,7 +22,7 @@ mod_start:	brl	serv
 
 
 title:		.byte "TestModule",0
-help:		.byte "TestModule\t0.01\t(21 July 2026)",0
+help:		.byte "TestModule\t0.01\t(21 Jul 2026)",0
 
 
 		.a16
