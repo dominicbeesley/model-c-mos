@@ -6,8 +6,8 @@ use strict;
 
 my %syms=();
 
-sub symsubst($$) {
-	my ($romno,$orgaddr) = @_;
+sub symsubst($$$) {
+	my ($romno,$orgaddr,$emu) = @_;
 	
 	my $addr;
 	if (length($orgaddr) == 2) {
@@ -21,6 +21,10 @@ sub symsubst($$) {
 	}
 
 	my $sym = $syms{$addr};
+	if (!$sym && $emu && $addr =~ /^(00)([0-9A-F]{4})/) {
+		$addr =~ s/^00/FF/;
+		$sym = $syms{$addr};
+	}
 
 
 	if ($sym)
@@ -74,9 +78,10 @@ while (<>) {
 		my $bytes = $4;
 		my $dis = $5; 
 		my $rest = $6;
+		my $emu = $l =~ /\sE=1\s/;
 		$dis =~ s/^\s+//;
 		$dis =~ s/\s+$//;
-		$dis =~ s/((?<!(#|\w))([0-9A-F]{2,6}))(?!\w)/symsubst($rom,$1)/ge;
+		$dis =~ s/((?<!(#|\w))([0-9A-F]{2,6}))(?!\w)/symsubst($rom,$1,$emu)/ge;
 		
 		$l = sprintf("%s : %s : %-40s : %s", $add, $bytes, $dis, $rest);
 	}

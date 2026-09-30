@@ -80,9 +80,9 @@ bbcEmu2NatVectorEntry_ff:
 		tax
 		lda 	9,S
 		sta	5,S				; move P down
-		lda	EMU2NAT_VEC_SHIMS,X
+		lda	f:EMU2NAT_VEC_SHIMS,X
 		sta	6,S
-		lda	EMU2NAT_VEC_SHIMS+1,X
+		lda	f:EMU2NAT_VEC_SHIMS+1,X
 		sta	7,S
 		lda	#.loword(@continue-1)
 		sta	9,S
@@ -429,9 +429,6 @@ vec_done:	pla
 		.a16
 		.i16
 
-		lda	9,S
-		tcd				; get back DP COP
-
 	; Stack	
 	;	+11..13	RTL to COP handler
 	;	+9..10	COP DP
@@ -443,11 +440,23 @@ vec_done:	pla
 	;	+1..2	updated AH
 
 		lda	5,S				; get back vector index
-
 		cmp	#IX_VEC_BBC_MAX+1
 		bcs	_exindex			; not a BBC vector!
 
-		asl	A				; vector index * 2
+		tcd					; D contains vector index
+
+		pla
+		plb
+		plp
+
+		jsl	callNat2EmuVecShim
+
+		php
+		phb
+		pha
+
+		lda	5,S				; get back vector index
+		asl	A
 		clc
 		adc	#BBC_USERV			; turn to BBC vector address				
 
@@ -598,6 +607,50 @@ _exindex:
 		rtl
 .endproc
 
+		; DP = index, all other registers valid and may be updated by shim
+
+.proc		callNat2EmuVecShim:far
+		.a16
+		.i16
+		
+		pha
+		phb
+		php
+		pha
+
+		; Stack
+		; +7..9		long return address
+		; +4..6		spare
+		; +3		P
+		; +1..2		AH
+
+		;TODO: make this more efficient after profiling
+		sep	#$20
+		.a8
+		lda	#.bankbyte(NAT2EMU_VEC_SHIMS)
+		sta	6,S
+		rep	#$20
+		.a16
+
+		tdc
+		asl	A
+		asl	A
+		adc	#.loword(NAT2EMU_VEC_SHIMS-1)
+		sta	4,S
+
+		; Stack
+		; +7..9		rtl return address (shim will return here)
+		; +4..5		rtr address to shim
+		; +3		P
+		; +1..2		AH
+		pla
+		plp
+		rtl
+
+
+
+.endproc
+
 
 ;		********************************************************************************
 ;		* COP 09 - OPADV - Add to vector                                               *
@@ -697,15 +750,36 @@ COP_09:		.a16
 
 ; point all the EMU2NAT_VEC table entries to callNativeVectorChain
 		lda	#.loword(callNativeVectorChain)
-		sta	EMU2NAT_VEC_SHIMS
+		sta	f:EMU2NAT_VEC_SHIMS
 		lda	#.loword(callNativeVectorChain >> 8)
-		sta	EMU2NAT_VEC_SHIMS + 1
-		lda	#(IX_VEC_BBC_MAX-1)*3-1
-		ldx	#EMU2NAT_VEC_SHIMS
-		ldy	#EMU2NAT_VEC_SHIMS+3
-		mvn	#0, #0
+		sta	f:EMU2NAT_VEC_SHIMS + 1
+		lda	#(IX_VEC_BBC_MAX)*3-1
+		ldx	#.loword(EMU2NAT_VEC_SHIMS)
+		ldy	#.loword(EMU2NAT_VEC_SHIMS+3)
+		mvn	#.bankbyte(EMU2NAT_VEC_SHIMS), #.bankbyte(EMU2NAT_VEC_SHIMS)
 		
+; zeroes to all NAT2EMU shims
+		lda	#$6B6B				; RTL RTL RTL RTL in each entry
+		sta	f:NAT2EMU_VEC_SHIMS
+		sta	f:NAT2EMU_VEC_SHIMS+2
+		lda	#(IX_VEC_MAX)*4-1
+		ldx	#.loword(NAT2EMU_VEC_SHIMS)
+		ldy	#.loword(NAT2EMU_VEC_SHIMS+4)
+		mvn	#.bankbyte(NAT2EMU_VEC_SHIMS), #.bankbyte(NAT2EMU_VEC_SHIMS)
 
+		; register a FILEV nat2emu shim
+		;; TODO: this should be registered through an _internal_ API somehow 
+
+		lda	#$0022 | ((>nat2emu_shim_FILEV) << 8)
+		sta	f:NAT2EMU_VEC_SHIMS  +(IX_FILEV*4)
+		lda	#.loword(nat2emu_shim_FILEV >> 8)
+		sta	f:NAT2EMU_VEC_SHIMS  +(IX_FILEV*4)
+
+
+
+		pea	0
+		plb
+		plb
 ; zeroes to the native OS Vecs
 		lda	#0
 		ldx	#NAT_OS_VECS_COUNT*3
@@ -717,5 +791,13 @@ COP_09:		.a16
 
 
 		plp
+		rtl
+.endproc
+
+
+.proc	nat2emu_shim_FILEV:far
+		DEBUG_PRINTF " NAT2EMU FILEV : %H%A %X %Y\n"
+	
+
 		rtl
 .endproc
