@@ -181,6 +181,7 @@ COP_06:		ldx	DPCOP_X
 
 
 ; TODO: - this must depend on whether called from EMU or NAT mode as b0 is 
+; TODO: - mos extender has different API - marry up - ignore Commy API?
 ;	  different!
 ;	********************************************************************************
 ;	* COP 07 - OPOSW = OSWORD                                                      *

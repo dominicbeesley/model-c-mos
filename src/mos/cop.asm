@@ -244,7 +244,7 @@ tblCOPDispatch:	.faraddr	COP_00		;OPWRC 	00 = OSWRCH
 		.faraddr	COP_06		;OPOSB 	06 = OSBYTE
 		.faraddr	COP_07		;OPOSW 	07 = OSWORD
 		.faraddr	COP_08		;OPCAV 	08 = Call A Vector **NEW**
-		.faraddr	COP_09		;OPCAV 	08 = Add to Vector **NEW**
+		.faraddr	COP_09		;OPCAV 	09 = Add to Vector **NEW**
 		.faraddr	COP_NotImpl	;A	BGET
 		.faraddr	COP_NotImpl	;B	BPUT
 		.faraddr	COP_0C		;OPFILE 	0C = OSFILE **NEW**
@@ -516,7 +516,7 @@ COP_05:          jsr   makeBYXptr
 
 
 ; ********************************************************************************
-; * COP 0E OPFILE - call filing system's OSFILE entry                            *
+; * COP 0C OPFILE - call filing system's OSFILE entry                            *
 ; *                                                                              *
 ; * On Entry									 *
 ; * 	BHA	Points to a **NEW** OSFILE block:                              	 *
@@ -536,6 +536,7 @@ COP_05:          jsr   makeBYXptr
 ; *                                                                              *
 ; *                                                                              *
 ; ********************************************************************************
+;TODO: harmonize with mos extender API which passes function in Y
 .proc	COP_0C:far
 		.a16
 		.i16
