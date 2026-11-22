@@ -30,9 +30,9 @@ Log     Phys
                 | EMU NMI / Econet / Ext vectors / ROM private pointers   |
 0E00    00 0E00 +---------------------------------------------------------+     00 0E00
                 |      ROM workspace or Language reserved for 8-bit       |
-1000    FF 1000 +..........................+----+-------------------------+     00 1000 
+1000    FF 1000 +                          +----+-------------------------+     00 1000 
                 B                          B    |                         |
-                B      ROM workspace       B    |                         |
+                B      ROM workspace       B    |  BLTURBO Lxx reserved   |
           PAGE  B--------------------------B    |                         |
                 B      Language            B    |                         |
                 B                          B    |                         |
@@ -41,9 +41,15 @@ Log     Phys
                 B      Screen Memory       B    |                         |
                 B                          B    |                         |
                 B                          B    |                         |
-8000    XX XXXX +--------------------------+    |                         |
+8000    XX XXXX +--------------------------+    +-------------------------+     00 8000
+                S                          S    | BLTUTIL workspace       |
+                S                          S    +-------------------------+     00 8C00
+                S                          S    | MOS Extender            |
+                S                          S    +-------------------------+     00 8FE0
+                S      Paged ROMs          S    | 816 native vectors      |
+                S                          S    +-------------------------+     00 9000
                 S                          S    |                         |
-                S      Paged ROMs          S    |-------------------------|     00 A000
+                S                          S    |-------------------------|     00 A000
                 S                          S    | B0Blocks "handle blocks"|
 C000    FF C000 +-----------------+--------+----+-------------------------|     00 C000
                 M                 |                                       |
